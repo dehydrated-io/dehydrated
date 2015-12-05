@@ -14,7 +14,24 @@ urlbase64() {
 }
 
 hex2bin() {
-  perl -pe 's/([0-9a-f]{2})/chr hex $1/gie'
+  tmphex="$(cat)"
+
+  # remove spaces
+  hex=''
+  for ((i=0; i<${#tmphex}; i+=1)); do
+    test "${tmphex:$i:1}" == " " || hex="${hex}${tmphex:$i:1}"
+  done
+
+  # add leading zero
+  test $((${#hex} & 1)) == 0 || hex="0${hex}"
+
+  # convert to escaped string
+  escapedhex=''
+  for ((i=0; i<${#hex}; i+=2)); do
+    escapedhex=$escapedhex\\x${hex:$i:2}
+  done
+
+  printf "${escapedhex}"
 }
 
 _request() {
