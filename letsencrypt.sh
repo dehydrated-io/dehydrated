@@ -14,7 +14,7 @@ hex2bin() {
 signed_request() {
   payload64="$(echo -n "${2}" | urlbase64)"
 
-  nonce="$(curl -s -I ${CA}/directory | grep Replay-Nonce | awk -F ': ' '{print $2}' | tr -d '\n\r')"
+  nonce="$(curl -s -I "${CA}"/directory | grep Replay-Nonce | awk -F ': ' '{print $2}' | tr -d '\n\r')"
 
   header='{"alg": "RS256", "jwk": {"e": "'"${pubExponent64}"'", "kty": "RSA", "n": "'"${pubMod64}"'"}}'
 
@@ -37,7 +37,7 @@ sign_domain() {
     for altname in $altnames; do
       SAN+="DNS:${altname}, "
     done
-    SAN="$(echo -n $SAN | sed 's/,\s*$//g')"
+    SAN="$(echo -n "${SAN}" | sed 's/,\s*$//g')"
 
     mkdir "certs/${domain}"
 
@@ -51,8 +51,8 @@ sign_domain() {
     echo "  + Requesting challenge for ${altname}..."
     response="$(signed_request "${CA}/acme/new-authz" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}')"
 
-    challenge_token="$(echo $response | grep -Eo '"challenges":[^\[]*\[[^]]*]' | sed 's/{/\n{/g' | grep 'http-01' | grep -Eo '"token":\s*"[^"]*"' | cut -d'"' -f4 | sed 's/[^A-Za-z0-9_\-]/_/g')"
-    challenge_uri="$(echo $response | grep -Eo '"challenges":[^\[]*\[[^]]*]' | sed 's/{/\n{/g' | grep 'http-01' | grep -Eo '"uri":\s*"[^"]*"' | cut -d'"' -f4)"
+    challenge_token="$(echo "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]' | sed 's/{/\n{/g' | grep 'http-01' | grep -Eo '"token":\s*"[^"]*"' | cut -d'"' -f4 | sed 's/[^A-Za-z0-9_\-]/_/g')"
+    challenge_uri="$(echo "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]' | sed 's/{/\n{/g' | grep 'http-01' | grep -Eo '"uri":\s*"[^"]*"' | cut -d'"' -f4)"
 
     if [ "${challenge_token}" = "" ] || [ "${challenge_uri}" = "" ]; then
       echo "  + Error: Can't retrieve challenges (${reqsponse})"
