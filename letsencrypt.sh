@@ -92,9 +92,9 @@ if [ ! -e "private_key.pem" ]; then
 fi
 
 pubExponent64="$(printf "%06x" "$(openssl rsa -in private_key.pem -noout -text | grep publicExponent | head -1 | cut -d' ' -f2)" | perl -pe 's/([0-9a-f]{2})/chr hex $1/gie' | urlbase64)"
-pubMod64="$(echo -n "$(openssl rsa -in private_key.pem -noout -modulus | cut -d'=' -f2 | perl -pe 's/([0-9a-f]{2})/chr hex $1/gie')" | urlbase64)"
+pubMod64="$(echo -n "$(openssl rsa -in private_key.pem -noout -modulus | cut -d'=' -f2)" | perl -pe 's/([0-9a-f]{2})/chr hex $1/gie' | urlbase64)"
 
-thumbprint="$(echo -n "$(echo -n '{"e":"'"${pubExponent64}"'","kty":"RSA","n":"'"${pubMod64}"'"}' | sha256sum | awk '{print $1}' | perl -pe 's/([0-9a-f]{2})/chr hex $1/gie')" | urlbase64)"
+thumbprint="$(echo -n "$(echo -n '{"e":"'"${pubExponent64}"'","kty":"RSA","n":"'"${pubMod64}"'"}' | sha256sum | awk '{print $1}')" | perl -pe 's/([0-9a-f]{2})/chr hex $1/gie' | urlbase64)"
 
 if [ "${register}" = "1" ]; then
   echo "+ Registering account key with letsencrypt..."
