@@ -4,9 +4,6 @@ set -e
 
 source config.sh
 
-declare -A header
-declare -A request
-
 urlbase64() {
   base64 -w 0 | sed -r 's/=*$//g' | tr '+/' '-_'
 }
