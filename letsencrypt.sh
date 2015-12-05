@@ -30,8 +30,8 @@ signed_request() {
 
 sign_domain() {
   domain="${1}"
-  altnames="${@}"
-  echo "Signing domain ${1} (${@})..."
+  altnames="${*}"
+  echo "Signing domain ${1} (${*})..."
   if [ ! -e "certs/${domain}" ]; then
     SAN=""
     for altname in $altnames; do
