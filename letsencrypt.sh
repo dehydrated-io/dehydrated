@@ -49,7 +49,10 @@ _request() {
   elif [ "${1}" = "post" ]; then
     curl -sSf "${2}" -d "${3}" 2>"${temperr}"
   fi
-  if [ -s "${temperr}" ]; then echo "  + ERROR: An error occured while sending ${1}-request to ${2} ($(<"${temperr}"))" >&2; exit 1; fi
+  if [ -s "${temperr}" ]; then
+      echo "  + ERROR: An error occured while sending ${1}-request to ${2} ($(<"${temperr}"))" >&2
+      exit 1
+  fi
   rm -f "${temperr}"
 }
 
