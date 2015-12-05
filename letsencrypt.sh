@@ -2,7 +2,7 @@
 
 set -e
 
-source config.sh
+. ./config.sh
 
 urlbase64() {
   base64 -w 0 | sed -r 's/=*$//g' | tr '+/' '-_'
