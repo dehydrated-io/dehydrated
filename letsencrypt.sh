@@ -91,7 +91,7 @@ sign_domain() {
 
   # If there is no existing certificate directory we need a new private key
   if [ ! -e "certs/${domain}" ]; then
-    mkdir "certs/${domain}"
+    mkdir -p "certs/${domain}"
     echo "  + Generating private key..."
     openssl genrsa -out "certs/${domain}/privkey.pem" 4096 2> /dev/null > /dev/null
   fi
