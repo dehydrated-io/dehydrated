@@ -7,6 +7,9 @@ source config.sh
 urlbase64() {
   base64 -w 0 | sed -r 's/=*$//g' | tr '+/' '-_'
 }
+hex2bin() {
+  perl -pe 's/([0-9a-f]{2})/chr hex $1/gie'
+}
 
 signed_request() {
   payload64="$(echo -n "${2}" | urlbase64)"
@@ -91,10 +94,10 @@ if [ ! -e "private_key.pem" ]; then
   register="1"
 fi
 
-pubExponent64="$(printf "%06x" "$(openssl rsa -in private_key.pem -noout -text | grep publicExponent | head -1 | cut -d' ' -f2)" | perl -pe 's/([0-9a-f]{2})/chr hex $1/gie' | urlbase64)"
-pubMod64="$(echo -n "$(openssl rsa -in private_key.pem -noout -modulus | cut -d'=' -f2)" | perl -pe 's/([0-9a-f]{2})/chr hex $1/gie' | urlbase64)"
+pubExponent64="$(printf "%06x" "$(openssl rsa -in private_key.pem -noout -text | grep publicExponent | head -1 | cut -d' ' -f2)" | hex2bin | urlbase64)"
+pubMod64="$(echo -n "$(openssl rsa -in private_key.pem -noout -modulus | cut -d'=' -f2)" | hex2bin | urlbase64)"
 
-thumbprint="$(echo -n "$(echo -n '{"e":"'"${pubExponent64}"'","kty":"RSA","n":"'"${pubMod64}"'"}' | sha256sum | awk '{print $1}')" | perl -pe 's/([0-9a-f]{2})/chr hex $1/gie' | urlbase64)"
+thumbprint="$(echo -n "$(echo -n '{"e":"'"${pubExponent64}"'","kty":"RSA","n":"'"${pubMod64}"'"}' | sha256sum | awk '{print $1}')" | hex2bin | urlbase64)"
 
 if [ "${register}" = "1" ]; then
   echo "+ Registering account key with letsencrypt..."
