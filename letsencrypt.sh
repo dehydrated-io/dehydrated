@@ -51,6 +51,7 @@ _request() {
   fi
   if [ -s "${temperr}" ]; then
       echo "  + ERROR: An error occured while sending ${1}-request to ${2} ($(<"${temperr}"))" >&2
+      rm -f "${temperr}"
       exit 1
   fi
   rm -f "${temperr}"
