@@ -10,15 +10,29 @@ umask 077 # paranoid umask, we're creating private keys
 urlbase64() {
   base64 -w 0 | sed -r 's/=*$//g' | tr '+/' '-_'
 }
+
 hex2bin() {
   perl -pe 's/([0-9a-f]{2})/chr hex $1/gie'
+}
+
+_request() {
+  temperr="$(mktemp)"
+  if [ "${1}" = "head" ]; then
+    curl -sSf -I "${2}" 2>${temperr}
+  elif [ "${1}" = "get" ]; then
+    curl -sSf "${2}" 2>${temperr}
+  elif [ "${1}" = "post" ]; then
+    curl -sSf "${2}" -d "${3}" 2>${temperr}
+  fi
+  if [ ! -z "$(<${temperr})" ]; then echo "  + ERROR: An error occured while accessing "${1}" ($(<"${temperr}"))" >&2; exit 1; fi
+  rm -f "${temperr}"
 }
 
 signed_request() {
   payload64="$(printf '%s' "${2}" | urlbase64)"
 
   # -sSf: stay silent but report errors and exit with != 0 if they occur
-  nonce="$(curl -sSf -I "${CA}"/directory | grep Replay-Nonce: | awk -F ': ' '{print $2}' | tr -d '\n\r')"
+  nonce="$(_request head "${CA}/directory" | grep Replay-Nonce: | awk -F ': ' '{print $2}' | tr -d '\n\r')"
 
   header='{"alg": "RS256", "jwk": {"e": "'"${pubExponent64}"'", "kty": "RSA", "n": "'"${pubMod64}"'"}}'
 
@@ -29,7 +43,7 @@ signed_request() {
 
   data='{"header": '"${header}"', "protected": "'"${protected64}"'", "payload": "'"${payload64}"'", "signature": "'"${signed64}"'"}'
 
-  curl -sSf -d "${data}" "${1}"
+  _request post "${1}" "${data}"
 }
 
 sign_domain() {
@@ -79,7 +93,7 @@ sign_domain() {
     fi
 
     while [ ! "${status}" = "valid" ]; do
-      status="$(curl -sSf "${challenge_uri}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
+      status="$(_request get "${challenge_uri}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
     done
 
     echo "  + Challenge is valid!"
