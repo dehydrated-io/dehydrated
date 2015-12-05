@@ -1,6 +1,8 @@
 #!/bin/bash
 
-set -eu
+set -e
+set -u
+set -o pipefail
 
 . ./config.sh
 
