@@ -93,7 +93,7 @@ thumbprint="$(echo -n "$(echo -n '{"e":"'"${pubExponent64}"'","kty":"RSA","n":"'
 
 if [ "${register}" = "1" ]; then
   echo "+ Registering account key with letsencrypt..."
-  signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"}'
+  signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"}' > /dev/null
 fi
 
 cat domains.txt | sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read line; do
