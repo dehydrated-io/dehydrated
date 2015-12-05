@@ -44,7 +44,7 @@ sign_domain() {
     echo "  + Generating private key..."
     openssl genrsa -out "certs/${domain}/privkey.pem" 4096 2> /dev/null > /dev/null
     echo "  + Generating signing request..."
-    openssl req -new -sha256 -key "certs/${domain}/privkey.pem" -out "certs/${domain}/cert.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=${SAN}")) > /dev/null
+    openssl req -new -sha256 -key "certs/${domain}/privkey.pem" -out "certs/${domain}/cert.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=%s" "${SAN}")) > /dev/null
   fi
 
   for altname in $altnames; do
