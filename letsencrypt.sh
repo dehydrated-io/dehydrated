@@ -55,7 +55,7 @@ sign_domain() {
     challenge_uri="$(echo "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]' | sed 's/{/\n{/g' | grep 'http-01' | grep -Eo '"uri":\s*"[^"]*"' | cut -d'"' -f4)"
 
     if [ "${challenge_token}" = "" ] || [ "${challenge_uri}" = "" ]; then
-      echo "  + Error: Can't retrieve challenges (${reqsponse})"
+      echo "  + Error: Can't retrieve challenges (${response})"
       exit 1
     fi
 
