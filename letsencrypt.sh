@@ -4,6 +4,9 @@ set -e
 set -u
 set -o pipefail
 
+# default config values
+CA="https://acme-v01.api.letsencrypt.org"
+
 . ./config.sh
 
 umask 077 # paranoid umask, we're creating private keys

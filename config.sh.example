@@ -1,2 +1,4 @@
-CA="https://acme-v01.api.letsencrypt.org"
+# default values are commented
+
+#CA="https://acme-v01.api.letsencrypt.org"
 WELLKNOWN="/var/www/letsencrypt/.well-known/acme-challenge"
