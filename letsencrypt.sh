@@ -51,7 +51,7 @@ sign_domain() {
     mkdir "certs/${domain}"
 
     echo "  + Generating private key..."
-    openssl genrsa -out "certs/${domain}/privkey.pem" 4096 > /dev/null
+    openssl genrsa -out "certs/${domain}/privkey.pem" 4096 2> /dev/null > /dev/null
     echo "  + Generating signing request..."
     openssl req -new -sha256 -key "certs/${domain}/privkey.pem" -out "certs/${domain}/cert.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=${SAN}")) > /dev/null
   fi
@@ -73,7 +73,7 @@ sign_domain() {
     status="$(echo "${result}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
 
     if [ ! "${status}" = "pending" ] && [ ! "${status}" = "valid" ]; then
-      echo "  + Challenge is invalid!"
+      echo "  + Challenge is invalid! (${result})"
       exit 1
     fi
 
@@ -90,6 +90,13 @@ sign_domain() {
   echo -e "-----BEGIN CERTIFICATE-----\n${crt64}\n-----END CERTIFICATE-----\n" > "certs/${domain}/cert.pem"
   echo "  + Done!"
 }
+
+if [ ! -e "private_key.pem" ]; then
+  echo "+ Generating account key..."
+  openssl genrsa -out "private_key.pem" 4096 2> /dev/null > /dev/null
+  echo "+ Registering account key with letsencrypt..."
+  register
+fi
 
 cat domains.txt | sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read line; do
   sign_domain $line
