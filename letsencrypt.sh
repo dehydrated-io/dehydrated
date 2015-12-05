@@ -14,7 +14,8 @@ hex2bin() {
 signed_request() {
   payload64="$(printf '%s' "${2}" | urlbase64)"
 
-  nonce="$(curl -s -I "${CA}"/directory | grep Replay-Nonce | awk -F ': ' '{print $2}' | tr -d '\n\r')"
+  # -sSf: stay silent but report errors and exit with != 0 if they occur
+  nonce="$(curl -sSf -I "${CA}"/directory | grep Replay-Nonce: | awk -F ': ' '{print $2}' | tr -d '\n\r')"
 
   header='{"alg": "RS256", "jwk": {"e": "'"${pubExponent64}"'", "kty": "RSA", "n": "'"${pubMod64}"'"}}'
 
@@ -25,7 +26,7 @@ signed_request() {
 
   data='{"header": '"${header}"', "protected": "'"${protected64}"'", "payload": "'"${payload64}"'", "signature": "'"${signed64}"'"}'
 
-  curl -s -d "${data}" "${1}"
+  curl -sSf -d "${data}" "${1}"
 }
 
 sign_domain() {
@@ -74,7 +75,7 @@ sign_domain() {
     fi
 
     while [ ! "${status}" = "valid" ]; do
-      status="$(curl -s "${challenge_uri}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
+      status="$(curl -sSf "${challenge_uri}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
     done
 
     echo "  + Challenge is valid!"
