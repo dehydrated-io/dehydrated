@@ -6,6 +6,7 @@ set -o pipefail
 
 # default config values
 CA="https://acme-v01.api.letsencrypt.org"
+LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
 
 . ./config.sh
 
@@ -168,7 +169,7 @@ thumbprint="$(printf '%s' "$(printf '%s' '{"e":"'"${pubExponent64}"'","kty":"RSA
 # If we generated a new private key in the step above we have to register it with the acme-server
 if [ "${register}" = "1" ]; then
   echo "+ Registering account key with letsencrypt..."
-  signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"}' > /dev/null
+  signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > /dev/null
 fi
 
 # Generate certificates for all domains found in domain.txt (TODO: check if certificate already exists and is about to expire)
