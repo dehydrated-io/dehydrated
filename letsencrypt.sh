@@ -66,6 +66,7 @@ sign_domain() {
     keyauth="${challenge_token}.${thumbprint}"
 
     printf '%s' "${keyauth}" > "${WELLKNOWN}/${challenge_token}"
+    chmod a+r "${WELLKNOWN}/${challenge_token}"
 
     echo "  + Responding to challenge for ${altname}..."
     result="$(signed_request "${challenge_uri}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}')"
