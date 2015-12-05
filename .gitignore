@@ -1,0 +1,5 @@
+private_key.pem
+domains.txt
+config.sh
+certs/*
+!certs/.keep
