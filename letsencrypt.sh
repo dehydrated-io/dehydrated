@@ -143,5 +143,5 @@ if [ "${register}" = "1" ]; then
 fi
 
 <domains.txt sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read line; do
-  sign_domain "$line"
+  sign_domain $line
 done
