@@ -4,6 +4,9 @@ set -eu
 
 . ./config.sh
 
+umask 077 # paranoid umask, we're creating private keys
+
+
 urlbase64() {
   base64 -w 0 | sed -r 's/=*$//g' | tr '+/' '-_'
 }
