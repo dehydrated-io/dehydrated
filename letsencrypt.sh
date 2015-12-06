@@ -101,17 +101,17 @@ signed_request() {
 sign_domain() {
   domain="${1}"
   altnames="${*}"
-  echo "Signing domain ${1} (${*})..."
+  echo " + Signing domains..."
 
   # If there is no existing certificate directory => make it
   if [[ ! -e "certs/${domain}" ]]; then
-    echo "  + make directory certs/${domain} ..."
+    echo " + make directory certs/${domain} ..."
     mkdir -p "certs/${domain}"
   fi
 
   # generate a new private key if we need or want one
   if [[ ! -f "certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
-    echo "  + Generating private key..."
+    echo " + Generating private key..."
     timestamp="$(date +%s)"
     openssl genrsa -out "certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}" 2> /dev/null > /dev/null
     rm -f "certs/${domain}/privkey.pem"
@@ -124,13 +124,13 @@ sign_domain() {
     SAN+="DNS:${altname}, "
   done
   SAN="$(printf '%s' "${SAN}" | sed 's/,\s*$//g')"
-  echo "  + Generating signing request..."
+  echo " + Generating signing request..."
   openssl req -new -sha256 -key "certs/${domain}/privkey.pem" -out "certs/${domain}/cert.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=%s" "${SAN}")) > /dev/null
 
   # Request and respond to challenges
   for altname in $altnames; do
     # Ask the acme-server for new challenge token and extract them from the resulting json block
-    echo "  + Requesting challenge for ${altname}..."
+    echo " + Requesting challenge for ${altname}..."
     response="$(signed_request "${CA}/acme/new-authz" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}')"
 
     challenge_token="$(printf '%s\n' "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]' | sed 's/{/\n{/g' | grep 'http-01' | grep -Eo '"token":\s*"[^"]*"' | cut -d'"' -f4 | sed 's/[^A-Za-z0-9_\-]/_/g')"
@@ -154,7 +154,7 @@ sign_domain() {
     fi
 
     # Ask the acme-server to verify our challenge and wait until it becomes valid
-    echo "  + Responding to challenge for ${altname}..."
+    echo " + Responding to challenge for ${altname}..."
     result="$(signed_request "${challenge_uri}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}')"
 
     status="$(printf '%s\n' "${result}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
@@ -166,23 +166,23 @@ sign_domain() {
     done
 
     if [[ "${status}" = "valid" ]]; then
-      echo "  + Challenge is valid!"
+      echo " + Challenge is valid!"
     else
-      echo "  + Challenge is invalid! (returned: ${status})"
+      echo " + Challenge is invalid! (returned: ${status})"
       exit 1
     fi
 
   done
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
-  echo "  + Requesting certificate..."
+  echo " + Requesting certificate..."
   timestamp="$(date +%s)"
   csr64="$(openssl req -in "certs/${domain}/cert.csr" -outform DER | urlbase64)"
   crt64="$(signed_request "${CA}/acme/new-cert" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | openssl base64 -e)"
   printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "certs/${domain}/cert-${timestamp}.pem"
   rm -f "certs/${domain}/cert.pem"
   ln -s "cert-${timestamp}.pem" "certs/${domain}/cert.pem"
-  echo "  + Done!"
+  echo " + Done!"
 }
 
 # Check if private key exists, if it doesn't exist yet generate a new one (rsa key)
@@ -217,15 +217,22 @@ fi
 # Generate certificates for all domains found in domain.txt. Check if existing certificate are about to expire
 <domains.txt sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
   domain="$(echo $line | cut -d' ' -f1)"
-  if [[ -e "certs/${domain}/cert.pem" ]]; then
-    echo -n "Found existing cert for ${domain}. Expire date ..."
-    set +e; openssl x509 -checkend $((${RENEW_DAYS} * 86400)) -noout -in "certs/${domain}/cert.pem"; expiring=$?; set -e
+  cert="certs/${domain}/cert.pem"
+
+  echo "Processing ${domain}"
+  if [[ -e "${cert}" ]]; then
+    echo " + Found existing cert..."
+
+    # Turning off exit on non-zero status for cert validation
+    set +e; openssl x509 -checkend $((${RENEW_DAYS} * 86400)) -noout -in "${cert}"; expiring=$?; set -e
+    valid="$(openssl x509 -enddate -noout -in "certs/${domain}/cert.pem" | cut -d= -f2- )"
+
+    echo -n " + Valid till ${valid} "
     if [[ ${expiring} -eq 0 ]]; then
-	valid=$(openssl x509 -enddate -noout -in "certs/${domain}/cert.pem" | cut -d= -f2- )
-	echo " ${valid} Skipping. (Valid longer than ${RENEW_DAYS} days.)"
-        continue
+      echo "(Longer than ${RENEW_DAYS} days). Skipping!"
+      continue
     fi
-    echo " is within ${RENEW_DAYS} days. Renewing..."
+    echo "(Less than ${RENEW_DAYS} days). Renewing!"
   fi
 
   sign_domain $line
