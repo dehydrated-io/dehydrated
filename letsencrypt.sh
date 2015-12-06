@@ -153,11 +153,14 @@ sign_domain() {
     echo "  + Challenge is valid!"
   done
 
-  # Finally request certificate from the acme-server and store it in cert.pem
+  # Finally request certificate from the acme-server and store it in cert-${today}.pem and link from cert.pem
   echo "  + Requesting certificate..."
+  today="$(date +%Y%m%d)"
   csr64="$(openssl req -in "certs/${domain}/cert.csr" -outform DER | urlbase64)"
   crt64="$(signed_request "${CA}/acme/new-cert" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | openssl base64 -e)"
-  printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "certs/${domain}/cert.pem"
+  printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "certs/${domain}/cert-${today}.pem"
+  rm -f "certs/${domain}/cert.pem"
+  ln -s "cert-${today}.pem" "certs/${domain}/cert.pem"
   echo "  + Done!"
 }
 
