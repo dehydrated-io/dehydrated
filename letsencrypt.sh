@@ -12,6 +12,8 @@ RENEW_DAYS="14"
 KEYSIZE="4096"
 WELLKNOWN=".acme-challenges"
 PRIVATE_KEY_RENEW=no
+SED=sed
+OPENSSLCNF=/etc/ssl/openssl.cnf
 
 if [[ -e "config.sh" ]]; then
   . ./config.sh
@@ -25,7 +27,7 @@ anti_newline() {
 
 urlbase64() {
   # urlbase64: base64 encoded string with '+' replaced with '-' and '/' replaced with '_'
-  openssl base64 -e | anti_newline | sed -r 's/=*$//g' | tr '+/' '-_'
+  openssl base64 -e | anti_newline | ${SED} -r 's/=*$//g' | tr '+/' '-_'
 }
 
 hex2bin() {
@@ -123,9 +125,9 @@ sign_domain() {
   for altname in $altnames; do
     SAN+="DNS:${altname}, "
   done
-  SAN="$(printf '%s' "${SAN}" | sed 's/,\s*$//g')"
+  SAN="$(printf '%s' "${SAN}" | ${SED} 's/,\s*$//g')"
   echo " + Generating signing request..."
-  openssl req -new -sha256 -key "certs/${domain}/privkey.pem" -out "certs/${domain}/cert.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=%s" "${SAN}")) > /dev/null
+  openssl req -new -sha256 -key "certs/${domain}/privkey.pem" -out "certs/${domain}/cert.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat ${OPENSSLCNF} <(printf "[SAN]\nsubjectAltName=%s" "${SAN}")) > /dev/null
 
   # Request and respond to challenges
   for altname in $altnames; do
@@ -133,8 +135,8 @@ sign_domain() {
     echo " + Requesting challenge for ${altname}..."
     response="$(signed_request "${CA}/acme/new-authz" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}')"
 
-    challenge_token="$(printf '%s\n' "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]' | sed 's/{/\n{/g' | grep 'http-01' | grep -Eo '"token":\s*"[^"]*"' | cut -d'"' -f4 | sed 's/[^A-Za-z0-9_\-]/_/g')"
-    challenge_uri="$(printf '%s\n' "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]' | sed 's/{/\n{/g' | grep 'http-01' | grep -Eo '"uri":\s*"[^"]*"' | cut -d'"' -f4)"
+    challenge_token="$(printf '%s\n' "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]' | ${SED} 's/{/\n{/g' | grep 'http-01' | grep -Eo '"token":\s*"[^"]*"' | cut -d'"' -f4 | ${SED} 's/[^A-Za-z0-9_\-]/_/g')"
+    challenge_uri="$(printf '%s\n' "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]' | ${SED} 's/{/\n{/g' | grep 'http-01' | grep -Eo '"uri":\s*"[^"]*"' | cut -d'"' -f4)"
 
     if [[ -z "${challenge_token}" ]] || [[ -z "${challenge_uri}" ]]; then
       echo "  + Error: Can't retrieve challenges (${response})"
@@ -215,7 +217,7 @@ if [[ ! -e "${WELLKNOWN}" ]]; then
 fi
 
 # Generate certificates for all domains found in domain.txt. Check if existing certificate are about to expire
-<domains.txt sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
+<domains.txt ${SED} 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
   domain="$(echo $line | cut -d' ' -f1)"
   cert="certs/${domain}/cert.pem"
 
