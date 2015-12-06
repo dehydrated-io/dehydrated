@@ -184,7 +184,18 @@ if [[ "${register}" = "1" ]]; then
   signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > /dev/null
 fi
 
-# Generate certificates for all domains found in domain.txt (TODO: check if certificate already exists and is about to expire)
+# Generate certificates for all domains found in domain.txt. Check if existing certificate are about to expire
 <domains.txt sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
+  domain="$(echo $line | cut -d' ' -f1)"
+  if [[ -e "certs/${domain}/cert.pem" ]]; then
+    echo -n "Found existing cert for ${domain}. Expire date ..."
+    set +e; openssl x509 -checkend 1209600 -noout -in "certs/${domain}/cert.pem"; expiring=$?; set -e
+    if [[ ${expiring} -eq 0 ]]; then
+        echo " is not within 2 weeks. Skipping"
+        continue
+    fi
+    echo " is within 2 weeks. Renewing..."
+  fi
+
   sign_domain $line
 done
