@@ -97,7 +97,7 @@ sign_domain() {
   if [[ ! -e "certs/${domain}" ]]; then
     mkdir -p "certs/${domain}"
     echo "  + Generating private key..."
-    openssl genrsa -out "certs/${domain}/privkey.pem" ${KEYSIZE} 2> /dev/null > /dev/null
+    openssl genrsa -out "certs/${domain}/privkey.pem" "${KEYSIZE}" 2> /dev/null > /dev/null
   fi
 
   # Generate signing request config and the actual signing request
@@ -165,7 +165,7 @@ sign_domain() {
 register="0"
 if [[ ! -e "private_key.pem" ]]; then
   echo "+ Generating account key..."
-  openssl genrsa -out "private_key.pem" ${KEYSIZE} 2> /dev/null > /dev/null
+  openssl genrsa -out "private_key.pem" "${KEYSIZE}" 2> /dev/null > /dev/null
   register="1"
 fi
 
