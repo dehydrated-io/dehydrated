@@ -7,6 +7,7 @@ set -o pipefail
 # default config values
 CA="https://acme-v01.api.letsencrypt.org"
 LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
+HOOK_CHALLENGE=
 
 . ./config.sh
 
@@ -125,6 +126,11 @@ sign_domain() {
     # Store challenge response in well-known location and make world-readable (so that a webserver can access it)
     printf '%s' "${keyauth}" > "${WELLKNOWN}/${challenge_token}"
     chmod a+r "${WELLKNOWN}/${challenge_token}"
+
+    # Wait for hook script to deploy the challenge if used
+    if [ -n "${HOOK_CHALLENGE}" ]; then
+        ${HOOK_CHALLENGE} "${WELLKNOWN}/${challenge_token}" "${keyauth}"
+    fi
 
     # Ask the acme-server to verify our challenge and wait until it becomes valid
     echo "  + Responding to challenge for ${altname}..."

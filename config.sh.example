@@ -2,3 +2,8 @@
 
 #CA="https://acme-v01.api.letsencrypt.org"
 WELLKNOWN="/var/www/letsencrypt/.well-known/acme-challenge"
+
+# program called before responding to the challenge, arguments: path/to/token
+# token; can be used to e.g. upload the challenge if this script doesn't run
+# on the webserver
+#HOOK_CHALLENGE=
