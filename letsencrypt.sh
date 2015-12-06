@@ -12,7 +12,9 @@ RENEW_DAYS="14"
 KEYSIZE="4096"
 WELLKNOWN=".acme-challenges"
 
-. ./config.sh
+if [[ -e "config.sh" ]]; then
+  . ./config.sh
+fi
 
 umask 077 # paranoid umask, we're creating private keys
 
@@ -184,6 +186,11 @@ thumbprint="$(printf '%s' "$(printf '%s' '{"e":"'"${pubExponent64}"'","kty":"RSA
 if [[ "${register}" = "1" ]]; then
   echo "+ Registering account key with letsencrypt..."
   signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > /dev/null
+fi
+
+if [[ ! -e "domains.txt" ]]; then
+  echo "You have to create a domains.txt file listing the domains you want certificates for. Have a look at domains.txt.example."
+  exit 1
 fi
 
 # Generate certificates for all domains found in domain.txt. Check if existing certificate are about to expire
