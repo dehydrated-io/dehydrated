@@ -51,22 +51,27 @@ hex2bin() {
 }
 
 _request() {
-  temperr="$(mktemp)"
+  tempcont="$(mktemp)"
+
   if [[ "${1}" = "head" ]]; then
-    curl -sSf -I "${2}" 2> "${temperr}"
+    statuscode="$(curl -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
   elif [[ "${1}" = "get" ]]; then
-    curl -sSf "${2}" 2> "${temperr}"
+    statuscode="$(curl -s -w "%{http_code}" -o "${tempcont}" "${2}")"
   elif [[ "${1}" = "post" ]]; then
-    curl -sSf "${2}" -d "${3}" 2> "${temperr}"
+    statuscode="$(curl -s -w "%{http_code}" -o "${tempcont}" "${2}" -d "${3}")"
   fi
 
-  if [[ -s "${temperr}" ]]; then
-    echo "  + ERROR: An error occured while sending ${1}-request to ${2} ($(<"${temperr}"))" >&2
-    rm -f "${temperr}"
+  if [[ ! "${statuscode:0:1}" = "2" ]]; then
+    echo "  + ERROR: An error occured while sending ${1}-request to ${2} (Status ${statuscode})" >&2
+    echo >&2
+    echo "Details:" >&2
+    echo "$(<"${tempcont}"))" >&2
+    rm -f "${tempcont}"
     exit 1
   fi
 
-  rm -f "${temperr}"
+  cat  "${tempcont}"
+  rm -f "${tempcont}"
 }
 
 signed_request() {
