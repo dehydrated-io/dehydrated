@@ -8,6 +8,7 @@ set -o pipefail
 CA="https://acme-v01.api.letsencrypt.org"
 LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
 HOOK_CHALLENGE=
+RENEW_DAYS="14"
 
 . ./config.sh
 
@@ -180,7 +181,18 @@ if [[ "${register}" = "1" ]]; then
   signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > /dev/null
 fi
 
-# Generate certificates for all domains found in domain.txt (TODO: check if certificate already exists and is about to expire)
+# Generate certificates for all domains found in domain.txt. Check if existing certificate are about to expire
 <domains.txt sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
+  domain="$(echo $line | cut -d' ' -f1)"
+  if [[ -e "certs/${domain}/cert.pem" ]]; then
+    echo -n "Found existing cert for ${domain}. Expire date ..."
+    set +e; openssl x509 -checkend $((${RENEW_DAYS} * 86400)) -noout -in "certs/${domain}/cert.pem"; expiring=$?; set -e
+    if [[ ${expiring} -eq 0 ]]; then
+        echo " is not within ${RENEW_DAYS} days. Skipping"
+        continue
+    fi
+    echo " is within ${RENEW_DAYS} days. Renewing..."
+  fi
+
   sign_domain $line
 done
