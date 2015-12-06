@@ -37,19 +37,24 @@ hex2bin() {
   done
 
   # Convert to binary data
-  printf "${escapedhex}"
+  printf "%s" "${escapedhex}"
 }
 
 _request() {
   temperr="$(mktemp)"
-  if [ "${1}" = "head" ]; then
-    curl -sSf -I "${2}" 2>${temperr}
-  elif [ "${1}" = "get" ]; then
-    curl -sSf "${2}" 2>${temperr}
-  elif [ "${1}" = "post" ]; then
-    curl -sSf "${2}" -d "${3}" 2>${temperr}
+  if [[ "${1}" = "head" ]]; then
+    curl -sSf -I "${2}" 2> "${temperr}"
+  elif [[ "${1}" = "get" ]]; then
+    curl -sSf "${2}" 2> "${temperr}"
+  elif [[ "${1}" = "post" ]]; then
+    curl -sSf "${2}" -d "${3}" 2> "${temperr}"
   fi
-  if [ ! -z "$(<${temperr})" ]; then echo "  + ERROR: An error occured while sending ${1}-request to ${2} ($(<"${temperr}"))" >&2; exit 1; fi
+
+  if [[ ! -z "$(< "${temperr}")" ]]; then
+    echo "  + ERROR: An error occured while sending ${1}-request to ${2} ($(<"${temperr}"))" >&2;
+    exit 1;
+  fi
+
   rm -f "${temperr}"
 }
 
@@ -82,7 +87,7 @@ sign_domain() {
   echo "Signing domain ${1} (${*})..."
 
   # If there is no existing certificate directory we need a new private key
-  if [ ! -e "certs/${domain}" ]; then
+  if [[ ! -e "certs/${domain}" ]]; then
     mkdir "certs/${domain}"
     echo "  + Generating private key..."
     openssl genrsa -out "certs/${domain}/privkey.pem" 4096 2> /dev/null > /dev/null
@@ -106,7 +111,7 @@ sign_domain() {
     challenge_token="$(printf '%s\n' "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]' | sed 's/{/\n{/g' | grep 'http-01' | grep -Eo '"token":\s*"[^"]*"' | cut -d'"' -f4 | sed 's/[^A-Za-z0-9_\-]/_/g')"
     challenge_uri="$(printf '%s\n' "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]' | sed 's/{/\n{/g' | grep 'http-01' | grep -Eo '"uri":\s*"[^"]*"' | cut -d'"' -f4)"
 
-    if [ -z "${challenge_token}" ] || [ -z "${challenge_uri}" ]; then
+    if [[ -z "${challenge_token}" ]] || [[ -z "${challenge_uri}" ]]; then
       echo "  + Error: Can't retrieve challenges (${response})"
       exit 1
     fi
@@ -123,12 +128,12 @@ sign_domain() {
     result="$(signed_request "${challenge_uri}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}')"
 
     status="$(printf '%s\n' "${result}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
-    if [ ! "${status}" = "pending" ] && [ ! "${status}" = "valid" ]; then
+    if [[ ! "${status}" = "pending" ]] && [[ ! "${status}" = "valid" ]]; then
       echo "  + Challenge is invalid! (${result})"
       exit 1
     fi
 
-    while [ "${status}" = "pending" ]; do
+    while [[ "${status}" = "pending" ]]; do
       status="$(_request get "${challenge_uri}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
       sleep 1
     done
@@ -146,7 +151,7 @@ sign_domain() {
 
 # Check if private key exists, if it doesn't exist yet generate a new one (4096bit rsa key)
 register="0"
-if [ ! -e "private_key.pem" ]; then
+if [[ ! -e "private_key.pem" ]]; then
   echo "+ Generating account key..."
   openssl genrsa -out "private_key.pem" 4096 2> /dev/null > /dev/null
   register="1"
@@ -159,12 +164,12 @@ pubMod64="$(printf '%s' "$(openssl rsa -in private_key.pem -noout -modulus | cut
 thumbprint="$(printf '%s' "$(printf '%s' '{"e":"'"${pubExponent64}"'","kty":"RSA","n":"'"${pubMod64}"'"}' | shasum -a 256 | awk '{print $1}')" | hex2bin | urlbase64)"
 
 # If we generated a new private key in the step above we have to register it with the acme-server
-if [ "${register}" = "1" ]; then
+if [[ "${register}" = "1" ]]; then
   echo "+ Registering account key with letsencrypt..."
   signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"}' > /dev/null
 fi
 
 # Generate certificates for all domains found in domain.txt (TODO: check if certificate already exists and is about to expire)
-<domains.txt sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read line; do
+<domains.txt sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
   sign_domain $line
 done
