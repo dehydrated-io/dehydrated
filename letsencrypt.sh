@@ -8,6 +8,7 @@ set -o pipefail
 CA="https://acme-v01.api.letsencrypt.org"
 LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
 HOOK_CHALLENGE=
+KEYSIZE=4096
 
 . ./config.sh
 
@@ -96,7 +97,7 @@ sign_domain() {
   if [[ ! -e "certs/${domain}" ]]; then
     mkdir -p "certs/${domain}"
     echo "  + Generating private key..."
-    openssl genrsa -out "certs/${domain}/privkey.pem" 4096 2> /dev/null > /dev/null
+    openssl genrsa -out "certs/${domain}/privkey.pem" ${KEYSIZE} 2> /dev/null > /dev/null
   fi
 
   # Generate signing request config and the actual signing request
@@ -160,11 +161,11 @@ sign_domain() {
   echo "  + Done!"
 }
 
-# Check if private key exists, if it doesn't exist yet generate a new one (4096bit rsa key)
+# Check if private key exists, if it doesn't exist yet generate a new one rsa key)
 register="0"
 if [[ ! -e "private_key.pem" ]]; then
   echo "+ Generating account key..."
-  openssl genrsa -out "private_key.pem" 4096 2> /dev/null > /dev/null
+  openssl genrsa -out "private_key.pem" ${KEYSIZE} 2> /dev/null > /dev/null
   register="1"
 fi
 
