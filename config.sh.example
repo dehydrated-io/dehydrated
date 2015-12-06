@@ -1,7 +1,7 @@
 # default values are commented
 
 #CA="https://acme-v01.api.letsencrypt.org"
-WELLKNOWN="/var/www/letsencrypt/.well-known/acme-challenge"
+#WELLKNOWN=".acme-challenges"
 #KEYSIZE=4096
 
 # program called before responding to the challenge, arguments: path/to/token

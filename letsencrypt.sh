@@ -10,6 +10,7 @@ LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
 HOOK_CHALLENGE=
 RENEW_DAYS="14"
 KEYSIZE="4096"
+WELLKNOWN=".acme-challenges"
 
 . ./config.sh
 

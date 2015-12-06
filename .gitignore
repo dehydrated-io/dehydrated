@@ -3,3 +3,5 @@ domains.txt
 config.sh
 certs/*
 !certs/.keep
+.acme-challenges/*
+!.acme-challenges/.keep
