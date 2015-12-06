@@ -223,7 +223,8 @@ fi
     echo -n "Found existing cert for ${domain}. Expire date ..."
     set +e; openssl x509 -checkend $((${RENEW_DAYS} * 86400)) -noout -in "certs/${domain}/cert.pem"; expiring=$?; set -e
     if [[ ${expiring} -eq 0 ]]; then
-        echo " is not within ${RENEW_DAYS} days. Skipping"
+	valid=$(openssl x509 -enddate -noout -in "certs/${domain}/cert.pem" | cut -d= -f2- )
+	echo " ${valid} Skipping. (Valid longer than ${RENEW_DAYS} days.)"
         continue
     fi
     echo " is within ${RENEW_DAYS} days. Renewing..."
