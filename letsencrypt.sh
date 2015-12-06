@@ -37,7 +37,7 @@ hex2bin() {
   done
 
   # Convert to binary data
-  printf "${escapedhex}"
+  printf "%s" "${escapedhex}"
 }
 
 _request() {
