@@ -193,6 +193,10 @@ if [[ ! -e "domains.txt" ]]; then
   exit 1
 fi
 
+if [[ ! -e "${WELLKNOWN}" ]]; then
+  mkdir -p "${WELLKNOWN}"
+fi
+
 # Generate certificates for all domains found in domain.txt. Check if existing certificate are about to expire
 <domains.txt sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
   domain="$(echo $line | cut -d' ' -f1)"
