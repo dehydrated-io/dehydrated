@@ -48,11 +48,11 @@ hex2bin() {
 _request() {
   temperr="$(mktemp)"
   if [[ "${1}" = "head" ]]; then
-    curl -sSf -I "${2}" 2>${temperr}
+    curl -sSf -I "${2}" 2> "${temperr}"
   elif [[ "${1}" = "get" ]]; then
-    curl -sSf "${2}" 2>${temperr}
+    curl -sSf "${2}" 2> "${temperr}"
   elif [[ "${1}" = "post" ]]; then
-    curl -sSf "${2}" -d "${3}" 2>${temperr}
+    curl -sSf "${2}" -d "${3}" 2> "${temperr}"
   fi
 
   if [[ ! -z "$(<${temperr})" ]]; then
@@ -181,6 +181,6 @@ if [[ "${register}" = "1" ]]; then
 fi
 
 # Generate certificates for all domains found in domain.txt (TODO: check if certificate already exists and is about to expire)
-<domains.txt sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read line; do
+<domains.txt sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
   sign_domain $line
 done
