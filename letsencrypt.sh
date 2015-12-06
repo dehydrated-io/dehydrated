@@ -11,6 +11,7 @@ HOOK_CHALLENGE=
 RENEW_DAYS="14"
 KEYSIZE="4096"
 WELLKNOWN=".acme-challenges"
+PRIVATE_KEY_RENEW=no
 
 if [[ -e "config.sh" ]]; then
   . ./config.sh
@@ -102,11 +103,19 @@ sign_domain() {
   altnames="${*}"
   echo "Signing domain ${1} (${*})..."
 
-  # If there is no existing certificate directory we need a new private key
+  # If there is no existing certificate directory => make it
   if [[ ! -e "certs/${domain}" ]]; then
+    echo "  + make directory certs/${domain} ..."
     mkdir -p "certs/${domain}"
+  fi
+
+  # generate a new private key if we need or want one
+  if [[ ! -f "certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
     echo "  + Generating private key..."
-    openssl genrsa -out "certs/${domain}/privkey.pem" "${KEYSIZE}" 2> /dev/null > /dev/null
+    timestamp="$(date +%s)"
+    openssl genrsa -out "certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}" 2> /dev/null > /dev/null
+    rm -f "certs/${domain}/privkey.pem"
+    ln -s "privkey-${timestamp}.pem" "certs/${domain}/privkey.pem"
   fi
 
   # Generate signing request config and the actual signing request
