@@ -4,6 +4,11 @@ set -e
 set -u
 set -o pipefail
 
+# default config values
+CA="https://acme-v01.api.letsencrypt.org"
+LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
+HOOK_CHALLENGE=
+
 . ./config.sh
 
 umask 077 # paranoid umask, we're creating private keys
@@ -43,13 +48,17 @@ hex2bin() {
 _request() {
   temperr="$(mktemp)"
   if [ "${1}" = "head" ]; then
-    curl -sSf -I "${2}" 2>${temperr}
+    curl -sSf -I "${2}" 2>"${temperr}"
   elif [ "${1}" = "get" ]; then
-    curl -sSf "${2}" 2>${temperr}
+    curl -sSf "${2}" 2>"${temperr}"
   elif [ "${1}" = "post" ]; then
-    curl -sSf "${2}" -d "${3}" 2>${temperr}
+    curl -sSf "${2}" -d "${3}" 2>"${temperr}"
   fi
-  if [ ! -z "$(<${temperr})" ]; then echo "  + ERROR: An error occured while sending ${1}-request to ${2} ($(<"${temperr}"))" >&2; exit 1; fi
+  if [ -s "${temperr}" ]; then
+      echo "  + ERROR: An error occurred while sending ${1}-request to ${2} ($(<"${temperr}"))" >&2
+      rm -f "${temperr}"
+      exit 1
+  fi
   rm -f "${temperr}"
 }
 
@@ -83,7 +92,7 @@ sign_domain() {
 
   # If there is no existing certificate directory we need a new private key
   if [ ! -e "certs/${domain}" ]; then
-    mkdir "certs/${domain}"
+    mkdir -p "certs/${domain}"
     echo "  + Generating private key..."
     openssl genrsa -out "certs/${domain}/privkey.pem" 4096 2> /dev/null > /dev/null
   fi
@@ -117,6 +126,11 @@ sign_domain() {
     # Store challenge response in well-known location and make world-readable (so that a webserver can access it)
     printf '%s' "${keyauth}" > "${WELLKNOWN}/${challenge_token}"
     chmod a+r "${WELLKNOWN}/${challenge_token}"
+
+    # Wait for hook script to deploy the challenge if used
+    if [ -n "${HOOK_CHALLENGE}" ]; then
+        ${HOOK_CHALLENGE} "${WELLKNOWN}/${challenge_token}" "${keyauth}"
+    fi
 
     # Ask the acme-server to verify our challenge and wait until it becomes valid
     echo "  + Responding to challenge for ${altname}..."
@@ -161,7 +175,7 @@ thumbprint="$(printf '%s' "$(printf '%s' '{"e":"'"${pubExponent64}"'","kty":"RSA
 # If we generated a new private key in the step above we have to register it with the acme-server
 if [ "${register}" = "1" ]; then
   echo "+ Registering account key with letsencrypt..."
-  signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"}' > /dev/null
+  signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > /dev/null
 fi
 
 # Generate certificates for all domains found in domain.txt (TODO: check if certificate already exists and is about to expire)
