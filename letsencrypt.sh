@@ -141,17 +141,20 @@ sign_domain() {
     result="$(signed_request "${challenge_uri}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}')"
 
     status="$(printf '%s\n' "${result}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
-    if [[ ! "${status}" = "pending" ]] && [[ ! "${status}" = "valid" ]]; then
-      echo "  + Challenge is invalid! (${result})"
+
+    # get status until it a result is reached => not pending anymore    
+    while [[ "${status}" = "pending" ]]; do
+      sleep 1
+      status="$(_request get "${challenge_uri}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
+    done
+
+    if [[ "${status}" = "valid" ]]; then
+      echo "  + Challenge is valid!"
+    else
+      echo "  + Challenge is invalid! (returned: ${status})"
       exit 1
     fi
 
-    while [[ "${status}" = "pending" ]]; do
-      status="$(_request get "${challenge_uri}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
-      sleep 1
-    done
-
-    echo "  + Challenge is valid!"
   done
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
