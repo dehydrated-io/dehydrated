@@ -55,7 +55,7 @@ _request() {
     curl -sSf "${2}" -d "${3}" 2> "${temperr}"
   fi
 
-  if [[ ! -z "$(<${temperr})" ]]; then
+  if [[ -s "${temperr}" ]]; then
     echo "  + ERROR: An error occured while sending ${1}-request to ${2} ($(<"${temperr}"))" >&2
     rm -f "${temperr}"
     exit 1
