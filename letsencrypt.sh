@@ -13,6 +13,7 @@ KEYSIZE="4096"
 WELLKNOWN=".acme-challenges"
 PRIVATE_KEY_RENEW=no
 SED=sed
+OPENSSLCNF=/etc/ssl/openssl.cnf
 
 if [[ -e "config.sh" ]]; then
   . ./config.sh
@@ -126,7 +127,7 @@ sign_domain() {
   done
   SAN="$(printf '%s' "${SAN}" | ${SED} 's/,\s*$//g')"
   echo "  + Generating signing request..."
-  openssl req -new -sha256 -key "certs/${domain}/privkey.pem" -out "certs/${domain}/cert.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=%s" "${SAN}")) > /dev/null
+  openssl req -new -sha256 -key "certs/${domain}/privkey.pem" -out "certs/${domain}/cert.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat ${OPENSSLCNF} <(printf "[SAN]\nsubjectAltName=%s" "${SAN}")) > /dev/null
 
   # Request and respond to challenges
   for altname in $altnames; do

@@ -18,3 +18,11 @@
 # GNU sed program to use - use gsed on some plateforms
 #SED=sed
 
+# opennsl.cnf file
+#OPENSSLCNF=/etc/ssl/openssl.cnf
+#OPENSSLCNF=/System/Library/OpenSSL/openssl.cnf
+#OPENSSLCNF=/etc/pki/tls/openssl.cnf
+#OPENSSLCNF=/usr/lib/ssl/openssl.cnf
+#OPENSSLCNF=/usr/local/ssl/openssl.cnf
+
+
