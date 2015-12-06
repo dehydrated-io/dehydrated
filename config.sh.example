@@ -8,3 +8,6 @@ WELLKNOWN="/var/www/letsencrypt/.well-known/acme-challenge"
 # token; can be used to e.g. upload the challenge if this script doesn't run
 # on the webserver
 #HOOK_CHALLENGE=
+
+# try to renew certs that are within RENEW_DAYS days of there expire date
+#RENEW_DAYS="14"

@@ -8,6 +8,7 @@ set -o pipefail
 CA="https://acme-v01.api.letsencrypt.org"
 LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
 HOOK_CHALLENGE=
+RENEW_DAYS="14"
 KEYSIZE="4096"
 
 . ./config.sh
@@ -189,12 +190,12 @@ fi
   domain="$(echo $line | cut -d' ' -f1)"
   if [[ -e "certs/${domain}/cert.pem" ]]; then
     echo -n "Found existing cert for ${domain}. Expire date ..."
-    set +e; openssl x509 -checkend 1209600 -noout -in "certs/${domain}/cert.pem"; expiring=$?; set -e
+    set +e; openssl x509 -checkend $((${RENEW_DAYS} * 86400)) -noout -in "certs/${domain}/cert.pem"; expiring=$?; set -e
     if [[ ${expiring} -eq 0 ]]; then
-        echo " is not within 2 weeks. Skipping"
+        echo " is not within ${RENEW_DAYS} days. Skipping"
         continue
     fi
-    echo " is within 2 weeks. Renewing..."
+    echo " is within ${RENEW_DAYS} days. Renewing..."
   fi
 
   sign_domain $line
