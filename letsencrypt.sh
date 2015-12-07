@@ -16,6 +16,7 @@ BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # If exists load config from same directory as this script
 if [[ -e "${BASEDIR}/config.sh" ]]; then
+  # shellcheck disable=SC1090
   . "${BASEDIR}/config.sh"
 fi
 
@@ -53,7 +54,7 @@ hex2bin() {
   done
 
   # Convert to binary data
-  printf "${escapedhex}"
+  printf -- "${escapedhex}"
 }
 
 _request() {
@@ -221,7 +222,7 @@ fi
 
 # Generate certificates for all domains found in domain.txt. Check if existing certificate are about to expire
 <domains.txt sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
-  domain="$(echo $line | cut -d' ' -f1)"
+  domain="$(echo "${line}" | cut -d' ' -f1)"
   cert="${BASEDIR}/certs/${domain}/cert.pem"
 
   echo "Processing ${domain}"
@@ -229,7 +230,7 @@ fi
     echo " + Found existing cert..."
 
     # Turning off exit on non-zero status for cert validation
-    set +e; openssl x509 -checkend $((${RENEW_DAYS} * 86400)) -noout -in "${cert}"; expiring=$?; set -e
+    set +e; openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; expiring=$?; set -e
     valid="$(openssl x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
 
     echo -n " + Valid till ${valid} "
@@ -240,5 +241,6 @@ fi
     echo "(Less than ${RENEW_DAYS} days). Renewing!"
   fi
 
+  # shellcheck disable=SC2086
   sign_domain $line
 done
