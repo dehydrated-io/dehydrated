@@ -4,7 +4,7 @@ set -e
 set -u
 set -o pipefail
 
-# default config values
+# Default config values
 CA="https://acme-v01.api.letsencrypt.org"
 LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
 HOOK_CHALLENGE=
@@ -12,11 +12,15 @@ RENEW_DAYS="14"
 KEYSIZE="4096"
 WELLKNOWN=".acme-challenges"
 PRIVATE_KEY_RENEW=no
-BASEDIR="./"
+BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-if [[ -e "config.sh" ]]; then
-  . ./config.sh
+# If exists load config from same directory as this script
+if [[ -e "${BASEDIR}/config.sh" ]]; then
+  . "${BASEDIR}/config.sh"
 fi
+
+# Remove slash from end of BASEDIR. Mostly for cleaner outputs, doesn't change functionality.
+BASEDIR="${BASEDIR%%/}"
 
 umask 077 # paranoid umask, we're creating private keys
 
