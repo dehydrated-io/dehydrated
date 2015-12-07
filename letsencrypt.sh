@@ -107,6 +107,17 @@ signed_request() {
   _request post "${1}" "${data}"
 }
 
+revoke_cert() {
+  cert="${1}"
+  cert64="$(openssl x509 -in ${cert} -inform PEM -outform DER | urlbase64)"
+  response="$(signed_request "${CA}/acme/revoke-cert" '{"resource": "revoke-cert", "certificate": "'"${cert64}"'"}')"
+  # if there is a problem with our revoke request _request (via signed_request) will report this and "exit 1" out
+  # so if we are here, it is safe to assume the request was successful
+  echo " + SUCCESS"
+  echo " + renaming certificate to ${cert}-revoked"
+  mv -f "${cert}" "${cert}-revoked"
+}
+
 sign_domain() {
   domain="${1}"
   altnames="${*}"
@@ -253,6 +264,19 @@ fi
 
 if [[ ! -e "${WELLKNOWN}" ]]; then
   mkdir -p "${WELLKNOWN}"
+fi
+
+# revoke certificate by user request
+if [[ "${1:-}" = "revoke" ]]; then
+  if [[ -z "{2:-}" ]] || [[ ! -f "${2}" ]]; then
+    echo usage: ${0} revoke path/to/cert.pem
+    exit 1
+  fi
+  
+  echo "Revoking ${2}"
+  revoke_cert "${2}"
+
+  exit 0
 fi
 
 # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
