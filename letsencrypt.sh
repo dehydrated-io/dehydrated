@@ -16,6 +16,7 @@ SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASEDIR="${SCRIPTDIR}"
 OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
 ROOTCERT="lets-encrypt-x1-cross-signed.pem"
+HOOK_POST_CREATION=
 
 # If exists load config from same directory as this script
 if [[ -e "${BASEDIR}/config.sh" ]]; then
@@ -229,6 +230,12 @@ sign_domain() {
 
   rm -f "${BASEDIR}/certs/${domain}/cert.pem"
   ln -s "cert-${timestamp}.pem" "${BASEDIR}/certs/${domain}/cert.pem"
+
+  # Wait for hook script to clean the challenge and to deploy cert if used
+  if [ -n "${HOOK_POST_CREATION}" ]; then
+      ${HOOK_POST_CREATION} "${WELLKNOWN}/${challenge_token}" "${keyauth}" "${BASEDIR}/certs/${domain}/fullchain.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
+  fi
+
 
   echo " + Done!"
 }
