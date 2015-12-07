@@ -31,7 +31,7 @@ anti_newline() {
 
 urlbase64() {
   # urlbase64: base64 encoded string with '+' replaced with '-' and '/' replaced with '_'
-  openssl base64 -e | anti_newline | sed -r 's/=*$//g' | tr '+/' '-_'
+  openssl base64 -e | anti_newline | sed 's/=*$//g' | tr '+/' '-_'
 }
 
 hex2bin() {
