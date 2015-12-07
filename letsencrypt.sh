@@ -15,6 +15,7 @@ PRIVATE_KEY_RENEW=no
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASEDIR="${SCRIPTDIR}"
 OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
+ROOTCERT="lets-encrypt-x1-cross-signed.pem"
 
 # If exists load config from same directory as this script
 if [[ -e "${BASEDIR}/config.sh" ]]; then
@@ -196,6 +197,20 @@ sign_domain() {
   printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
   rm -f "${BASEDIR}/certs/${domain}/cert.pem"
   ln -s "cert-${timestamp}.pem" "${BASEDIR}/certs/${domain}/cert.pem"
+
+  # Create fullchain.pem
+  if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]] || [[ -e "${SCRIPTDIR}/certs/${ROOTCERT}" ]]; then
+    echo " + Creating fullchain.pem..."
+    if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]]; then
+      cat "${BASEDIR}/certs/${ROOTCERT}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
+    else
+      cat "${SCRIPTDIR}/certs/${ROOTCERT}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
+    fi
+    cat "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
+    rm -f "${BASEDIR}/certs/${domain}/fullchain.pem"
+    ln -s "fullchain-${timestamp}.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
+  fi
+
   echo " + Done!"
 }
 

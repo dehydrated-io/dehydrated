@@ -5,6 +5,7 @@
 #KEYSIZE=4096
 #BASEDIR=./
 #OPENSSL_CNF=.... # system default (see openssl version -d)
+#ROOTCERT="lets-encrypt-x1-cross-signed.pem"
 
 # program called before responding to the challenge, arguments: path/to/token
 # token; can be used to e.g. upload the challenge if this script doesn't run
