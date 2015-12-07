@@ -266,10 +266,55 @@ if [[ ! -e "${WELLKNOWN}" ]]; then
   mkdir -p "${WELLKNOWN}"
 fi
 
+
+renew_certs() {
+  # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
+  <"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
+    domain="$(echo "${line}" | cut -d' ' -f1)"
+    cert="${BASEDIR}/certs/${domain}/cert.pem"
+
+    echo "Processing ${domain}"
+    if [[ -e "${cert}" ]]; then
+      echo " + Found existing cert..."
+
+      # Turning off exit on non-zero status for cert validation
+      set +e; openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; expiring=$?; set -e
+      valid="$(openssl x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
+
+      echo -n " + Valid till ${valid} "
+      if [[ ${expiring} -eq 0 ]]; then
+        echo "(Longer than ${RENEW_DAYS} days). Skipping!"
+        continue
+      fi
+      echo "(Less than ${RENEW_DAYS} days). Renewing!"
+   fi
+
+    # shellcheck disable=SC2086
+    sign_domain $line
+  done
+}
+
+# show command help options
+if [[ "${1:-}" = "help" ]]; then
+  echo "usage: ${0} command [parameter [parameter]]"
+  echo
+  echo Commands:
+  echo  + help              show this help
+  echo  + renew             renew all certificates found in domains.txt
+  echo  + revoke CERT       revoke the certificate found in the file CERT
+  exit 0
+fi
+
+# renew certificates
+if [[ "${1:-}" = "renew" ]]; then
+  renew_certs
+  exit 0
+fi
+
 # revoke certificate by user request
 if [[ "${1:-}" = "revoke" ]]; then
-  if [[ -z "{2:-}" ]] || [[ ! -f "${2}" ]]; then
-    echo usage: ${0} revoke path/to/cert.pem
+  if [[ -z "{2:-}" ]] || [[ ! -f "${2:-}" ]]; then
+    echo "usage: ${0} revoke path/to/cert.pem"
     exit 1
   fi
   
@@ -279,27 +324,15 @@ if [[ "${1:-}" = "revoke" ]]; then
   exit 0
 fi
 
-# Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
-<"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
-  domain="$(echo "${line}" | cut -d' ' -f1)"
-  cert="${BASEDIR}/certs/${domain}/cert.pem"
+if [[ -n "${1:-}" ]]; then
+  echo "unkown command ${1:-}"
+  echo
+fi
 
-  echo "Processing ${domain}"
-  if [[ -e "${cert}" ]]; then
-    echo " + Found existing cert..."
+echo "usage: ${0} command [parameter [parameter]]"
+echo
+echo Try "${0} help" for more options.
 
-    # Turning off exit on non-zero status for cert validation
-    set +e; openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; expiring=$?; set -e
-    valid="$(openssl x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
+  
 
-    echo -n " + Valid till ${valid} "
-    if [[ ${expiring} -eq 0 ]]; then
-      echo "(Longer than ${RENEW_DAYS} days). Skipping!"
-      continue
-    fi
-    echo "(Less than ${RENEW_DAYS} days). Renewing!"
-  fi
 
-  # shellcheck disable=SC2086
-  sign_domain $line
-done
