@@ -111,6 +111,8 @@ sign_domain() {
   altnames="${*}"
   echo " + Signing domains..."
 
+  timestamp="$(date +%s)"
+
   # If there is no existing certificate directory => make it
   if [[ ! -e "${BASEDIR}/certs/${domain}" ]]; then
     echo " + make directory ${BASEDIR}/certs/${domain} ..."
@@ -120,7 +122,6 @@ sign_domain() {
   # generate a new private key if we need or want one
   if [[ ! -f "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
     echo " + Generating private key..."
-    timestamp="$(date +%s)"
     openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}" 2> /dev/null > /dev/null
     rm -f "${BASEDIR}/certs/${domain}/privkey.pem"
     ln -s "privkey-${timestamp}.pem" "${BASEDIR}/certs/${domain}/privkey.pem"
@@ -133,7 +134,9 @@ sign_domain() {
   done
   SAN="${SAN%%, }"
   echo " + Generating signing request..."
-  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/privkey.pem" -out "${BASEDIR}/certs/${domain}/cert.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat "${OPENSSL_CNF}" <(printf "[SAN]\nsubjectAltName=%s" "${SAN}")) > /dev/null
+  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/privkey.pem" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat "${OPENSSL_CNF}" <(printf "[SAN]\nsubjectAltName=%s" "${SAN}")) > /dev/null
+  rm -f "${BASEDIR}/certs/${domain}/cert.csr"
+  ln -s "cert-${timestamp}.csr" "${BASEDIR}/certs/${domain}/cert.csr"
 
   # Request and respond to challenges
   for altname in $altnames; do
@@ -188,7 +191,6 @@ sign_domain() {
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
   echo " + Requesting certificate..."
-  timestamp="$(date +%s)"
   csr64="$(openssl req -in "${BASEDIR}/certs/${domain}/cert.csr" -outform DER | urlbase64)"
   crt64="$(signed_request "${CA}/acme/new-cert" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | openssl base64 -e)"
   printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
