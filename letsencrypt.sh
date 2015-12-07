@@ -12,7 +12,8 @@ RENEW_DAYS="14"
 KEYSIZE="4096"
 WELLKNOWN=".acme-challenges"
 PRIVATE_KEY_RENEW=no
-BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+BASEDIR="${SCRIPTDIR}"
 OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
 
 # If exists load config from same directory as this script
@@ -216,7 +217,11 @@ if [[ "${register}" = "1" ]]; then
   signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > /dev/null
 fi
 
-if [[ ! -e "domains.txt" ]]; then
+if [[ -e "${BASEDIR}/domains.txt" ]]; then
+  DOMAINS_TXT="${BASEDIR}/domains.txt"
+elif [[ -e "${SCRIPTDIR}/domains.txt" ]]; then
+  DOMAINS_TXT="${SCRIPTDIR}/domains.txt"
+else
   echo "You have to create a domains.txt file listing the domains you want certificates for. Have a look at domains.txt.example."
   exit 1
 fi
@@ -225,8 +230,8 @@ if [[ ! -e "${WELLKNOWN}" ]]; then
   mkdir -p "${WELLKNOWN}"
 fi
 
-# Generate certificates for all domains found in domain.txt. Check if existing certificate are about to expire
-<domains.txt sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
+# Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
+<"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
   domain="$(echo "${line}" | cut -d' ' -f1)"
   cert="${BASEDIR}/certs/${domain}/cert.pem"
 
