@@ -10,6 +10,7 @@ SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASEDIR="${SCRIPTDIR}"
 LETSENCRYPT="/etc/letsencrypt"
 
+# shellcheck disable=SC1090
 . "${SCRIPTDIR}/config.sh"
 
 if [[ -e "${BASEDIR}/domains.txt" ]]; then
