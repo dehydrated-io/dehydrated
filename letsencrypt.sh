@@ -4,7 +4,7 @@ set -e
 set -u
 set -o pipefail
 
-# default config values
+# Default config values
 CA="https://acme-v01.api.letsencrypt.org"
 LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
 HOOK_CHALLENGE=
@@ -12,12 +12,19 @@ RENEW_DAYS="14"
 KEYSIZE="4096"
 WELLKNOWN=".acme-challenges"
 PRIVATE_KEY_RENEW=no
-SED=sed
-OPENSSLCNF=/etc/ssl/openssl.cnf
+SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+BASEDIR="${SCRIPTDIR}"
+OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
+ROOTCERT="lets-encrypt-x1-cross-signed.pem"
 
-if [[ -e "config.sh" ]]; then
-  . ./config.sh
+# If exists load config from same directory as this script
+if [[ -e "${BASEDIR}/config.sh" ]]; then
+  # shellcheck disable=SC1090
+  . "${BASEDIR}/config.sh"
 fi
+
+# Remove slash from end of BASEDIR. Mostly for cleaner outputs, doesn't change functionality.
+BASEDIR="${BASEDIR%%/}"
 
 umask 077 # paranoid umask, we're creating private keys
 
@@ -27,7 +34,7 @@ anti_newline() {
 
 urlbase64() {
   # urlbase64: base64 encoded string with '+' replaced with '-' and '/' replaced with '_'
-  openssl base64 -e | anti_newline | ${SED} -r 's/=*$//g' | tr '+/' '-_'
+  openssl base64 -e | anti_newline | sed 's/=*$//g' | tr '+/' '-_'
 }
 
 hex2bin() {
@@ -50,7 +57,7 @@ hex2bin() {
   done
 
   # Convert to binary data
-  printf "${escapedhex}"
+  printf -- "${escapedhex}"
 }
 
 _request() {
@@ -92,7 +99,7 @@ signed_request() {
   protected64="$(printf '%s' "${protected}" | urlbase64)"
 
   # Sign header with nonce and our payload with our private key and encode signature as urlbase64
-  signed64="$(printf '%s' "${protected64}.${payload64}" | openssl dgst -sha256 -sign private_key.pem | urlbase64)"
+  signed64="$(printf '%s' "${protected64}.${payload64}" | openssl dgst -sha256 -sign "${BASEDIR}/private_key.pem" | urlbase64)"
 
   # Send header + extended header + payload + signature to the acme-server
   data='{"header": '"${header}"', "protected": "'"${protected64}"'", "payload": "'"${payload64}"'", "signature": "'"${signed64}"'"}'
@@ -105,19 +112,20 @@ sign_domain() {
   altnames="${*}"
   echo " + Signing domains..."
 
+  timestamp="$(date +%s)"
+
   # If there is no existing certificate directory => make it
-  if [[ ! -e "certs/${domain}" ]]; then
-    echo " + make directory certs/${domain} ..."
-    mkdir -p "certs/${domain}"
+  if [[ ! -e "${BASEDIR}/certs/${domain}" ]]; then
+    echo " + make directory ${BASEDIR}/certs/${domain} ..."
+    mkdir -p "${BASEDIR}/certs/${domain}"
   fi
 
+  privkey="privkey.pem"
   # generate a new private key if we need or want one
-  if [[ ! -f "certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
+  if [[ ! -f "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
     echo " + Generating private key..."
-    timestamp="$(date +%s)"
-    openssl genrsa -out "certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}" 2> /dev/null > /dev/null
-    rm -f "certs/${domain}/privkey.pem"
-    ln -s "privkey-${timestamp}.pem" "certs/${domain}/privkey.pem"
+    privkey="privkey-${timestamp}.pem"
+    openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}" 2> /dev/null > /dev/null
   fi
 
   # Generate signing request config and the actual signing request
@@ -125,9 +133,9 @@ sign_domain() {
   for altname in $altnames; do
     SAN+="DNS:${altname}, "
   done
-  SAN="$(printf '%s' "${SAN}" | ${SED} 's/,\s*$//g')"
+  SAN="${SAN%%, }"
   echo " + Generating signing request..."
-  openssl req -new -sha256 -key "certs/${domain}/privkey.pem" -out "certs/${domain}/cert.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat ${OPENSSLCNF} <(printf "[SAN]\nsubjectAltName=%s" "${SAN}")) > /dev/null
+  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat "${OPENSSL_CNF}" <(printf "[SAN]\nsubjectAltName=%s" "${SAN}")) > /dev/null
 
   # Request and respond to challenges
   for altname in $altnames; do
@@ -135,8 +143,10 @@ sign_domain() {
     echo " + Requesting challenge for ${altname}..."
     response="$(signed_request "${CA}/acme/new-authz" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}')"
 
-    challenge_token="$(printf '%s\n' "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]' | ${SED} 's/{/\n{/g' | grep 'http-01' | grep -Eo '"token":\s*"[^"]*"' | cut -d'"' -f4 | ${SED} 's/[^A-Za-z0-9_\-]/_/g')"
-    challenge_uri="$(printf '%s\n' "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]' | ${SED} 's/{/\n{/g' | grep 'http-01' | grep -Eo '"uri":\s*"[^"]*"' | cut -d'"' -f4)"
+    challenges="$(printf '%s\n' "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]')"
+    challenge="$(printf "%s" "${challenges//\{/$'\n'{}" | grep 'http-01')"
+    challenge_token="$(printf '%s' "${challenge}" | grep -Eo '"token":\s*"[^"]*"' | cut -d'"' -f4 | sed 's/[^A-Za-z0-9_\-]/_/g')"
+    challenge_uri="$(printf '%s' "${challenge}" | grep -Eo '"uri":\s*"[^"]*"' | cut -d'"' -f4)"
 
     if [[ -z "${challenge_token}" ]] || [[ -z "${challenge_uri}" ]]; then
       echo "  + Error: Can't retrieve challenges (${response})"
@@ -167,6 +177,8 @@ sign_domain() {
       status="$(_request get "${challenge_uri}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
     done
 
+    rm -f "${WELLKNOWN}/${challenge_token}"
+
     if [[ "${status}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
@@ -178,26 +190,49 @@ sign_domain() {
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
   echo " + Requesting certificate..."
-  timestamp="$(date +%s)"
-  csr64="$(openssl req -in "certs/${domain}/cert.csr" -outform DER | urlbase64)"
+  csr64="$(openssl req -in "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -outform DER | urlbase64)"
   crt64="$(signed_request "${CA}/acme/new-cert" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | openssl base64 -e)"
-  printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "certs/${domain}/cert-${timestamp}.pem"
-  rm -f "certs/${domain}/cert.pem"
-  ln -s "cert-${timestamp}.pem" "certs/${domain}/cert.pem"
+  printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
+
+  # Create fullchain.pem
+  if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]] || [[ -e "${SCRIPTDIR}/certs/${ROOTCERT}" ]]; then
+    echo " + Creating fullchain.pem..."
+    if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]]; then
+      cat "${BASEDIR}/certs/${ROOTCERT}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
+    else
+      cat "${SCRIPTDIR}/certs/${ROOTCERT}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
+    fi
+    cat "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
+    rm -f "${BASEDIR}/certs/${domain}/fullchain.pem"
+    ln -s "fullchain-${timestamp}.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
+  fi
+
+  # Update remaining symlinks
+  if [ ! "${privkey}" = "privkey.pem" ]; then
+    rm -f "${BASEDIR}/certs/${domain}/privkey.pem"
+    ln -s "privkey-${timestamp}.pem" "${BASEDIR}/certs/${domain}/privkey.pem"
+  fi
+
+  rm -f "${BASEDIR}/certs/${domain}/cert.csr"
+  ln -s "cert-${timestamp}.csr" "${BASEDIR}/certs/${domain}/cert.csr"
+
+  rm -f "${BASEDIR}/certs/${domain}/cert.pem"
+  ln -s "cert-${timestamp}.pem" "${BASEDIR}/certs/${domain}/cert.pem"
+
   echo " + Done!"
 }
 
 # Check if private key exists, if it doesn't exist yet generate a new one (rsa key)
 register="0"
-if [[ ! -e "private_key.pem" ]]; then
+if [[ ! -e "${BASEDIR}/private_key.pem" ]]; then
   echo "+ Generating account key..."
-  openssl genrsa -out "private_key.pem" "${KEYSIZE}" 2> /dev/null > /dev/null
+  openssl genrsa -out "${BASEDIR}/private_key.pem" "${KEYSIZE}" 2> /dev/null > /dev/null
   register="1"
 fi
 
 # Get public components from private key and calculate thumbprint
-pubExponent64="$(printf "%06x" "$(openssl rsa -in private_key.pem -noout -text | grep publicExponent | head -1 | cut -d' ' -f2)" | hex2bin | urlbase64)"
-pubMod64="$(printf '%s' "$(openssl rsa -in private_key.pem -noout -modulus | cut -d'=' -f2)" | hex2bin | urlbase64)"
+pubExponent64="$(printf "%06x" "$(openssl rsa -in "${BASEDIR}/private_key.pem" -noout -text | grep publicExponent | head -1 | cut -d' ' -f2)" | hex2bin | urlbase64)"
+pubMod64="$(printf '%s' "$(openssl rsa -in "${BASEDIR}/private_key.pem" -noout -modulus | cut -d'=' -f2)" | hex2bin | urlbase64)"
 
 thumbprint="$(printf '%s' "$(printf '%s' '{"e":"'"${pubExponent64}"'","kty":"RSA","n":"'"${pubMod64}"'"}' | shasum -a 256 | awk '{print $1}')" | hex2bin | urlbase64)"
 
@@ -207,7 +242,11 @@ if [[ "${register}" = "1" ]]; then
   signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > /dev/null
 fi
 
-if [[ ! -e "domains.txt" ]]; then
+if [[ -e "${BASEDIR}/domains.txt" ]]; then
+  DOMAINS_TXT="${BASEDIR}/domains.txt"
+elif [[ -e "${SCRIPTDIR}/domains.txt" ]]; then
+  DOMAINS_TXT="${SCRIPTDIR}/domains.txt"
+else
   echo "You have to create a domains.txt file listing the domains you want certificates for. Have a look at domains.txt.example."
   exit 1
 fi
@@ -216,18 +255,18 @@ if [[ ! -e "${WELLKNOWN}" ]]; then
   mkdir -p "${WELLKNOWN}"
 fi
 
-# Generate certificates for all domains found in domain.txt. Check if existing certificate are about to expire
-<domains.txt ${SED} 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
-  domain="$(echo $line | cut -d' ' -f1)"
-  cert="certs/${domain}/cert.pem"
+# Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
+<"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
+  domain="$(echo "${line}" | cut -d' ' -f1)"
+  cert="${BASEDIR}/certs/${domain}/cert.pem"
 
   echo "Processing ${domain}"
   if [[ -e "${cert}" ]]; then
     echo " + Found existing cert..."
 
     # Turning off exit on non-zero status for cert validation
-    set +e; openssl x509 -checkend $((${RENEW_DAYS} * 86400)) -noout -in "${cert}"; expiring=$?; set -e
-    valid="$(openssl x509 -enddate -noout -in "certs/${domain}/cert.pem" | cut -d= -f2- )"
+    set +e; openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; expiring=$?; set -e
+    valid="$(openssl x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
 
     echo -n " + Valid till ${valid} "
     if [[ ${expiring} -eq 0 ]]; then
@@ -237,5 +276,6 @@ fi
     echo "(Less than ${RENEW_DAYS} days). Renewing!"
   fi
 
+  # shellcheck disable=SC2086
   sign_domain $line
 done
