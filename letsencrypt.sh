@@ -13,6 +13,7 @@ KEYSIZE="4096"
 WELLKNOWN=".acme-challenges"
 PRIVATE_KEY_RENEW=no
 BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
 
 # If exists load config from same directory as this script
 if [[ -e "${BASEDIR}/config.sh" ]]; then
@@ -131,7 +132,7 @@ sign_domain() {
   done
   SAN="${SAN%%, }"
   echo " + Generating signing request..."
-  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/privkey.pem" -out "${BASEDIR}/certs/${domain}/cert.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=%s" "${SAN}")) > /dev/null
+  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/privkey.pem" -out "${BASEDIR}/certs/${domain}/cert.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat "${OPENSSL_CNF}" <(printf "[SAN]\nsubjectAltName=%s" "${SAN}")) > /dev/null
 
   # Request and respond to challenges
   for altname in $altnames; do

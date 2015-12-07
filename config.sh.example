@@ -4,6 +4,7 @@
 #WELLKNOWN=".acme-challenges"
 #KEYSIZE=4096
 #BASEDIR=./
+#OPENSSL_CNF=.... # system default (see openssl version -d)
 
 # program called before responding to the challenge, arguments: path/to/token
 # token; can be used to e.g. upload the challenge if this script doesn't run
