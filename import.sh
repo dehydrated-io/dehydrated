@@ -4,6 +4,8 @@ set -e
 set -u
 set -o pipefail
 
+umask 077 # paranoid umask, we're creating private keys
+
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASEDIR="${SCRIPTDIR}"
 LETSENCRYPT="/etc/letsencrypt"
