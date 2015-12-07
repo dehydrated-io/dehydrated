@@ -129,7 +129,7 @@ sign_domain() {
   for altname in $altnames; do
     SAN+="DNS:${altname}, "
   done
-  SAN="$(printf '%s' "${SAN}" | sed 's/,\s*$//g')"
+  SAN="${SAN%%, }"
   echo " + Generating signing request..."
   openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/privkey.pem" -out "${BASEDIR}/certs/${domain}/cert.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=%s" "${SAN}")) > /dev/null
 
