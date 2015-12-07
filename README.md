@@ -12,6 +12,7 @@ The only remaining perl code in this repository is the script you can use to con
 Current features:
 - Signing of a list of domains
 - Renewal if a certificate is about to expire
+- Certificate revocation
 
 Please keep in mind that this software and even the acme-protocol are relatively young and may still have some unresolved issues.
 Feel free to report any issues you find with this script or contribute by submitting a pullrequest.
@@ -35,7 +36,11 @@ After doing those two things you can just `./letsencrypt.sh`, and it should gene
 
 It can be used inside a cronjob as it automatically detects if a certificate is about to expire.
 
-### nginx
+### Certificate revocation
+
+Usage: `./letsencrypt.sh revoke path/to/cert.pem`
+
+### nginx config
 
 If you want to use nginx you can set up a location block to serve your challenge responses:
 
