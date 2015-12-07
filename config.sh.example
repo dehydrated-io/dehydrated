@@ -3,6 +3,7 @@
 #CA="https://acme-v01.api.letsencrypt.org"
 #WELLKNOWN=".acme-challenges"
 #KEYSIZE=4096
+#BASEDIR=./
 
 # program called before responding to the challenge, arguments: path/to/token
 # token; can be used to e.g. upload the challenge if this script doesn't run
