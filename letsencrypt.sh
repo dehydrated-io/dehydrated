@@ -174,6 +174,8 @@ sign_domain() {
       status="$(_request get "${challenge_uri}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
     done
 
+    rm -f "${WELLKNOWN}/${challenge_token}"
+
     if [[ "${status}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
