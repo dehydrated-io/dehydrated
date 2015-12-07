@@ -7,7 +7,7 @@ It uses the `openssl` utility for everything related to actually handling keys a
 Other dependencies are (for now): curl, sed
 
 Perl no longer is a dependency.
-The only remaining perl code in this repository is the script you can use to convert your existing keyfile into something openssl (and this script) can read.
+The only remaining perl code in this repository is the script you can use to convert your existing letsencrypt-keyfile into something openssl (and this script) can read.
 
 Current features:
 - Signing of a list of domains
