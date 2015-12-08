@@ -33,11 +33,12 @@
 
 # Program or function called in certain situations
 #
-# After generating the challenge-response, or after failed challenge
-# Given arguments: clean_challenge|deploy_challenge token-filename token-content
+# After generating the challenge-response, or after failed challenge (in this
+# case altname is empty)
+# Given arguments: clean_challenge|deploy_challenge altname token-filename token-content
 #
 # After successfully signing certificate
-# Given arguments: deploy_cert path/to/privkey.pem path/to/cert.pem path/to/fullchain.pem
+# Given arguments: deploy_cert domain path/to/privkey.pem path/to/cert.pem path/to/fullchain.pem
 #
 # BASEDIR and WELLKNOWN variables are exported and can be used in an external program
 # default: <unset>

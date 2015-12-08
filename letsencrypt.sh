@@ -101,7 +101,7 @@ _request() {
 
     # Wait for hook script to clean the challenge if used
     if [[ -n "${HOOK}" ]]; then
-      ${HOOK} "clean_challenge" "${challenge_token}" "${keyauth}" 
+      ${HOOK} "clean_challenge" '' "${challenge_token}" "${keyauth}"
     fi
 
     exit 1
@@ -220,7 +220,7 @@ sign_domain() {
 
     # Wait for hook script to deploy the challenge if used
     if [[ -n "${HOOK}" ]]; then
-        ${HOOK} "deploy_challenge" "${challenge_token}" "${keyauth}"
+        ${HOOK} "deploy_challenge" "${altname}" "${challenge_token}" "${keyauth}"
     fi
 
     # Ask the acme-server to verify our challenge and wait until it becomes valid
@@ -244,7 +244,7 @@ sign_domain() {
 
       # Wait for hook script to clean the challenge if used
       if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token}" ]]; then
-        ${HOOK} "clean_challenge" "${challenge_token}" "${keyauth}" 
+        ${HOOK} "clean_challenge" "${altname}" "${challenge_token}" "${keyauth}"
       fi
 
       exit 1
@@ -280,7 +280,7 @@ sign_domain() {
 
   # Wait for hook script to clean the challenge and to deploy cert if used
   if [[ -n "${HOOK}" ]]; then
-      ${HOOK} "deploy_cert" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem" 
+      ${HOOK} "deploy_cert" "${domain}" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
   fi
 
   unset challenge_token
