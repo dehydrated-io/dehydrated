@@ -93,7 +93,7 @@ _request() {
   fi
 
   if [[ ! "${statuscode:0:1}" = "2" ]]; then
-    echo "  + ERROR: An error occured while sending ${1}-request to ${2} (Status ${statuscode})" >&2
+    echo "  + ERROR: An error occurred while sending ${1}-request to ${2} (Status ${statuscode})" >&2
     echo >&2
     echo "Details:" >&2
     echo "$(<"${tempcont}"))" >&2
