@@ -327,12 +327,10 @@ fi
   if [[ -e "${cert}" ]]; then
     echo " + Found existing cert..."
 
-    # Turning off exit on non-zero status for cert validation
-    set +e; openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; expiring=$?; set -e
     valid="$(openssl x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
 
     echo -n " + Valid till ${valid} "
-    if [[ ${expiring} -eq 0 ]]; then
+    if openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; then
       echo "(Longer than ${RENEW_DAYS} days). Skipping!"
       continue
     fi
