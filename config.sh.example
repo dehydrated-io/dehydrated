@@ -33,8 +33,7 @@
 
 # Program or function called in certain situations
 #
-# After generating the challenge-response, or after failed challenge (in this
-# case altname is empty)
+# After generating the challenge-response, or after failed challenge (in this case altname is empty)
 # Given arguments: clean_challenge|deploy_challenge altname token-filename token-content
 #
 # After successfully signing certificate
