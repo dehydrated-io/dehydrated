@@ -247,21 +247,16 @@ sign_domain() {
     else
       cat "${SCRIPTDIR}/certs/${ROOTCERT}" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
     fi
-    rm -f "${BASEDIR}/certs/${domain}/fullchain.pem"
-    ln -s "fullchain-${timestamp}.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
+    ln -sf "fullchain-${timestamp}.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
   fi
 
   # Update remaining symlinks
   if [ ! "${privkey}" = "privkey.pem" ]; then
-    rm -f "${BASEDIR}/certs/${domain}/privkey.pem"
-    ln -s "privkey-${timestamp}.pem" "${BASEDIR}/certs/${domain}/privkey.pem"
+    ln -sf "privkey-${timestamp}.pem" "${BASEDIR}/certs/${domain}/privkey.pem"
   fi
 
-  rm -f "${BASEDIR}/certs/${domain}/cert.csr"
-  ln -s "cert-${timestamp}.csr" "${BASEDIR}/certs/${domain}/cert.csr"
-
-  rm -f "${BASEDIR}/certs/${domain}/cert.pem"
-  ln -s "cert-${timestamp}.pem" "${BASEDIR}/certs/${domain}/cert.pem"
+  ln -sf "cert-${timestamp}.csr" "${BASEDIR}/certs/${domain}/cert.csr"
+  ln -sf "cert-${timestamp}.pem" "${BASEDIR}/certs/${domain}/cert.pem"
 
   # Wait for hook script to clean the challenge and to deploy cert if used
   if [[ -n "${HOOK}" ]]; then
