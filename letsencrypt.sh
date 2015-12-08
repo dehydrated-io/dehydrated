@@ -251,17 +251,16 @@ sign_domain() {
     done
 
     rm -f "${WELLKNOWN}/${challenge_token}"
-
+      
+    # Wait for hook script to clean the challenge if used
+    if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token}" ]]; then
+      ${HOOK} "clean_challenge" "${altname}" "${challenge_token}" "${keyauth}"
+    fi
+	  
     if [[ "${status}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
       echo " + Challenge is invalid! (returned: ${status})"
-
-      # Wait for hook script to clean the challenge if used
-      if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token}" ]]; then
-        ${HOOK} "clean_challenge" "${altname}" "${challenge_token}" "${keyauth}"
-      fi
-
       exit 1
     fi
 
