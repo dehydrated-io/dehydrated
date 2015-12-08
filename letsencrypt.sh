@@ -456,6 +456,12 @@ do
     esac
 done
 
+# show help if no command was given
+if [[ -z "${command}" ]]; then
+  command_help
+  exit 0
+fi
+
 # setup the needed environment with data from the config files and command line parameters
 init_runtime
 
