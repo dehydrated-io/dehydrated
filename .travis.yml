@@ -15,9 +15,11 @@ before_script:
   - if [[ -z "${TMP_URL}" ]]; then exit 1; fi
   - echo 'CA="https://acme-staging.api.letsencrypt.org/directory"' > config.sh
   - echo 'WELLKNOWN=".acme-challenges/.well-known/acme-challenge"' >> config.sh
+  - echo 'ROOTCERT="lets-encrypt-staging.pem"' >> config.sh
   - echo "${TMP_URL}" > domains.txt
 
 script:
   - ./letsencrypt.sh
   - openssl x509 -in "certs/${TMP_URL}/cert.pem" -noout -text
+  - openssl verify -verbose -CAfile "certs/${ROOTCERT}" -purpose sslserver "certs/${TMP_URL}/cert.pem"
   - ./letsencrypt.sh revoke "certs/${TMP_URL}/cert.pem"
