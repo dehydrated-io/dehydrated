@@ -100,7 +100,7 @@ _request() {
     rm -f "${tempcont}"
 
     # Wait for hook script to clean the challenge if used
-    if [[ -n "${HOOK}" ]]; then
+    if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token:+set}"  ]]; then
       ${HOOK} "clean_challenge" '' "${challenge_token}" "${keyauth}"
     fi
 
