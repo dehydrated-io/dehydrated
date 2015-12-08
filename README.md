@@ -1,6 +1,6 @@
 # letsencrypt.sh
 
-This is a client for signing certificates with an ACME-server (currently only provided by letsencrypt) implemented as a relatively simple shell-script.
+This is a client for signing certificates with an ACME-server (currently only provided by letsencrypt) implemented as a relatively simple bash-script.
 
 It uses the `openssl` utility for everything related to actually handling keys and certificates, so you need to have that installed.
 
