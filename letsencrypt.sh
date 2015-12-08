@@ -34,7 +34,7 @@ if [[ -z "${CONFIG}" ]]; then
   echo "WARNING: No config file found, using default config!"
   sleep 2
 else
-  echo "Using config file ${check_config}"
+  echo "Using config file ${CONFIG}"
   # shellcheck disable=SC1090
   . "${CONFIG}"
 fi
