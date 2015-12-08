@@ -8,7 +8,7 @@ set -o pipefail
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Default config values
-CA="https://acme-v01.api.letsencrypt.org"
+CA="https://acme-v01.api.letsencrypt.org/directory"
 LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
 HOOK=
 RENEW_DAYS="14"
@@ -81,6 +81,14 @@ hex2bin() {
   printf -- "${escapedhex}"
 }
 
+get_json_string_value() {
+  grep -Eo '"'"${1}"'":\s*"[^"]*"' | cut -d'"' -f4
+}
+
+get_json_array() {
+  grep -Eo '"'"${1}"'":[^\[]*\[[^]]*]'
+}
+
 _request() {
   tempcont="$(mktemp)"
 
@@ -135,7 +143,7 @@ signed_request() {
   payload64="$(printf '%s' "${2}" | urlbase64)"
 
   # Retrieve nonce from acme-server
-  nonce="$(_request head "${CA}/directory" | grep Replay-Nonce: | awk -F ': ' '{print $2}' | anti_newline)"
+  nonce="$(_request head "${CA}" | grep Replay-Nonce: | awk -F ': ' '{print $2}' | anti_newline)"
 
   # Build header with just our public key and algorithm information
   header='{"alg": "RS256", "jwk": {"e": "'"${pubExponent64}"'", "kty": "RSA", "n": "'"${pubMod64}"'"}}'
@@ -154,9 +162,13 @@ signed_request() {
 }
 
 revoke_cert() {
+  if [ -z "${CA_REVOKE_CERT}" ]; then
+    echo " + ERROR: Certificate authority doesn't allow certificate revocation."
+    exit 1
+  fi
   cert="${1}"
   cert64="$(openssl x509 -in "${cert}" -inform PEM -outform DER | urlbase64)"
-  response="$(signed_request "${CA}/acme/revoke-cert" '{"resource": "revoke-cert", "certificate": "'"${cert64}"'"}')"
+  response="$(signed_request "${CA_REVOKE_CERT}" '{"resource": "revoke-cert", "certificate": "'"${cert64}"'"}')"
   # if there is a problem with our revoke request _request (via signed_request) will report this and "exit 1" out
   # so if we are here, it is safe to assume the request was successful
   echo " + SUCCESS"
@@ -168,7 +180,10 @@ sign_domain() {
   domain="${1}"
   altnames="${*}"
   echo " + Signing domains..."
-
+  if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
+    echo " + ERROR: Certificate authority doesn't allow certificate signing"
+    exit 1
+  fi
   timestamp="$(date +%s)"
 
   # If there is no existing certificate directory => make it
@@ -198,13 +213,13 @@ sign_domain() {
   for altname in $altnames; do
     # Ask the acme-server for new challenge token and extract them from the resulting json block
     echo " + Requesting challenge for ${altname}..."
-    response="$(signed_request "${CA}/acme/new-authz" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}')"
+    response="$(signed_request "${CA_NEW_AUTHZ}" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}')"
 
-    challenges="$(printf '%s\n' "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]')"
+    challenges="$(printf '%s\n' "${response}" | get_json_array challenges)"
     repl=$'\n''{' # fix syntax highlighting in Vim
     challenge="$(printf "%s" "${challenges//\{/${repl}}" | grep 'http-01')"
-    challenge_token="$(printf '%s' "${challenge}" | grep -Eo '"token":\s*"[^"]*"' | cut -d'"' -f4 | sed 's/[^A-Za-z0-9_\-]/_/g')"
-    challenge_uri="$(printf '%s' "${challenge}" | grep -Eo '"uri":\s*"[^"]*"' | cut -d'"' -f4)"
+    challenge_token="$(printf '%s' "${challenge}" | get_json_string_value token | sed 's/[^A-Za-z0-9_\-]/_/g')"
+    challenge_uri="$(printf '%s' "${challenge}" | get_json_string_value uri)"
 
     if [[ -z "${challenge_token}" ]] || [[ -z "${challenge_uri}" ]]; then
       echo "  + Error: Can't retrieve challenges (${response})"
@@ -227,12 +242,12 @@ sign_domain() {
     echo " + Responding to challenge for ${altname}..."
     result="$(signed_request "${challenge_uri}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}')"
 
-    status="$(printf '%s\n' "${result}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
+    status="$(printf '%s\n' "${result}" | get_json_string_value status)"
 
     # get status until a result is reached => not pending anymore
     while [[ "${status}" = "pending" ]]; do
       sleep 1
-      status="$(_request get "${challenge_uri}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
+      status="$(_request get "${challenge_uri}" | get_json_string_value status)"
     done
 
     rm -f "${WELLKNOWN}/${challenge_token}"
@@ -255,7 +270,7 @@ sign_domain() {
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
   echo " + Requesting certificate..."
   csr64="$(openssl req -in "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -outform DER | urlbase64)"
-  crt64="$(signed_request "${CA}/acme/new-cert" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | openssl base64 -e)"
+  crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | openssl base64 -e)"
   printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
 
   # Create fullchain.pem
@@ -287,6 +302,13 @@ sign_domain() {
   echo " + Done!"
 }
 
+# Get CA URLs
+CA_DIRECTORY="$(_request get "${CA}")"
+CA_NEW_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-cert)"
+CA_NEW_AUTHZ="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-authz)"
+CA_NEW_REG="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-reg)"
+CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revoke-cert)"
+
 # Check if private key exists, if it doesn't exist yet generate a new one (rsa key)
 register="0"
 if [[ ! -e "${BASEDIR}/private_key.pem" ]]; then
@@ -304,11 +326,15 @@ thumbprint="$(printf '%s' "$(printf '%s' '{"e":"'"${pubExponent64}"'","kty":"RSA
 # If we generated a new private key in the step above we have to register it with the acme-server
 if [[ "${register}" = "1" ]]; then
   echo "+ Registering account key with letsencrypt..."
+  if [ -z "${CA_NEW_REG}" ]; then
+    echo " + ERROR: Certificate authority doesn't allow registrations."
+    exit 1
+  fi
   # if an email for the contact has been provided then adding it to the registration request
-  if  [ -n "${CONTACT_EMAIL}" ]; then
-    signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"$LICENSE"'"}' > /dev/null
+  if [[ -n "${CONTACT_EMAIL}" ]]; then
+    signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"$LICENSE"'"}' > /dev/null
   else
-    signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > /dev/null
+    signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > /dev/null
   fi
 fi
 
