@@ -209,12 +209,12 @@ sign_domain() {
   # Create fullchain.pem
   if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]] || [[ -e "${SCRIPTDIR}/certs/${ROOTCERT}" ]]; then
     echo " + Creating fullchain.pem..."
+    cat "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
     if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]]; then
-      cat "${BASEDIR}/certs/${ROOTCERT}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
+      cat "${BASEDIR}/certs/${ROOTCERT}" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
     else
-      cat "${SCRIPTDIR}/certs/${ROOTCERT}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
+      cat "${SCRIPTDIR}/certs/${ROOTCERT}" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
     fi
-    cat "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
     rm -f "${BASEDIR}/certs/${domain}/fullchain.pem"
     ln -s "fullchain-${timestamp}.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
   fi
