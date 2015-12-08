@@ -272,11 +272,14 @@ sign_domain() {
   csr64="$(openssl req -in "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -outform DER | urlbase64)"
   crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | openssl base64 -e)"
   printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
+  # try to load the certificate to detect corruption
+  echo " + Checking certificate..." >&2
+  _openssl x509 -text < "${crt_path}"
 
   # Create fullchain.pem
   if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]] || [[ -e "${SCRIPTDIR}/certs/${ROOTCERT}" ]]; then
     echo " + Creating fullchain.pem..."
-    cat "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
+    cat "${crt_path}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
     if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]]; then
       cat "${BASEDIR}/certs/${ROOTCERT}" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
     else
