@@ -7,7 +7,7 @@ set -o pipefail
 # Default config values
 CA="https://acme-v01.api.letsencrypt.org"
 LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
-HOOK_CHALLENGE=
+HOOK=
 RENEW_DAYS="14"
 KEYSIZE="4096"
 WELLKNOWN=".acme-challenges"
@@ -77,6 +77,12 @@ _request() {
     echo "Details:" >&2
     echo "$(<"${tempcont}"))" >&2
     rm -f "${tempcont}"
+    
+    # Wait for hook script to clean the challenge if used
+    if [ -n "${HOOK}" ]; then
+      ${HOOK} "clean_challenge" "${WELLKNOWN}/${challenge_token}" "${keyauth}" 
+    fi
+	
     exit 1
   fi
 
@@ -172,8 +178,8 @@ sign_domain() {
     chmod a+r "${WELLKNOWN}/${challenge_token}"
 
     # Wait for hook script to deploy the challenge if used
-    if [ -n "${HOOK_CHALLENGE}" ]; then
-        ${HOOK_CHALLENGE} "${WELLKNOWN}/${challenge_token}" "${keyauth}"
+    if [ -n "${HOOK}" ]; then
+        ${HOOK} "upload_challenge" "${WELLKNOWN}/${challenge_token}" "${keyauth}"
     fi
 
     # Ask the acme-server to verify our challenge and wait until it becomes valid
@@ -194,6 +200,12 @@ sign_domain() {
       echo " + Challenge is valid!"
     else
       echo " + Challenge is invalid! (returned: ${status})"
+	  
+      # Wait for hook script to clean the challenge if used
+      if [ -n "${HOOK}" ]; then
+        ${HOOK} "clean_challenge" "${WELLKNOWN}/${challenge_token}" "${keyauth}" 
+      fi
+      
       exit 1
     fi
 
@@ -229,6 +241,12 @@ sign_domain() {
 
   rm -f "${BASEDIR}/certs/${domain}/cert.pem"
   ln -s "cert-${timestamp}.pem" "${BASEDIR}/certs/${domain}/cert.pem"
+
+  # Wait for hook script to clean the challenge and to deploy cert if used
+  if [ -n "${HOOK}" ]; then
+      ${HOOK} "upload_certs" "${WELLKNOWN}/${challenge_token}" "${keyauth}" "${BASEDIR}/certs/${domain}/fullchain.pem" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" 
+  fi
+
 
   echo " + Done!"
 }
