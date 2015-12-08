@@ -48,8 +48,7 @@ for certdir in "${LETSENCRYPT}/live/"*; do
   fi
 
   # Check if certificate still valid
-  set +e; openssl x509 -checkend 0 -noout -in "${certdir}/cert.pem" > /dev/null 2> /dev/null; expired="${?}"; set -e
-  if [[ "${expired}" = "1" ]]; then
+  if ! openssl x509 -checkend 0 -noout -in "${certdir}/cert.pem" >/dev/null 2>&1; then
     echo " + Skipping: Certificate is expired."
     continue
   fi
