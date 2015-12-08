@@ -9,10 +9,16 @@
 #OPENSSL_CNF=.... # system default (see openssl version -d)
 #ROOTCERT="lets-encrypt-x1-cross-signed.pem"
 
-# program called before responding to the challenge, arguments: path/to/token
-# token; can be used to e.g. upload the challenge if this script doesn't run
-# on the webserver
-#HOOK_CHALLENGE=
+# Program or function called in certain situations
+#
+# After generating the challenge-response, or after failed challenge
+# Given arguments: clean_challenge|deploy_challenge token-filename token-content
+#
+# After successfully signing certificate
+# Given arguments: deploy_cert path/to/privkey.pem path/to/cert.pem path/to/fullchain.pem
+#
+# BASEDIR and WELLKNOWN variables are exported and can be used in an external program
+#HOOK=
 
 # try to renew certs that are within RENEW_DAYS days of their expiration date
 #RENEW_DAYS="14"
@@ -22,4 +28,3 @@
 
 # email to use during the registration
 #CONTACT_EMAIL=
-

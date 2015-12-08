@@ -7,7 +7,7 @@ set -o pipefail
 # Default config values
 CA="https://acme-v01.api.letsencrypt.org"
 LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
-HOOK_CHALLENGE=
+HOOK=
 RENEW_DAYS="14"
 KEYSIZE="4096"
 WELLKNOWN=".acme-challenges"
@@ -28,6 +28,10 @@ fi
 BASEDIR="${BASEDIR%%/}"
 
 umask 077 # paranoid umask, we're creating private keys
+
+# Export some environment variables to be used in hook script
+export WELLKNOWN
+export BASEDIR
 
 anti_newline() {
   tr -d '\n\r'
@@ -78,6 +82,12 @@ _request() {
     echo "Details:" >&2
     echo "$(<"${tempcont}"))" >&2
     rm -f "${tempcont}"
+
+    # Wait for hook script to clean the challenge if used
+    if [[ -n "${HOOK}" ]]; then
+      ${HOOK} "clean_challenge" "${challenge_token}" "${keyauth}" 
+    fi
+
     exit 1
   fi
 
@@ -173,8 +183,8 @@ sign_domain() {
     chmod a+r "${WELLKNOWN}/${challenge_token}"
 
     # Wait for hook script to deploy the challenge if used
-    if [ -n "${HOOK_CHALLENGE}" ]; then
-        ${HOOK_CHALLENGE} "${WELLKNOWN}/${challenge_token}" "${keyauth}"
+    if [[ -n "${HOOK}" ]]; then
+        ${HOOK} "deploy_challenge" "${challenge_token}" "${keyauth}"
     fi
 
     # Ask the acme-server to verify our challenge and wait until it becomes valid
@@ -195,6 +205,12 @@ sign_domain() {
       echo " + Challenge is valid!"
     else
       echo " + Challenge is invalid! (returned: ${status})"
+
+      # Wait for hook script to clean the challenge if used
+      if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token}" ]]; then
+        ${HOOK} "clean_challenge" "${challenge_token}" "${keyauth}" 
+      fi
+
       exit 1
     fi
 
@@ -231,6 +247,12 @@ sign_domain() {
   rm -f "${BASEDIR}/certs/${domain}/cert.pem"
   ln -s "cert-${timestamp}.pem" "${BASEDIR}/certs/${domain}/cert.pem"
 
+  # Wait for hook script to clean the challenge and to deploy cert if used
+  if [[ -n "${HOOK}" ]]; then
+      ${HOOK} "deploy_cert" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem" 
+  fi
+
+  unset challenge_token
   echo " + Done!"
 }
 
@@ -278,7 +300,7 @@ if [[ "${1:-}" = "revoke" ]]; then
     echo "Usage: ${0} revoke path/to/cert.pem"
     exit 1
   fi
-  
+
   echo "Revoking ${2}"
   revoke_cert "${2}"
 
