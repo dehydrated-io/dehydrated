@@ -417,7 +417,7 @@ command_help() {
 
 set_check_command() {
   if [[ -n "${command}" ]]; then
-    echo ERROR: only Mode is allowed. Specified -${command} and -${1}
+    echo ERROR: only one Mode is allowed. Specified -${command} and -${1}
     echo
     command_help
   fi
@@ -448,7 +448,7 @@ do
     case "${option}" in
         h) command_help;;
         c) set_check_command "${option}";;
-	r) revoke=${OPTARG}
+        r) revoke=${OPTARG}
 	   set_check_command "${option}";;
         *) echo "${option} is an unknown parameter"
 	   echo
@@ -459,6 +459,7 @@ done
 # setup the needed environment with data from the config files and command line parameters
 init_runtime
 
+# finally do the things we were all waiting for! :)
 case "${command}" in
   c) command_cert;;
   r) command_revoke "${revoke}";;
