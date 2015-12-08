@@ -1,0 +1,23 @@
+sudo: false
+language: python
+
+cache:
+  directories:
+    - ngrok
+
+before_script:
+  - if [[ ! -e "ngrok/ngrok" ]]; then mkdir -p ngrok; (cd ngrok; wget https://dl.ngrok.com/ngrok_2.0.19_linux_amd64.zip -O ngrok.zip; unzip ngrok.zip ngrok; chmod +x ngrok); fi
+  - ngrok/ngrok http 8080 --log stdout --log-format logfmt --log-level debug > tmp.log &
+  - sleep 5
+  - cat tmp.log
+  - export TMP_URL="$(grep -Eo "Hostname:[a-z0-9]+.ngrok.io" tmp.log | head -1 | cut -d':' -f2)"
+  - (mkdir -p .acme-challenges/.well-known/acme-challenge; cd .acme-challenges; python -m SimpleHTTPServer 8080) &
+  - if [[ -z "${TMP_URL}" ]]; then exit 1; fi
+  - echo 'CA="https://acme-staging.api.letsencrypt.org/directory"' > config.sh
+  - echo 'WELLKNOWN=".acme-challenges/.well-known/acme-challenge"' >> config.sh
+  - echo "${TMP_URL}" > domains.txt
+
+script:
+  - ./letsencrypt.sh
+  - openssl x509 -in "certs/${TMP_URL}/cert.pem" -noout -text
+  - ./letsencrypt.sh revoke "certs/${TMP_URL}/cert.pem"
