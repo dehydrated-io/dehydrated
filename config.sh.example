@@ -1,12 +1,30 @@
 #!/bin/bash
 
-# Default values are commented
+########################################################
+# This is the config file for letsencrypt.sh           #
+#                                                      #
+# This file is looked for in the following locations:  #
+# $SCRIPTDIR/config.sh (next to this script)           #
+#                                                      #
+# Default values of this config are in comments        #
+########################################################
 
+# Path to certificate authority
 #CA="https://acme-v01.api.letsencrypt.org"
-#WELLKNOWN=".acme-challenges"
-#KEYSIZE=4096
-#BASEDIR=./
-#OPENSSL_CNF=.... # system default (see openssl version -d)
+
+# Output directory for challenge-tokens to be served by webserver or deployed in HOOK (default: $SCRIPTDIR/.acme-challenges)
+#WELLKNOWN="${SCRIPTDIR}/.acme-challenges"
+
+# Default keysize for private keys (default: 4096)
+#KEYSIZE="4096"
+
+# Base directory for account key, generated certificates and list of domains (default: $SCRIPTDIR)
+#BASEDIR="${SCRIPTDIR}"
+
+# Path to openssl config file (default: <unset> - tries to figure out system default)
+#OPENSSL_CNF=
+
+# Name of root certificate (default: lets-encrypt-x1-cross-signed.pem)
 #ROOTCERT="lets-encrypt-x1-cross-signed.pem"
 
 # Program or function called in certain situations
@@ -18,13 +36,14 @@
 # Given arguments: deploy_cert path/to/privkey.pem path/to/cert.pem path/to/fullchain.pem
 #
 # BASEDIR and WELLKNOWN variables are exported and can be used in an external program
+# default: <unset>
 #HOOK=
 
-# try to renew certs that are within RENEW_DAYS days of their expiration date
+# Minimum days before expiration to automatically renew certificate (default: 14)
 #RENEW_DAYS="14"
 
-# create new private key for each csr (yes|no)
-#PRIVATE_KEY_RENEW=no
+# Regenerate private keys instead of just signing new certificates on renewal (default: no)
+#PRIVATE_KEY_RENEW="no"
 
-# email to use during the registration
+# E-mail to use during the registration (default: <unset>)
 #CONTACT_EMAIL=
