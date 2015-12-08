@@ -275,7 +275,7 @@ fi
 # revoke certificate by user request
 if [[ "${1:-}" = "revoke" ]]; then
   if [[ -z "{2:-}" ]] || [[ ! -f "${2}" ]]; then
-    echo usage: ${0} revoke path/to/cert.pem
+    echo "Usage: ${0} revoke path/to/cert.pem"
     exit 1
   fi
   
