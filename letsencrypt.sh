@@ -16,6 +16,7 @@ SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASEDIR="${SCRIPTDIR}"
 OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
 ROOTCERT="lets-encrypt-x1-cross-signed.pem"
+HOOK_POST_CREATION=
 
 # If exists load config from same directory as this script
 if [[ -e "${BASEDIR}/config.sh" ]]; then
@@ -77,6 +78,12 @@ _request() {
     echo "Details:" >&2
     echo "$(<"${tempcont}"))" >&2
     rm -f "${tempcont}"
+    
+    # Wait for hook script to clean the challenge if used
+    if [ -n "${HOOK_POST_CREATION}" ]; then
+      ${HOOK_POST_CREATION} "invalid" "${WELLKNOWN}/${challenge_token}" "${keyauth}" 
+    fi
+	
     exit 1
   fi
 
@@ -194,6 +201,12 @@ sign_domain() {
       echo " + Challenge is valid!"
     else
       echo " + Challenge is invalid! (returned: ${status})"
+	  
+      # Wait for hook script to clean the challenge if used
+      if [ -n "${HOOK_POST_CREATION}" ]; then
+        ${HOOK_POST_CREATION} "invalid" "${WELLKNOWN}/${challenge_token}" "${keyauth}" 
+      fi
+      
       exit 1
     fi
 
@@ -229,6 +242,12 @@ sign_domain() {
 
   rm -f "${BASEDIR}/certs/${domain}/cert.pem"
   ln -s "cert-${timestamp}.pem" "${BASEDIR}/certs/${domain}/cert.pem"
+
+  # Wait for hook script to clean the challenge and to deploy cert if used
+  if [ -n "${HOOK_POST_CREATION}" ]; then
+      ${HOOK_POST_CREATION} "valid" "${WELLKNOWN}/${challenge_token}" "${keyauth}" "${BASEDIR}/certs/${domain}/fullchain.pem" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" 
+  fi
+
 
   echo " + Done!"
 }
