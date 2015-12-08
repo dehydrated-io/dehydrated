@@ -1,4 +1,6 @@
-# default values are commented
+#!/bin/bash
+
+# Default values are commented
 
 #CA="https://acme-v01.api.letsencrypt.org"
 #WELLKNOWN=".acme-challenges"
