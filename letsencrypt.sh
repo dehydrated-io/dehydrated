@@ -16,6 +16,7 @@ SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASEDIR="${SCRIPTDIR}"
 OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
 ROOTCERT="lets-encrypt-x1-cross-signed.pem"
+CONTACT_EMAIL=
 
 # If exists load config from same directory as this script
 if [[ -e "${BASEDIR}/config.sh" ]]; then
@@ -250,7 +251,12 @@ thumbprint="$(printf '%s' "$(printf '%s' '{"e":"'"${pubExponent64}"'","kty":"RSA
 # If we generated a new private key in the step above we have to register it with the acme-server
 if [[ "${register}" = "1" ]]; then
   echo "+ Registering account key with letsencrypt..."
-  signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > /dev/null
+  # if an email for the contact has been provided then adding it to the registration request
+  if  [ -n "${CONTACT_EMAIL}" ]; then
+    signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"$LICENSE"'"}' > /dev/null
+  else
+    signed_request "${CA}/acme/new-reg" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > /dev/null
+  fi
 fi
 
 if [[ -e "${BASEDIR}/domains.txt" ]]; then
