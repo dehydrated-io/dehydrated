@@ -17,3 +17,10 @@
 
 # create new private key for each csr (yes|no)
 #PRIVATE_KEY_RENEW=no
+
+# program called after creating the certs arguments: path/to/token token
+# path/to/fullchain path/to/privkey path/to/cert ; can be used to e.g. clean 
+# the challenge or to upload certs if this script doesn't run on the 
+# webserver
+#HOOK_POST_CREATION=
+
