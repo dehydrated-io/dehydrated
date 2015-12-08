@@ -17,6 +17,11 @@
 # can be used to e.g. remove the challenge if this script doesn't run on the webserver
 #HOOK_CHALLENGE_POST=
 
+# program called after a creation of a new cert
+# arguments: path/to/cert.perm path/to/privkey.pem path/to/fullchain.pem
+# can be used to e.g. deploy the signed cert if this script doesn't run on the webserver
+#HOOK_NEWCERT=
+
 # try to renew certs that are within RENEW_DAYS days of their expiration date
 #RENEW_DAYS="14"
 
