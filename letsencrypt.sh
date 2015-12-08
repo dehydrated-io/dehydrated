@@ -271,7 +271,8 @@ sign_domain() {
   echo " + Requesting certificate..."
   csr64="$(openssl req -in "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -outform DER | urlbase64)"
   crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | openssl base64 -e)"
-  printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
+  crt_path="${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
+  printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "${crt_path}"
   # try to load the certificate to detect corruption
   echo " + Checking certificate..." >&2
   _openssl x509 -text < "${crt_path}"
