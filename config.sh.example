@@ -17,3 +17,7 @@
 
 # create new private key for each csr (yes|no)
 #PRIVATE_KEY_RENEW=no
+
+# email to use during the registration
+#CONTACT_EMAIL=
+
