@@ -9,7 +9,7 @@
 # Default values of this config are in comments        #
 ########################################################
 
-# Path to certificate authority
+# Path to certificate authority (default: https://acme-v01.api.letsencrypt.org)
 #CA="https://acme-v01.api.letsencrypt.org"
 
 # Output directory for challenge-tokens to be served by webserver or deployed in HOOK (default: $SCRIPTDIR/.acme-challenges)
