@@ -59,7 +59,7 @@ This perl-script can be used to import the account key from the original letsenc
 You should copy `private_key.json` to the same directory as the script.
 The json-file can be found in a subdirectory of `/etc/letsencrypt/accounts/acme-v01.api.letsencrypt.org/directory`.
 
-Usage: `perl import-account.pl`
+Usage: `./import-account.pl`
 
 ### import-certs.sh
 
