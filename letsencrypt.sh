@@ -110,6 +110,25 @@ _request() {
   cat  "${tempcont}"
   rm -f "${tempcont}"
 }
+_output_on_error() {
+  # Only way to capture the output and exit code is to disable set -e.
+  set +e
+  out="$("$@" 2>&1)"
+  res=$?
+  set -e
+  if [[ $res -ne 0 ]]; then
+    echo "  + ERROR: failed to run $* (Exitcode: $res)" >&2
+    echo >&2
+    echo "Details:" >&2
+    echo "$out" >&2
+    exit $res
+  fi
+}
+# OpenSSL writes to stderr/stdout even when there are no errors. So just
+# display the output if the exit code was != 0 to simplify debugging.
+_openssl() {
+    _output_on_error openssl "$@"
+}
 
 signed_request() {
   # Encode payload as urlbase64
@@ -163,7 +182,7 @@ sign_domain() {
   if [[ ! -f "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
     echo " + Generating private key..."
     privkey="privkey-${timestamp}.pem"
-    openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}" 2> /dev/null > /dev/null
+    _openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}"
   fi
 
   # Generate signing request config and the actual signing request
@@ -173,7 +192,7 @@ sign_domain() {
   done
   SAN="${SAN%%, }"
   echo " + Generating signing request..."
-  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat "${OPENSSL_CNF}" <(printf "[SAN]\nsubjectAltName=%s" "${SAN}")) > /dev/null
+  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat "${OPENSSL_CNF}" <(printf "[SAN]\nsubjectAltName=%s" "${SAN}"))
 
   # Request and respond to challenges
   for altname in $altnames; do
@@ -272,7 +291,7 @@ sign_domain() {
 register="0"
 if [[ ! -e "${BASEDIR}/private_key.pem" ]]; then
   echo "+ Generating account key..."
-  openssl genrsa -out "${BASEDIR}/private_key.pem" "${KEYSIZE}" 2> /dev/null > /dev/null
+  _openssl genrsa -out "${BASEDIR}/private_key.pem" "${KEYSIZE}"
   register="1"
 fi
 
