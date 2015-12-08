@@ -417,7 +417,7 @@ command_help() {
 
 set_check_command() {
   if [[ -n "${command}" ]]; then
-    echo ERROR: only one Mode is allowed. Specified -${command} and -${1}
+    echo ERROR: only one Mode is allowed. Specified "-${command}" and "-${1}"
     echo
     command_help
   fi
@@ -431,7 +431,7 @@ command=
 # inspired by http://kirk.webfinish.com/?p=45
 for arg
 do
-  case "$arg" in
+  case "${arg}" in
     --help)    args="${args}-h ";;
     --cert)    args="${args}-c ";;
     --revoke)  args="${args}-r ";;
