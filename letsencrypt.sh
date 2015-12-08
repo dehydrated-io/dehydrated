@@ -20,10 +20,23 @@ OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
 ROOTCERT="lets-encrypt-x1-cross-signed.pem"
 CONTACT_EMAIL=
 
-# If exists load config from same directory as this script
-if [[ -e "${BASEDIR}/config.sh" ]]; then
+# Check for config in various locations
+CONFIG=""
+for check_config in "${SCRIPTDIR}" "${HOME}/.letsencrypt.sh" "/usr/local/etc/letsencrypt.sh" "/etc/letsencrypt.sh" "${PWD}"; do
+  if [[ -e "${check_config}/config.sh" ]]; then
+    BASEDIR="${check_config}"
+    CONFIG="${check_config}/config.sh"
+    break
+  fi
+done
+
+if [[ -z "${CONFIG}" ]]; then
+  echo "WARNING: No config file found, using default config!"
+  sleep 2
+else
+  echo "Using config file ${check_config}"
   # shellcheck disable=SC1090
-  . "${BASEDIR}/config.sh"
+  . "${CONFIG}"
 fi
 
 # Remove slash from end of BASEDIR. Mostly for cleaner outputs, doesn't change functionality.
@@ -34,6 +47,7 @@ umask 077 # paranoid umask, we're creating private keys
 # Export some environment variables to be used in hook script
 export WELLKNOWN
 export BASEDIR
+export CONFIG
 
 anti_newline() {
   tr -d '\n\r'

@@ -5,6 +5,10 @@
 #                                                      #
 # This file is looked for in the following locations:  #
 # $SCRIPTDIR/config.sh (next to this script)           #
+# ${HOME}/.letsencrypt.sh/config.sh (in user home)     #
+# /usr/local/etc/letsencrypt.sh/config.sh              #
+# /etc/letsencrypt.sh/config.sh                        #
+# ${PWD}/config.sh (in current working-directory)      #
 #                                                      #
 # Default values of this config are in comments        #
 ########################################################
@@ -18,8 +22,8 @@
 # Default keysize for private keys (default: 4096)
 #KEYSIZE="4096"
 
-# Base directory for account key, generated certificates and list of domains (default: $SCRIPTDIR)
-#BASEDIR="${SCRIPTDIR}"
+# Base directory for account key, generated certificates and list of domains (default: $SCRIPTDIR -- uses config directory if undefined)
+#BASEDIR=$SCRIPTDIR
 
 # Path to openssl config file (default: <unset> - tries to figure out system default)
 #OPENSSL_CNF=
