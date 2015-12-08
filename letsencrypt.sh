@@ -209,7 +209,7 @@ sign_domain() {
 
     status="$(printf '%s\n' "${result}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
 
-    # get status until it a result is reached => not pending anymore    
+    # get status until a result is reached => not pending anymore
     while [[ "${status}" = "pending" ]]; do
       sleep 1
       status="$(_request get "${challenge_uri}" | grep -Eo '"status":\s*"[^"]*"' | cut -d'"' -f4)"
