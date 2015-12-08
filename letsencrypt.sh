@@ -4,15 +4,17 @@ set -e
 set -u
 set -o pipefail
 
+# Get the directory in which this script is stored
+SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 # Default config values
 CA="https://acme-v01.api.letsencrypt.org"
 LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
 HOOK=
 RENEW_DAYS="14"
 KEYSIZE="4096"
-WELLKNOWN=".acme-challenges"
-PRIVATE_KEY_RENEW=no
-SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+WELLKNOWN="${SCRIPTDIR}/.acme-challenges"
+PRIVATE_KEY_RENEW="no"
 BASEDIR="${SCRIPTDIR}"
 OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
 ROOTCERT="lets-encrypt-x1-cross-signed.pem"
