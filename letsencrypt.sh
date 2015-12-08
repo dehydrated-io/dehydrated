@@ -20,35 +20,6 @@ OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
 ROOTCERT="lets-encrypt-x1-cross-signed.pem"
 CONTACT_EMAIL=
 
-# Check for config in various locations
-CONFIG=""
-for check_config in "${SCRIPTDIR}" "${HOME}/.letsencrypt.sh" "/usr/local/etc/letsencrypt.sh" "/etc/letsencrypt.sh" "${PWD}"; do
-  if [[ -e "${check_config}/config.sh" ]]; then
-    BASEDIR="${check_config}"
-    CONFIG="${check_config}/config.sh"
-    break
-  fi
-done
-
-if [[ -z "${CONFIG}" ]]; then
-  echo "WARNING: No config file found, using default config!"
-  sleep 2
-else
-  echo "Using config file ${CONFIG}"
-  # shellcheck disable=SC1090
-  . "${CONFIG}"
-fi
-
-# Remove slash from end of BASEDIR. Mostly for cleaner outputs, doesn't change functionality.
-BASEDIR="${BASEDIR%%/}"
-
-umask 077 # paranoid umask, we're creating private keys
-
-# Export some environment variables to be used in hook script
-export WELLKNOWN
-export BASEDIR
-export CONFIG
-
 anti_newline() {
   tr -d '\n\r'
 }
@@ -306,6 +277,36 @@ sign_domain() {
 }
 
 
+init_runtime() {
+# Check for config in various locations
+CONFIG=""
+for check_config in "${SCRIPTDIR}" "${HOME}/.letsencrypt.sh" "/usr/local/etc/letsencrypt.sh" "/etc/letsencrypt.sh" "${PWD}"; do
+  if [[ -e "${check_config}/config.sh" ]]; then
+    BASEDIR="${check_config}"
+    CONFIG="${check_config}/config.sh"
+    break
+  fi
+done
+
+if [[ -z "${CONFIG}" ]]; then
+  echo "WARNING: No config file found, using default config!"
+  sleep 2
+else
+  echo "Using config file ${CONFIG}"
+  # shellcheck disable=SC1090
+  . "${CONFIG}"
+fi
+
+# Remove slash from end of BASEDIR. Mostly for cleaner outputs, doesn't change functionality.
+BASEDIR="${BASEDIR%%/}"
+
+umask 077 # paranoid umask, we're creating private keys
+
+# Export some environment variables to be used in hook script
+export WELLKNOWN
+export BASEDIR
+export CONFIG
+
 LOCKFILE="${BASEDIR}/lock"
 remove_lock() {
     if [[ -n "${LOCKFILE}" ]]; then
@@ -372,39 +373,95 @@ fi
 if [[ ! -e "${WELLKNOWN}" ]]; then
   mkdir -p "${WELLKNOWN}"
 fi
+}
 
-# revoke certificate by user request
-if [[ "${1:-}" = "revoke" ]]; then
-  if [[ -z "{2:-}" ]] || [[ ! -f "${2}" ]]; then
-    echo "Usage: ${0} revoke path/to/cert.pem"
-    exit 1
-  fi
+command_revoke() {
+  echo "Revoking ${1}"
+  revoke_cert "${1}"
+}
 
-  echo "Revoking ${2}"
-  revoke_cert "${2}"
+command_cert() {
+  # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
+  <"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
+    domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
+    cert="${BASEDIR}/certs/${domain}/cert.pem"
 
-  exit 0
-fi
+    echo "Processing ${domain}"
+    if [[ -e "${cert}" ]]; then
+      echo " + Found existing cert..."
 
-# Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
-<"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
-  domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
-  cert="${BASEDIR}/certs/${domain}/cert.pem"
+      valid="$(openssl x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
 
-  echo "Processing ${domain}"
-  if [[ -e "${cert}" ]]; then
-    echo " + Found existing cert..."
-
-    valid="$(openssl x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
-
-    echo -n " + Valid till ${valid} "
-    if openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; then
-      echo "(Longer than ${RENEW_DAYS} days). Skipping!"
-      continue
+      echo -n " + Valid till ${valid} "
+      if openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; then
+        echo "(Longer than ${RENEW_DAYS} days). Skipping!"
+        continue
+      fi
+      echo "(Less than ${RENEW_DAYS} days). Renewing!"
     fi
-    echo "(Less than ${RENEW_DAYS} days). Renewing!"
-  fi
 
-  # shellcheck disable=SC2086
-  sign_domain $line
+    # shellcheck disable=SC2086
+    sign_domain $line
+  done
+}
+
+command_help() {
+  echo "usage: ${0} mode [parameter [parameter]]"
+  echo
+  echo Mode:
+  echo " --help   / -h         show this help"
+  echo " --cert   / -c         renew all certificates found in domains.txt"
+  echo " --revoke / -r CERT    revoke the certificate found in the file CERT"
+  exit 0
+}
+
+set_check_command() {
+  if [[ -n "${command}" ]]; then
+    echo ERROR: only Mode is allowed. Specified -${command} and -${1}
+    echo
+    command_help
+  fi
+  command=${1}
+}
+
+
+args=
+command=
+# change long args to short args
+# inspired by http://kirk.webfinish.com/?p=45
+for arg
+do
+  case "$arg" in
+    --help)    args="${args}-h ";;
+    --cert)    args="${args}-c ";;
+    --revoke)  args="${args}-r ";;
+    # pass through anything else
+    *) args="${args}\"${arg}\" ";;
+    esac
 done
+ 
+# Reset the positional parameters to the short options
+eval set -- $args
+
+while getopts ":hcr:" option
+do
+    case "${option}" in
+        h) command_help;;
+        c) set_check_command "${option}";;
+	r) revoke=${OPTARG}
+	   set_check_command "${option}";;
+        *) echo "${option} is an unknown parameter"
+	   echo
+	   command_help;;
+    esac
+done
+
+# setup the needed environment with data from the config files and command line parameters
+init_runtime
+
+case "${command}" in
+  c) command_cert;;
+  r) command_revoke "${revoke}";;
+esac
+
+exit 0
