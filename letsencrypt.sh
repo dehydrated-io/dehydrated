@@ -182,7 +182,8 @@ sign_domain() {
     response="$(signed_request "${CA}/acme/new-authz" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}')"
 
     challenges="$(printf '%s\n' "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]')"
-    challenge="$(printf "%s" "${challenges//\{/$'\n'{}" | grep 'http-01')"
+    repl=$'\n''{' # fix syntax highlighting in Vim
+    challenge="$(printf "%s" "${challenges//\{/${repl}}" | grep 'http-01')"
     challenge_token="$(printf '%s' "${challenge}" | grep -Eo '"token":\s*"[^"]*"' | cut -d'"' -f4 | sed 's/[^A-Za-z0-9_\-]/_/g')"
     challenge_uri="$(printf '%s' "${challenge}" | grep -Eo '"uri":\s*"[^"]*"' | cut -d'"' -f4)"
 
