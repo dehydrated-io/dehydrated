@@ -320,7 +320,7 @@ fi
 
 # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
 <"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
-  domain="$(echo "${line}" | cut -d' ' -f1)"
+  domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
   cert="${BASEDIR}/certs/${domain}/cert.pem"
 
   echo "Processing ${domain}"
