@@ -306,6 +306,25 @@ sign_domain() {
   echo " + Done!"
 }
 
+
+LOCKFILE="${BASEDIR}/lock"
+remove_lock() {
+    if [[ -n "${LOCKFILE}" ]]; then
+        rm -f "${LOCKFILE}"
+    fi
+}
+trap 'remove_lock' EXIT
+
+# Use lock file to prevent concurrent access.
+set -o noclobber
+if ! { date > "${LOCKFILE}"; } 2>/dev/null; then
+    echo "  + ERROR: Lock file '${LOCKFILE}' present, aborting." >&2
+    LOCKFILE= # so remove_lock doesn't remove it
+    exit 1
+fi
+set +o noclobber
+
+
 # Get CA URLs
 CA_DIRECTORY="$(_request get "${CA}")"
 CA_NEW_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-cert)"
