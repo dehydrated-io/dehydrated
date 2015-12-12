@@ -127,8 +127,6 @@ init_system() {
 
   if [[ -e "${BASEDIR}/domains.txt" ]]; then
     DOMAINS_TXT="${BASEDIR}/domains.txt"
-  elif [[ -e "${SCRIPTDIR}/domains.txt" ]]; then
-    DOMAINS_TXT="${SCRIPTDIR}/domains.txt"
   else
     echo "You have to create a domains.txt file listing the domains you want certificates for. Have a look at domains.txt.example."
     exit 1
@@ -350,14 +348,10 @@ sign_domain() {
   _openssl x509 -text < "${crt_path}"
 
   # Create fullchain.pem
-  if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]] || [[ -e "${SCRIPTDIR}/certs/${ROOTCERT}" ]]; then
+  if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]]; then
     echo " + Creating fullchain.pem..."
     cat "${crt_path}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
-    if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]]; then
-      cat "${BASEDIR}/certs/${ROOTCERT}" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
-    else
-      cat "${SCRIPTDIR}/certs/${ROOTCERT}" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
-    fi
+    cat "${BASEDIR}/certs/${ROOTCERT}" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
     ln -sf "fullchain-${timestamp}.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
   fi
 
