@@ -371,7 +371,8 @@ sign_domain() {
 }
 
 
-# --cron / -c
+# Usage: --cron (-c)
+# Description: Sign/renew non-existant/changed(TODO)/expiring certificates.
 command_cron() {
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
   <"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
@@ -397,7 +398,8 @@ command_cron() {
   done
 }
 
-# --sign / -s domain.tld
+# Usage: --sign (-s) domain.tld
+# Description: Force-sign specific certificate from domains.txt, even if not yet expiring or changed.
 command_sign() {
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
   <"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -E "^${1}($|\s)" | head -1 | while read -r line; do
@@ -414,7 +416,8 @@ command_sign() {
   done || (echo "No entry for ${1} found in ${DOMAINS_TXT}."; exit 1)
 }
 
-# --revoke / -r path/to/cert.pem
+# Usage: --revoke (-r) path/to/cert.pem
+# Description: Revoke specified certificate
 command_revoke() {
   cert="${1}"
   echo "Revoking ${cert}"
@@ -431,17 +434,41 @@ command_revoke() {
   mv -f "${cert}" "${cert}-revoked"
 }
 
-# --help / -h
+# Usage: --help (-h)
+# Description: Show help text
 command_help() {
-  echo "Usage: ${0} [-h] [[-c|-s|-r] [parameter]] [-p keyfile] [-f configfile]"
+  echo "Usage: ${0} [-h] [command [argument]] [parameter [argument]] [parameter [argument]] ..."
   echo
-  echo "Mode:"
-  echo " --help (-h)                      show this help"
-  echo " --cron (-c)                      (default) cron-mode, renews all nearly expired or non-existing certificates found in domains.txt"
-  echo " --sign (-s) domain.tld           force-sign a specific certificate using domains.txt entry"
-  echo " --revoke (-r) path/to/cert.pem   revoke given certificate file (uses account key by default)"
-  echo " --privkey (-p) path/to/key.pem   use given private key for specified command (useful for revocation)"
-  echo " --config (-f) path/to/config.sh  use given config file"
+  echo "Default command: cron"
+  echo
+  (
+  echo "Commands:"
+  grep -e '# Usage:' -e '# Description:' -e '^command_.*()\s*{' letsencrypt.sh | while read -r usage; read -r description; read -r command; do
+    if [[ ! "${usage}" =~ Usage ]]; then
+      echo "Error generating help text."
+      exit 1
+    elif [[ ! "${description}" =~ Description ]]; then
+      echo "Error generating help text."
+      exit 1
+    elif [[ ! "${command}" =~ ^command_ ]]; then
+      echo "Error generating help text."
+      exit 1
+    fi
+    printf " %s\t%s\n" "${usage##"# Usage: "}" "${description##"# Description: "}"
+  done
+  echo "---"
+  echo "Parameters:"
+  grep -E -e '^\s*# PARAM_Usage:' -e '^\s*# PARAM_Description:' letsencrypt.sh | while read -r usage; read -r description; do
+    if [[ ! "${usage}" =~ Usage ]]; then
+      echo "Error generating help text."
+      exit 1
+    elif [[ ! "${description}" =~ Description ]]; then
+      echo "Error generating help text."
+      exit 1
+    fi
+    printf " %s\t%s\n" "${usage##"# PARAM_Usage: "}" "${description##"# PARAM_Description: "}"
+  done
+  ) | column -t -s $'\t' | sed 's/^---$//g'
 }
 
 args=""
@@ -508,10 +535,14 @@ while getopts ":hcr:s:f:p:" option; do
       sign_me="${OPTARG}"
       ;;
     f)
+      # PARAM_Usage: --config (-f) path/to/config.sh
+      # PARAM_Description: Use specified config file
       check_parameters "${OPTARG:-}"
       CONFIG="${OPTARG}"
       ;;
     p)
+      # PARAM_Usage: --privkey (-p) path/to/key.pem
+      # PARAM_Description: Use specified private key instead of account key (useful for revocation)
       check_parameters "${OPTARG:-}"
       USEPRIVATEKEY="${OPTARG}"
       ;;
