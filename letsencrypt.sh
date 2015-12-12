@@ -586,9 +586,6 @@ case "${COMMAND}" in
   cron)
     command_sign_domains
     ;;
-  sign)
-    command_sign ${sign_me}
-    ;;
   revoke)
     command_revoke ${revoke_me}
     ;;
