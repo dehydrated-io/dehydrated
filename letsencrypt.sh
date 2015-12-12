@@ -418,7 +418,7 @@ command_sign_domains() {
     fi
 
     # shellcheck disable=SC2086
-    echo sign_domain $line
+    sign_domain $line
   done
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
     # remove temporary domain.txt file
