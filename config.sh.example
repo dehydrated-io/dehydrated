@@ -22,11 +22,14 @@
 # Output directory for challenge-tokens to be served by webserver or deployed in HOOK (default: $SCRIPTDIR/.acme-challenges)
 #WELLKNOWN="${SCRIPTDIR}/.acme-challenges"
 
-# Default keysize for private keys (default: 4096)
-#KEYSIZE="4096"
-
 # Base directory for account key, generated certificates and list of domains (default: $SCRIPTDIR -- uses config directory if undefined)
 #BASEDIR=$SCRIPTDIR
+
+# Location of private account key
+#PRIVATE_KEY=${BASEDIR}/private_key.pem
+
+# Default keysize for private keys (default: 4096)
+#KEYSIZE="4096"
 
 # Path to openssl config file (default: <unset> - tries to figure out system default)
 #OPENSSL_CNF=
