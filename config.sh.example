@@ -22,6 +22,9 @@
 # Output directory for challenge-tokens to be served by webserver or deployed in HOOK (default: $SCRIPTDIR/.acme-challenges)
 #WELLKNOWN="${SCRIPTDIR}/.acme-challenges"
 
+# Location of private account key
+#PRIVATE_KEY=${BASEDIR}/private_key.pem
+
 # Default keysize for private keys (default: 4096)
 #KEYSIZE="4096"
 

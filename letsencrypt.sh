@@ -8,15 +8,18 @@ umask 077 # paranoid umask, we're creating private keys
 # Get the directory in which this script is stored
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# directory for config, private key and certificates
+BASEDIR="${SCRIPTDIR}"
+
 # Default config values
 CA="https://acme-v01.api.letsencrypt.org/directory"
 LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
 HOOK=
 RENEW_DAYS="14"
+PRIVATE_KEY=${BASEDIR}/private_key.pem
 KEYSIZE="4096"
 WELLKNOWN="${SCRIPTDIR}/.acme-challenges"
 PRIVATE_KEY_RENEW="no"
-BASEDIR="${SCRIPTDIR}"
 OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
 ROOTCERT="lets-encrypt-x1-cross-signed.pem"
 CONTACT_EMAIL=
@@ -80,25 +83,30 @@ init_system() {
   CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revoke-cert)" ||
   (echo "Error retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."; exit 1)
 
-  # Check if private account key exists, if it doesn't exist yet generate a new one (rsa key)
+
+  # check private key ...
   register="0"
-  if [[ -z "${USEPRIVATEKEY:-}" ]]; then
-    USEPRIVATEKEY="${BASEDIR}/private_key.pem"
-    if [[ ! -e "${USEPRIVATEKEY}" ]]; then
+  if [[ -n "${PARAM_PRIVATE_KEY:-}" ]]; then
+    # a private key was specified from the command line so use it for this run
+    echo "Using private key "${PARAM_PRIVATE_KEY}" instead of account key"
+    PRIVATE_KEY="${PARAM_PRIVATE_KEY}"
+    if ! openssl rsa -in "${PRIVATE_KEY}" -check 2>/dev/null > /dev/null; then
+      echo " + ERROR: private key is not valid, can not continue"
+      exit 1
+    fi
+  else
+    # Check if private account key exists, if it doesn't exist yet generate a new one (rsa key)
+    PRIVATE_KEY="${BASEDIR}/private_key.pem"
+    if [[ ! -e "${PRIVATE_KEY}" ]]; then
       echo "+ Generating account key..."
-      _openssl genrsa -out "${USEPRIVATEKEY}" "${KEYSIZE}"
+      _openssl genrsa -out "${PRIVATE_KEY}" "${KEYSIZE}"
       register="1"
     fi
-  elif [[ ! -e "${USEPRIVATEKEY}" ]]; then
-    echo "ERROR: Unable to find specified private key."
-    exit 1
-  else
-    echo "Using private key ${USEPRIVATEKEY} instead of account key"
   fi
-
+  
   # Get public components from private key and calculate thumbprint
-  pubExponent64="$(printf "%06x" "$(openssl rsa -in "${USEPRIVATEKEY}" -noout -text | grep publicExponent | head -1 | cut -d' ' -f2)" | hex2bin | urlbase64)"
-  pubMod64="$(printf '%s' "$(openssl rsa -in "${USEPRIVATEKEY}" -noout -modulus | cut -d'=' -f2)" | hex2bin | urlbase64)"
+  pubExponent64="$(printf "%06x" "$(openssl rsa -in "${PRIVATE_KEY}" -noout -text | grep publicExponent | head -1 | cut -d' ' -f2)" | hex2bin | urlbase64)"
+  pubMod64="$(printf '%s' "$(openssl rsa -in "${PRIVATE_KEY}" -noout -modulus | cut -d'=' -f2)" | hex2bin | urlbase64)"
 
   thumbprint="$(printf '%s' "$(printf '%s' '{"e":"'"${pubExponent64}"'","kty":"RSA","n":"'"${pubMod64}"'"}' | shasum -a 256 | awk '{print $1}')" | hex2bin | urlbase64)"
 
@@ -232,7 +240,7 @@ signed_request() {
   protected64="$(printf '%s' "${protected}" | urlbase64)"
 
   # Sign header with nonce and our payload with our private key and encode signature as urlbase64
-  signed64="$(printf '%s' "${protected64}.${payload64}" | openssl dgst -sha256 -sign "${USEPRIVATEKEY}" | urlbase64)"
+  signed64="$(printf '%s' "${protected64}.${payload64}" | openssl dgst -sha256 -sign "${PRIVATE_KEY}" | urlbase64)"
 
   # Send header + extended header + payload + signature to the acme-server
   data='{"header": '"${header}"', "protected": "'"${protected64}"'", "payload": "'"${payload64}"'", "signature": "'"${signed64}"'"}'
@@ -480,7 +488,7 @@ for arg; do
     --cron)    args="${args}-c ";;
     --sign)    args="${args}-s ";;
     --revoke)  args="${args}-r ";;
-    --privkey)  args="${args}-p ";;
+    --privkey) args="${args}-p ";;
     --config)  args="${args}-f ";;
     --*)
       echo "Unknown parameter detected: ${arg}"
@@ -544,7 +552,7 @@ while getopts ":hcr:s:f:p:" option; do
       # PARAM_Usage: --privkey (-p) path/to/key.pem
       # PARAM_Description: Use specified private key instead of account key (useful for revocation)
       check_parameters "${OPTARG:-}"
-      USEPRIVATEKEY="${OPTARG}"
+      PARAM_PRIVATE_KEY="${OPTARG}"
       ;;
     *)
       echo "Unknown parameter detected: -${OPTARG}"
