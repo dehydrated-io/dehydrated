@@ -202,6 +202,11 @@ _request() {
       ${HOOK} "clean_challenge" '' "${challenge_token}" "${keyauth}"
     fi
 
+    if [[ -n "${PARAM_DOMAIN:-}" ]]; then
+      # remove temporary domains.txt file
+      rm "${DOMAINS_TXT}"
+    fi
+
     exit 1
   fi
 
@@ -383,7 +388,7 @@ sign_domain() {
 # Description: Sign/renew non-existant/changed(TODO)/expiring certificates.
 command_sign_domains() {
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
-    # we are using a temporary domain.txt file so we don't need to duplicate any code
+    # we are using a temporary domains.txt file so we don't need to duplicate any code
     DOMAINS_TXT="$(mktemp)"
     echo "${PARAM_DOMAIN}" > "${DOMAINS_TXT}"
   fi
@@ -421,7 +426,7 @@ command_sign_domains() {
     sign_domain $line
   done
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
-    # remove temporary domain.txt file
+    # remove temporary domains.txt file
     rm "${DOMAINS_TXT}"
   fi
 }
