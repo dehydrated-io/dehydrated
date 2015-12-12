@@ -3,6 +3,7 @@
 set -e
 set -u
 set -o pipefail
+umask 077 # paranoid umask, we're creating private keys
 
 # Get the directory in which this script is stored
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -20,34 +21,115 @@ OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
 ROOTCERT="lets-encrypt-x1-cross-signed.pem"
 CONTACT_EMAIL=
 
-# Check for config in various locations
-CONFIG=""
-for check_config in "${SCRIPTDIR}" "${HOME}/.letsencrypt.sh" "/usr/local/etc/letsencrypt.sh" "/etc/letsencrypt.sh" "${PWD}"; do
-  if [[ -e "${check_config}/config.sh" ]]; then
-    BASEDIR="${check_config}"
-    CONFIG="${check_config}/config.sh"
-    break
+init_system() {
+  # Check for config in various locations
+  if [[ -z "${CONFIG:-}" ]]; then
+    for check_config in "${SCRIPTDIR}" "${HOME}/.letsencrypt.sh" "/usr/local/etc/letsencrypt.sh" "/etc/letsencrypt.sh" "${PWD}"; do
+      if [[ -e "${check_config}/config.sh" ]]; then
+        BASEDIR="${check_config}"
+        CONFIG="${check_config}/config.sh"
+        break
+      fi
+    done
   fi
-done
 
-if [[ -z "${CONFIG}" ]]; then
-  echo "WARNING: No config file found, using default config!"
-  sleep 2
-else
-  echo "Using config file ${CONFIG}"
-  # shellcheck disable=SC1090
-  . "${CONFIG}"
-fi
+  if [[ -z "${CONFIG:-}" ]]; then
+    echo "WARNING: No config file found, using default config!"
+    sleep 2
+  elif [[ -e "${CONFIG}" ]]; then
+    echo "Using config file ${CONFIG}"
+    BASEDIR="$(dirname "${CONFIG}")"
+    # shellcheck disable=SC1090
+    . "${CONFIG}"
+  else
+    echo "ERROR: Specified config file doesn't exist."
+    exit 1
+  fi
 
-# Remove slash from end of BASEDIR. Mostly for cleaner outputs, doesn't change functionality.
-BASEDIR="${BASEDIR%%/}"
+  # Remove slash from end of BASEDIR. Mostly for cleaner outputs, doesn't change functionality.
+  BASEDIR="${BASEDIR%%/}"
 
-umask 077 # paranoid umask, we're creating private keys
+  # Lockfile handling (prevents concurrent access)
+  LOCKFILE="${BASEDIR}/lock"
 
-# Export some environment variables to be used in hook script
-export WELLKNOWN
-export BASEDIR
-export CONFIG
+  set -o noclobber
+  if ! { date > "${LOCKFILE}"; } 2>/dev/null; then
+    echo "  + ERROR: Lock file '${LOCKFILE}' present, aborting." >&2
+    LOCKFILE= # so remove_lock doesn't remove it
+    exit 1
+  fi
+  set +o noclobber
+
+  remove_lock() {
+    if [[ -n "${LOCKFILE}" ]]; then
+        rm -f "${LOCKFILE}"
+    fi
+  }
+  trap 'remove_lock' EXIT
+
+  # Export some environment variables to be used in hook script
+  export WELLKNOWN
+  export BASEDIR
+  export CONFIG
+
+  # Get CA URLs
+  CA_DIRECTORY="$(_request get "${CA}")"
+  CA_NEW_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-cert)" &&
+  CA_NEW_AUTHZ="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-authz)" &&
+  CA_NEW_REG="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-reg)" &&
+  CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revoke-cert)" ||
+  (echo "Error retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."; exit 1)
+
+  # Check if private account key exists, if it doesn't exist yet generate a new one (rsa key)
+  register="0"
+  if [[ -z "${USEPRIVATEKEY:-}" ]]; then
+    USEPRIVATEKEY="${BASEDIR}/private_key.pem"
+    if [[ ! -e "${USEPRIVATEKEY}" ]]; then
+      echo "+ Generating account key..."
+      _openssl genrsa -out "${USEPRIVATEKEY}" "${KEYSIZE}"
+      register="1"
+    fi
+  elif [[ ! -e "${USEPRIVATEKEY}" ]]; then
+    echo "ERROR: Unable to find specified private key."
+    exit 1
+  else
+    echo "Using private key ${USEPRIVATEKEY} instead of account key"
+  fi
+
+  # Get public components from private key and calculate thumbprint
+  pubExponent64="$(printf "%06x" "$(openssl rsa -in "${USEPRIVATEKEY}" -noout -text | grep publicExponent | head -1 | cut -d' ' -f2)" | hex2bin | urlbase64)"
+  pubMod64="$(printf '%s' "$(openssl rsa -in "${USEPRIVATEKEY}" -noout -modulus | cut -d'=' -f2)" | hex2bin | urlbase64)"
+
+  thumbprint="$(printf '%s' "$(printf '%s' '{"e":"'"${pubExponent64}"'","kty":"RSA","n":"'"${pubMod64}"'"}' | shasum -a 256 | awk '{print $1}')" | hex2bin | urlbase64)"
+
+  # If we generated a new private key in the step above we have to register it with the acme-server
+  if [[ "${register}" = "1" ]]; then
+    echo "+ Registering account key with letsencrypt..."
+    if [ -z "${CA_NEW_REG}" ]; then
+      echo " + ERROR: Certificate authority doesn't allow registrations."
+      exit 1
+    fi
+    # if an email for the contact has been provided then adding it to the registration request
+    if [[ -n "${CONTACT_EMAIL}" ]]; then
+      signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"$LICENSE"'"}' > /dev/null
+    else
+      signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > /dev/null
+    fi
+  fi
+
+  if [[ -e "${BASEDIR}/domains.txt" ]]; then
+    DOMAINS_TXT="${BASEDIR}/domains.txt"
+  elif [[ -e "${SCRIPTDIR}/domains.txt" ]]; then
+    DOMAINS_TXT="${SCRIPTDIR}/domains.txt"
+  else
+    echo "You have to create a domains.txt file listing the domains you want certificates for. Have a look at domains.txt.example."
+    exit 1
+  fi
+
+  if [[ ! -e "${WELLKNOWN}" ]]; then
+    mkdir -p "${WELLKNOWN}"
+  fi
+}
 
 anti_newline() {
   tr -d '\n\r'
@@ -118,10 +200,12 @@ _request() {
   cat  "${tempcont}"
   rm -f "${tempcont}"
 }
-_output_on_error() {
-  # Only way to capture the output and exit code is to disable set -e.
+
+# OpenSSL writes to stderr/stdout even when there are no errors. So just
+# display the output if the exit code was != 0 to simplify debugging.
+_openssl() {
   set +e
-  out="$("$@" 2>&1)"
+  out="$(openssl $@ 2>&1)"
   res=$?
   set -e
   if [[ $res -ne 0 ]]; then
@@ -131,11 +215,6 @@ _output_on_error() {
     echo "$out" >&2
     exit $res
   fi
-}
-# OpenSSL writes to stderr/stdout even when there are no errors. So just
-# display the output if the exit code was != 0 to simplify debugging.
-_openssl() {
-    _output_on_error openssl "$@"
 }
 
 signed_request() {
@@ -153,7 +232,7 @@ signed_request() {
   protected64="$(printf '%s' "${protected}" | urlbase64)"
 
   # Sign header with nonce and our payload with our private key and encode signature as urlbase64
-  signed64="$(printf '%s' "${protected64}.${payload64}" | openssl dgst -sha256 -sign "${BASEDIR}/private_key.pem" | urlbase64)"
+  signed64="$(printf '%s' "${protected64}.${payload64}" | openssl dgst -sha256 -sign "${USEPRIVATEKEY}" | urlbase64)"
 
   # Send header + extended header + payload + signature to the acme-server
   data='{"header": '"${header}"', "protected": "'"${protected64}"'", "payload": "'"${payload64}"'", "signature": "'"${signed64}"'"}'
@@ -161,24 +240,10 @@ signed_request() {
   _request post "${1}" "${data}"
 }
 
-revoke_cert() {
-  if [ -z "${CA_REVOKE_CERT}" ]; then
-    echo " + ERROR: Certificate authority doesn't allow certificate revocation."
-    exit 1
-  fi
-  cert="${1}"
-  cert64="$(openssl x509 -in "${cert}" -inform PEM -outform DER | urlbase64)"
-  response="$(signed_request "${CA_REVOKE_CERT}" '{"resource": "revoke-cert", "certificate": "'"${cert64}"'"}')"
-  # if there is a problem with our revoke request _request (via signed_request) will report this and "exit 1" out
-  # so if we are here, it is safe to assume the request was successful
-  echo " + SUCCESS"
-  echo " + renaming certificate to ${cert}-revoked"
-  mv -f "${cert}" "${cert}-revoked"
-}
-
 sign_domain() {
   domain="${1}"
   altnames="${*}"
+
   echo " + Signing domains..."
   if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
     echo " + ERROR: Certificate authority doesn't allow certificate signing"
@@ -251,12 +316,12 @@ sign_domain() {
     done
 
     rm -f "${WELLKNOWN}/${challenge_token}"
-      
+
     # Wait for hook script to clean the challenge if used
     if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token}" ]]; then
       ${HOOK} "clean_challenge" "${altname}" "${challenge_token}" "${keyauth}"
     fi
-	  
+
     if [[ "${status}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
@@ -306,105 +371,173 @@ sign_domain() {
 }
 
 
-LOCKFILE="${BASEDIR}/lock"
-remove_lock() {
-    if [[ -n "${LOCKFILE}" ]]; then
-        rm -f "${LOCKFILE}"
+# --cron / -c
+command_cron() {
+  # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
+  <"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
+    domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
+    cert="${BASEDIR}/certs/${domain}/cert.pem"
+
+    echo "Processing ${domain}"
+    if [[ -e "${cert}" ]]; then
+      echo " + Found existing cert..."
+
+      valid="$(openssl x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
+
+      echo -n " + Valid till ${valid} "
+      if openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; then
+        echo "(Longer than ${RENEW_DAYS} days). Skipping!"
+        continue
+      fi
+      echo "(Less than ${RENEW_DAYS} days). Renewing!"
     fi
+
+    # shellcheck disable=SC2086
+    sign_domain $line
+  done
 }
-trap 'remove_lock' EXIT
 
-# Use lock file to prevent concurrent access.
-set -o noclobber
-if ! { date > "${LOCKFILE}"; } 2>/dev/null; then
-    echo "  + ERROR: Lock file '${LOCKFILE}' present, aborting." >&2
-    LOCKFILE= # so remove_lock doesn't remove it
-    exit 1
-fi
-set +o noclobber
+# --sign / -s domain.tld
+command_sign() {
+  # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
+  <"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -E "^${1}($|\s)" | head -1 | while read -r line; do
+    domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
+    cert="${BASEDIR}/certs/${domain}/cert.pem"
 
-
-# Get CA URLs
-CA_DIRECTORY="$(_request get "${CA}")"
-CA_NEW_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-cert)"
-CA_NEW_AUTHZ="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-authz)"
-CA_NEW_REG="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-reg)"
-CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revoke-cert)"
-
-# Check if private key exists, if it doesn't exist yet generate a new one (rsa key)
-register="0"
-if [[ ! -e "${BASEDIR}/private_key.pem" ]]; then
-  echo "+ Generating account key..."
-  _openssl genrsa -out "${BASEDIR}/private_key.pem" "${KEYSIZE}"
-  register="1"
-fi
-
-# Get public components from private key and calculate thumbprint
-pubExponent64="$(printf "%06x" "$(openssl rsa -in "${BASEDIR}/private_key.pem" -noout -text | grep publicExponent | head -1 | cut -d' ' -f2)" | hex2bin | urlbase64)"
-pubMod64="$(printf '%s' "$(openssl rsa -in "${BASEDIR}/private_key.pem" -noout -modulus | cut -d'=' -f2)" | hex2bin | urlbase64)"
-
-thumbprint="$(printf '%s' "$(printf '%s' '{"e":"'"${pubExponent64}"'","kty":"RSA","n":"'"${pubMod64}"'"}' | shasum -a 256 | awk '{print $1}')" | hex2bin | urlbase64)"
-
-# If we generated a new private key in the step above we have to register it with the acme-server
-if [[ "${register}" = "1" ]]; then
-  echo "+ Registering account key with letsencrypt..."
-  if [ -z "${CA_NEW_REG}" ]; then
-    echo " + ERROR: Certificate authority doesn't allow registrations."
-    exit 1
-  fi
-  # if an email for the contact has been provided then adding it to the registration request
-  if [[ -n "${CONTACT_EMAIL}" ]]; then
-    signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"$LICENSE"'"}' > /dev/null
-  else
-    signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > /dev/null
-  fi
-fi
-
-if [[ -e "${BASEDIR}/domains.txt" ]]; then
-  DOMAINS_TXT="${BASEDIR}/domains.txt"
-elif [[ -e "${SCRIPTDIR}/domains.txt" ]]; then
-  DOMAINS_TXT="${SCRIPTDIR}/domains.txt"
-else
-  echo "You have to create a domains.txt file listing the domains you want certificates for. Have a look at domains.txt.example."
-  exit 1
-fi
-
-if [[ ! -e "${WELLKNOWN}" ]]; then
-  mkdir -p "${WELLKNOWN}"
-fi
-
-# revoke certificate by user request
-if [[ "${1:-}" = "revoke" ]]; then
-  if [[ -z "{2:-}" ]] || [[ ! -f "${2}" ]]; then
-    echo "Usage: ${0} revoke path/to/cert.pem"
-    exit 1
-  fi
-
-  echo "Revoking ${2}"
-  revoke_cert "${2}"
-
-  exit 0
-fi
-
-# Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
-<"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
-  domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
-  cert="${BASEDIR}/certs/${domain}/cert.pem"
-
-  echo "Processing ${domain}"
-  if [[ -e "${cert}" ]]; then
-    echo " + Found existing cert..."
-
-    valid="$(openssl x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
-
-    echo -n " + Valid till ${valid} "
-    if openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; then
-      echo "(Longer than ${RENEW_DAYS} days). Skipping!"
-      continue
+    echo "Processing ${domain}"
+    if [[ -e "${cert}" ]]; then
+      echo " + Found existing cert... ignoring."
     fi
-    echo "(Less than ${RENEW_DAYS} days). Renewing!"
-  fi
 
-  # shellcheck disable=SC2086
-  sign_domain $line
+    # shellcheck disable=SC2086
+    sign_domain $line
+  done || (echo "No entry for ${1} found in ${DOMAINS_TXT}."; exit 1)
+}
+
+# --revoke / -r path/to/cert.pem
+command_revoke() {
+  cert="${1}"
+  echo "Revoking ${cert}"
+  if [ -z "${CA_REVOKE_CERT}" ]; then
+    echo " + ERROR: Certificate authority doesn't allow certificate revocation."
+    exit 1
+  fi
+  cert64="$(openssl x509 -in "${cert}" -inform PEM -outform DER | urlbase64)"
+  response="$(signed_request "${CA_REVOKE_CERT}" '{"resource": "revoke-cert", "certificate": "'"${cert64}"'"}')"
+  # if there is a problem with our revoke request _request (via signed_request) will report this and "exit 1" out
+  # so if we are here, it is safe to assume the request was successful
+  echo " + SUCCESS"
+  echo " + renaming certificate to ${cert}-revoked"
+  mv -f "${cert}" "${cert}-revoked"
+}
+
+# --help / -h
+command_help() {
+  echo "Usage: ${0} [-h] [[-c|-s|-r] [parameter]] [-p keyfile] [-f configfile]"
+  echo
+  echo "Mode:"
+  echo " --help (-h)                      show this help"
+  echo " --cron (-c)                      (default) cron-mode, renews all nearly expired or non-existing certificates found in domains.txt"
+  echo " --sign (-s) domain.tld           force-sign a specific certificate using domains.txt entry"
+  echo " --revoke (-r) path/to/cert.pem   revoke given certificate file (uses account key by default)"
+  echo " --privkey (-p) path/to/key.pem   use given private key for specified command (useful for revocation)"
+  echo " --config (-f) path/to/config.sh  use given config file"
+}
+
+args=""
+# change long args to short args
+# inspired by http://kirk.webfinish.com/?p=45
+for arg; do
+  case "${arg}" in
+    --help)    args="${args}-h ";;
+    --cron)    args="${args}-c ";;
+    --sign)    args="${args}-s ";;
+    --revoke)  args="${args}-r ";;
+    --privkey)  args="${args}-p ";;
+    --config)  args="${args}-f ";;
+    --*)
+      echo "Unknown parameter detected: ${arg}"
+      echo
+      command_help
+      exit 1
+      ;;
+    # pass through anything else
+    *) args="${args}\"${arg}\" ";;
+    esac
 done
+
+# Reset the positional parameters to the short options
+eval set -- $args
+
+COMMAND=""
+set_command() {
+  if [[ ! -z "${COMMAND}" ]]; then
+    echo "Only one command can be executed at a time."
+    echo "See help (-h) for more information."
+    exit 1
+  fi
+  COMMAND="${1}"
+}
+
+check_parameters() {
+  if [[ -z "${@}" ]]; then
+    echo "The specified command requires additional parameters. See help:"
+    echo
+    command_help
+    exit 1
+  fi
+}
+
+while getopts ":hcr:s:f:p:" option; do
+  case "${option}" in
+    h)
+      command_help
+      exit 0
+      ;;
+    c)
+      set_command cron
+      ;;
+    r)
+      set_command revoke
+      check_parameters "${OPTARG:-}"
+      revoke_me="${OPTARG}"
+      ;;
+    s)
+      set_command sign
+      check_parameters "${OPTARG:-}"
+      sign_me="${OPTARG}"
+      ;;
+    f)
+      check_parameters "${OPTARG:-}"
+      CONFIG="${OPTARG}"
+      ;;
+    p)
+      check_parameters "${OPTARG:-}"
+      USEPRIVATEKEY="${OPTARG}"
+      ;;
+    *)
+      echo "Unknown parameter detected: -${OPTARG}"
+      echo
+      command_help
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "${COMMAND}" ]]; then
+  COMMAND="cron"
+fi
+
+init_system
+
+case "${COMMAND}" in
+  cron)
+    command_cron
+    ;;
+  sign)
+    command_sign ${sign_me}
+    ;;
+  revoke)
+    command_revoke ${revoke_me}
+    ;;
+esac
