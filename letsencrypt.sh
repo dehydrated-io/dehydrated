@@ -443,7 +443,7 @@ command_help() {
   echo
   (
   echo "Commands:"
-  grep -e '# Usage:' -e '# Description:' -e '^command_.*()\s*{' letsencrypt.sh | while read -r usage; read -r description; read -r command; do
+  grep -e '# Usage:' -e '# Description:' -e '^command_.*()\s*{' "${0}" | while read -r usage; read -r description; read -r command; do
     if [[ ! "${usage}" =~ Usage ]]; then
       echo "Error generating help text."
       exit 1
@@ -458,7 +458,7 @@ command_help() {
   done
   echo "---"
   echo "Parameters:"
-  grep -E -e '^\s*# PARAM_Usage:' -e '^\s*# PARAM_Description:' letsencrypt.sh | while read -r usage; read -r description; do
+  grep -E -e '^\s*# PARAM_Usage:' -e '^\s*# PARAM_Description:' "${0}" | while read -r usage; read -r description; do
     if [[ ! "${usage}" =~ Usage ]]; then
       echo "Error generating help text."
       exit 1
