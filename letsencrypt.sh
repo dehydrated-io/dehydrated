@@ -16,13 +16,25 @@ CA="https://acme-v01.api.letsencrypt.org/directory"
 LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
 HOOK=
 RENEW_DAYS="14"
-PRIVATE_KEY=${BASEDIR}/private_key.pem
+PRIVATE_KEY=
 KEYSIZE="4096"
-WELLKNOWN="${SCRIPTDIR}/.acme-challenges"
+WELLKNOWN=
 PRIVATE_KEY_RENEW="no"
 OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
 ROOTCERT="lets-encrypt-x1-cross-signed.pem"
 CONTACT_EMAIL=
+
+set_defaults() {
+  # Default config variables depending on BASEDIR
+  if [[ -z "${PRIVATE_KEY}" ]]; then
+    PRIVATE_KEY="${BASEDIR}/private_key.pem"
+  fi
+  if [[ -z "${WELLKNOWN}" ]]; then
+    WELLKNOWN="${BASEDIR}/.acme-challenges"
+  fi
+
+  LOCKFILE="${BASEDIR}/lock"
+}
 
 init_system() {
   # Check for config in various locations
@@ -52,9 +64,14 @@ init_system() {
   # Remove slash from end of BASEDIR. Mostly for cleaner outputs, doesn't change functionality.
   BASEDIR="${BASEDIR%%/}"
 
-  # Lockfile handling (prevents concurrent access)
-  LOCKFILE="${BASEDIR}/lock"
+  # Check BASEDIR and set default variables
+  if [[ ! -d "${BASEDIR}" ]]; then
+    echo "ERROR: BASEDIR does not exist: ${BASEDIR}"
+    exit 1
+  fi
+  set_defaults
 
+  # Lockfile handling (prevents concurrent access)
   set -o noclobber
   if ! { date > "${LOCKFILE}"; } 2>/dev/null; then
     echo "  + ERROR: Lock file '${LOCKFILE}' present, aborting." >&2
@@ -127,8 +144,6 @@ init_system() {
 
   if [[ -e "${BASEDIR}/domains.txt" ]]; then
     DOMAINS_TXT="${BASEDIR}/domains.txt"
-  elif [[ -e "${SCRIPTDIR}/domains.txt" ]]; then
-    DOMAINS_TXT="${SCRIPTDIR}/domains.txt"
   else
     echo "You have to create a domains.txt file listing the domains you want certificates for. Have a look at domains.txt.example."
     exit 1
@@ -350,14 +365,10 @@ sign_domain() {
   _openssl x509 -text < "${crt_path}"
 
   # Create fullchain.pem
-  if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]] || [[ -e "${SCRIPTDIR}/certs/${ROOTCERT}" ]]; then
+  if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]]; then
     echo " + Creating fullchain.pem..."
     cat "${crt_path}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
-    if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]]; then
-      cat "${BASEDIR}/certs/${ROOTCERT}" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
-    else
-      cat "${SCRIPTDIR}/certs/${ROOTCERT}" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
-    fi
+    cat "${BASEDIR}/certs/${ROOTCERT}" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
     ln -sf "fullchain-${timestamp}.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
   fi
 
