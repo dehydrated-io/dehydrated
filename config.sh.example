@@ -34,9 +34,6 @@
 # Path to openssl config file (default: <unset> - tries to figure out system default)
 #OPENSSL_CNF=
 
-# Name of root certificate (default: lets-encrypt-x1-cross-signed.pem)
-#ROOTCERT="lets-encrypt-x1-cross-signed.pem"
-
 # Program or function called in certain situations
 #
 # After generating the challenge-response, or after failed challenge (in this case altname is empty)

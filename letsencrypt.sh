@@ -21,7 +21,6 @@ KEYSIZE="4096"
 WELLKNOWN=
 PRIVATE_KEY_RENEW="no"
 OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
-ROOTCERT="lets-encrypt-x1-cross-signed.pem"
 CONTACT_EMAIL=
 
 set_defaults() {
@@ -372,12 +371,10 @@ sign_domain() {
   _openssl x509 -text < "${crt_path}"
 
   # Create fullchain.pem
-  if [[ -e "${BASEDIR}/certs/${ROOTCERT}" ]]; then
-    echo " + Creating fullchain.pem..."
-    cat "${crt_path}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
-    cat "${BASEDIR}/certs/${ROOTCERT}" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
-    ln -sf "fullchain-${timestamp}.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
-  fi
+  echo " + Creating fullchain.pem..."
+  cat "${crt_path}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
+  _request get "$(openssl x509 -in "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
+  ln -sf "fullchain-${timestamp}.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
 
   # Update remaining symlinks
   if [ ! "${privkey}" = "privkey.pem" ]; then
@@ -502,7 +499,7 @@ command_help() {
 command_env() {
   echo "# letsencrypt.sh configuration"
   typeset -p CONFIG
-  typeset -p CA LICENSE BASEDIR WELLKNOWN PRIVATE_KEY KEYSIZE OPENSSL_CNF ROOTCERT HOOK RENEW_DAYS PRIVATE_KEY_RENEW CONTACT_EMAIL
+  typeset -p CA LICENSE BASEDIR WELLKNOWN PRIVATE_KEY KEYSIZE OPENSSL_CNF HOOK RENEW_DAYS PRIVATE_KEY_RENEW CONTACT_EMAIL
   exit 0
 }
 
