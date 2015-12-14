@@ -81,7 +81,7 @@ init_system() {
   set -o noclobber
   if ! { date > "${LOCKFILE}"; } 2>/dev/null; then
     echo "  + ERROR: Lock file '${LOCKFILE}' present, aborting." >&2
-    LOCKFILE= # so remove_lock doesn't remove it
+    LOCKFILE="" # so remove_lock doesn't remove it
     exit 1
   fi
   set +o noclobber
@@ -103,6 +103,7 @@ init_system() {
   CA_NEW_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-cert)" &&
   CA_NEW_AUTHZ="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-authz)" &&
   CA_NEW_REG="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-reg)" &&
+  # shellcheck disable=SC2015
   CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revoke-cert)" ||
   (echo "Error retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."; exit 1)
 
@@ -111,7 +112,7 @@ init_system() {
   register="0"
   if [[ -n "${PARAM_PRIVATE_KEY:-}" ]]; then
     # a private key was specified from the command line so use it for this run
-    echo "Using private key "${PARAM_PRIVATE_KEY}" instead of account key"
+    echo "Using private key ${PARAM_PRIVATE_KEY} instead of account key"
     PRIVATE_KEY="${PARAM_PRIVATE_KEY}"
     if ! openssl rsa -in "${PRIVATE_KEY}" -check 2>/dev/null > /dev/null; then
       echo " + ERROR: private key is not valid, can not continue"
@@ -234,7 +235,7 @@ _request() {
 # display the output if the exit code was != 0 to simplify debugging.
 _openssl() {
   set +e
-  out="$(openssl $@ 2>&1)"
+  out="$(openssl "${@}" 2>&1)"
   res=$?
   set -e
   if [[ $res -ne 0 ]]; then
@@ -528,7 +529,7 @@ for arg; do
 done
 
 # Reset the positional parameters to the short options
-eval set -- $args
+eval set -- "${args}"
 
 COMMAND=""
 set_command() {
@@ -606,9 +607,9 @@ case "${COMMAND}" in
     command_env
     ;;
   sign)
-    command_sign ${sign_me}
+    command_sign "${sign_me}"
     ;;
   revoke)
-    command_revoke ${revoke_me}
+    command_revoke "${revoke_me}"
     ;;
 esac
