@@ -217,6 +217,11 @@ _request() {
       ${HOOK} "clean_challenge" '' "${challenge_token}" "${keyauth}"
     fi
 
+    if [[ -n "${PARAM_DOMAIN:-}" ]]; then
+      # remove temporary domains.txt file
+      rm "${DOMAINS_TXT}"
+    fi
+
     exit 1
   fi
 
@@ -392,47 +397,49 @@ sign_domain() {
 
 # Usage: --cron (-c)
 # Description: Sign/renew non-existant/changed(TODO)/expiring certificates.
-command_cron() {
+command_sign_domains() {
+  if [[ -n "${PARAM_DOMAIN:-}" ]]; then
+    # we are using a temporary domains.txt file so we don't need to duplicate any code
+    DOMAINS_TXT="$(mktemp)"
+    echo "${PARAM_DOMAIN}" > "${DOMAINS_TXT}"
+  fi
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
   <"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
+    morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
     cert="${BASEDIR}/certs/${domain}/cert.pem"
 
-    echo "Processing ${domain}"
+    if [[ -z "${morenames}" ]];then
+      echo "Processing ${domain}"
+    else
+      echo "Processing ${domain} with SAN: ${morenames}"
+    fi
     if [[ -e "${cert}" ]]; then
       echo " + Found existing cert..."
 
       valid="$(openssl x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
 
       echo -n " + Valid till ${valid} "
-      if openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; then
-        echo "(Longer than ${RENEW_DAYS} days). Skipping!"
-        continue
+      if openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; then        
+        echo -n "(Longer than ${RENEW_DAYS} days). "
+        if [[ "${PARAM_FORCE:-}" = "yes" ]]; then
+          echo "Ignoring because --force was specified!"
+        else
+          echo "Skipping!"
+          continue
+        fi
+      else
+        echo "(Less than ${RENEW_DAYS} days). Renewing!"
       fi
-      echo "(Less than ${RENEW_DAYS} days). Renewing!"
     fi
 
     # shellcheck disable=SC2086
     sign_domain $line
   done
-}
-
-# Usage: --sign (-s) domain.tld
-# Description: Force-sign specific certificate from domains.txt, even if not yet expiring or changed.
-command_sign() {
-  # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
-  <"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -E "^${1}($|\s)" | head -1 | while read -r line; do
-    domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
-    cert="${BASEDIR}/certs/${domain}/cert.pem"
-
-    echo "Processing ${domain}"
-    if [[ -e "${cert}" ]]; then
-      echo " + Found existing cert... ignoring."
-    fi
-
-    # shellcheck disable=SC2086
-    sign_domain $line
-  done || (echo "No entry for ${1} found in ${DOMAINS_TXT}."; exit 1)
+  if [[ -n "${PARAM_DOMAIN:-}" ]]; then
+    # remove temporary domains.txt file
+    rm "${DOMAINS_TXT}"
+  fi
 }
 
 # Usage: --revoke (-r) path/to/cert.pem
@@ -497,9 +504,10 @@ for arg; do
   case "${arg}" in
     --help)    args="${args}-h ";;
     --cron)    args="${args}-c ";;
-    --sign)    args="${args}-s ";;
+    --domain)  args="${args}-d ";;
     --revoke)  args="${args}-r ";;
     --privkey) args="${args}-p ";;
+    --force )  args="${args}-x ";;
     --config)  args="${args}-f ";;
     --*)
       echo "Unknown parameter detected: ${arg}"
@@ -534,7 +542,7 @@ check_parameters() {
   fi
 }
 
-while getopts ":hcr:s:f:p:" option; do
+while getopts ":hcr:f:d:p:x" option; do
   case "${option}" in
     h)
       command_help
@@ -548,22 +556,32 @@ while getopts ":hcr:s:f:p:" option; do
       check_parameters "${OPTARG:-}"
       revoke_me="${OPTARG}"
       ;;
-    s)
-      set_command sign
-      check_parameters "${OPTARG:-}"
-      sign_me="${OPTARG}"
-      ;;
     f)
       # PARAM_Usage: --config (-f) path/to/config.sh
       # PARAM_Description: Use specified config file
       check_parameters "${OPTARG:-}"
       CONFIG="${OPTARG}"
       ;;
+    d)
+      # PARAM_Usage: --domain (-d) domain.tld
+      # PARAM_Description: Use specified domain name instead of domains.txt, use multiple times for certificate with SAN names
+      check_parameters "${OPTARG:-}"
+      if [[ -z "${PARAM_DOMAIN:-}" ]]; then
+        PARAM_DOMAIN="${OPTARG}"
+      else
+        PARAM_DOMAIN="${PARAM_DOMAIN} ${OPTARG}"
+       fi
+      ;;
     p)
       # PARAM_Usage: --privkey (-p) path/to/key.pem
       # PARAM_Description: Use specified private key instead of account key (useful for revocation)
       check_parameters "${OPTARG:-}"
       PARAM_PRIVATE_KEY="${OPTARG}"
+      ;;
+    x)
+      # PARAM_Usage: --force (-x)
+      # PARAM_Description: force renew of certificate even if it is longer valid than value in RENEW_DAYS
+      PARAM_FORCE="yes"
       ;;
     *)
       echo "Unknown parameter detected: -${OPTARG}"
@@ -582,10 +600,7 @@ init_system
 
 case "${COMMAND}" in
   cron)
-    command_cron
-    ;;
-  sign)
-    command_sign ${sign_me}
+    command_sign_domains
     ;;
   revoke)
     command_revoke ${revoke_me}
