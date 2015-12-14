@@ -6,27 +6,45 @@ cache:
     - ngrok
 
 before_script:
+  # install ngrok
   - if [[ ! -e "ngrok/ngrok" ]]; then mkdir -p ngrok; (cd ngrok; wget https://dl.ngrok.com/ngrok_2.0.19_linux_amd64.zip -O ngrok.zip; unzip ngrok.zip ngrok; chmod +x ngrok); fi
+
+  # run ngrok and grab url from logfile
   - ngrok/ngrok http 8080 --log stdout --log-format logfmt --log-level debug > tmp.log &
   - sleep 5
   - cat tmp.log
   - export TMP_URL="$(grep -Eo "Hostname:[a-z0-9]+.ngrok.io" tmp.log | head -1 | cut -d':' -f2)"
-  - (mkdir -p .acme-challenges/.well-known/acme-challenge; cd .acme-challenges; python -m SimpleHTTPServer 8080) &
   - if [[ -z "${TMP_URL}" ]]; then exit 1; fi
+
+  # start python http server in challenges directory
+  - (mkdir -p .acme-challenges/.well-known/acme-challenge; cd .acme-challenges; python -m SimpleHTTPServer 8080) &
+
+  # generate config
   - echo 'CA="https://acme-staging.api.letsencrypt.org/directory"' > config.sh
   - echo 'WELLKNOWN=".acme-challenges/.well-known/acme-challenge"' >> config.sh
-  - echo 'ROOTCERT="lets-encrypt-staging.pem"' >> config.sh
   - echo "${TMP_URL}" > domains.txt
 
 script:
+  # check if help command is worling
   - ./letsencrypt.sh --help
+
+  # move config out of the way and try signing certificate by using temporary config location
   - mv config.sh tmp_config.sh
   - ./letsencrypt.sh --sign "${TMP_URL}" -f tmp_config.sh
   - mv tmp_config.sh config.sh
+
+  # run in cron mode (should find a non-expiring certificate) + check running without given mode (should default to cron mode)
   - ./letsencrypt.sh --cron
   - ./letsencrypt.sh
+
+  # check if certificate is valid in various ways
   - openssl x509 -in "certs/${TMP_URL}/cert.pem" -noout -text
-  - export errout="$(openssl verify -verbose -CAfile "certs/${TMP_URL}/fullchain.pem" -purpose sslserver "certs/${TMP_URL}/fullchain.pem" | grep -v ': OK$')"
+  - openssl x509 -in "certs/${TMP_URL}/fullchain.pem" -noout -text > /dev/null
+  - "errout=\"$(openssl verify -verbose -CAfile \"certs/${TMP_URL}/fullchain.pem\" -purpose sslserver \"certs/${TMP_URL}/fullchain.pem\" | grep -v ': OK$' || true)\""
   - if [[ ! -z "${errout}" ]]; then printf -- "${errout}"; exit 1; fi
+
+  # delete account key
   - rm private_key.pem
+
+  # revoke certificate using certificate key
   - ./letsencrypt.sh --revoke "certs/${TMP_URL}/cert.pem" --privkey "certs/${TMP_URL}/privkey.pem"
