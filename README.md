@@ -19,9 +19,28 @@ Feel free to report any issues you find with this script or contribute by submit
 
 ## Usage:
 
-Add domains to domains.txt like in this example:
+```text
+Usage: ./letsencrypt.sh [-h] [command [argument]] [parameter [argument]] [parameter [argument]] ...
 
+Default command: cron
+
+Commands:
+ --cron (-c)                      Sign/renew non-existant/changed(TODO)/expiring certificates.
+ --sign (-s) domain.tld           Force-sign specific certificate from domains.txt, even if not yet expiring or changed.
+ --revoke (-r) path/to/cert.pem   Revoke specified certificate
+ --help (-h)                      Show help text
+ --env (-e)                       Output configuration variables for use in other scripts
+
+Parameters:
+ --config (-f) path/to/config.sh  Use specified config file
+ --privkey (-p) path/to/key.pem   Use specified private key instead of account key (useful for revocation)
 ```
+
+### domains.txt
+
+The file `domains.txt` should have the following format:
+
+```text
 example.com www.example.com
 example.net www.example.net wiki.example.net
 ```
@@ -29,18 +48,7 @@ example.net www.example.net wiki.example.net
 This states that there should be two certificates `example.com` and `example.net`,
 with the other domains in the corresponding line being their alternative names.
 
-You'll also need to set up a webserver to serve the challenge-response directory as configured with `$WELLKNOWN`,
-or you can use the hook in the script if you want to deploy it some other way (e.g. copy it to a server via scp).
-
-After doing those two things you can just `./letsencrypt.sh`, and it should generate certificates.
-
-It can be used inside a cronjob as it automatically detects if a certificate is about to expire.
-
-### Certificate revocation
-
-Usage: `./letsencrypt.sh revoke path/to/cert.pem`
-
-### nginx config
+### example nginx config
 
 If you want to use nginx you can set up a location block to serve your challenge responses:
 
@@ -49,6 +57,9 @@ location /.well-known/acme-challenge {
   root /var/www/letsencrypt;
 }
 ```
+
+For this to work i'd suggest either configuring `/var/www/letsencrypt` as WELLKNOWN directory,
+or to create a symlink to the default location next to the script: `ln -s /var/www/letsencrypt .acme-challenges`
 
 ## Import
 
