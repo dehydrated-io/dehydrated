@@ -119,7 +119,6 @@ init_system() {
     fi
   else
     # Check if private account key exists, if it doesn't exist yet generate a new one (rsa key)
-    PRIVATE_KEY="${BASEDIR}/private_key.pem"
     if [[ ! -e "${PRIVATE_KEY}" ]]; then
       echo "+ Generating account key..."
       _openssl genrsa -out "${PRIVATE_KEY}" "${KEYSIZE}"
