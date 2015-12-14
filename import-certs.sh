@@ -10,8 +10,12 @@ SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASEDIR="${SCRIPTDIR}"
 LETSENCRYPT="/etc/letsencrypt"
 
-# shellcheck disable=SC1090
-. "${SCRIPTDIR}/config.sh"
+eval "$("${SCRIPTDIR}/letsencrypt.sh" --env)"
+
+if [[ ! -e "${LETSENCRYPT}" ]]; then
+  echo "No existing letsencrypt files found."
+  exit 1
+fi
 
 if [[ -e "${BASEDIR}/domains.txt" ]]; then
   DOMAINS_TXT="${BASEDIR}/domains.txt"
