@@ -2,6 +2,4 @@ private_key.pem
 domains.txt
 config.sh
 certs/*
-!certs/lets-encrypt-x1-cross-signed.pem
-!certs/lets-encrypt-staging.pem
 .acme-challenges/*
