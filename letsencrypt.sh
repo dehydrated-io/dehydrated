@@ -52,7 +52,9 @@ init_system() {
     echo "WARNING: No config file found, using default config!"
     sleep 2
   elif [[ -e "${CONFIG}" ]]; then
-    echo "Using config file ${CONFIG}"
+    if [[ ! "${COMMAND}" = "env" ]]; then
+      echo "Using config file ${CONFIG}"
+    fi
     BASEDIR="$(dirname "${CONFIG}")"
     # shellcheck disable=SC1090
     . "${CONFIG}"
@@ -70,6 +72,10 @@ init_system() {
     exit 1
   fi
   set_defaults
+
+  if [[ "${COMMAND}" = "env" ]]; then
+    return
+  fi
 
   # Lockfile handling (prevents concurrent access)
   set -o noclobber
@@ -120,7 +126,7 @@ init_system() {
       register="1"
     fi
   fi
-  
+
   # Get public components from private key and calculate thumbprint
   pubExponent64="$(printf "%06x" "$(openssl rsa -in "${PRIVATE_KEY}" -noout -text | grep publicExponent | head -1 | cut -d' ' -f2)" | hex2bin | urlbase64)"
   pubMod64="$(printf '%s' "$(openssl rsa -in "${PRIVATE_KEY}" -noout -modulus | cut -d'=' -f2)" | hex2bin | urlbase64)"
@@ -462,7 +468,7 @@ command_help() {
   echo
   (
   echo "Commands:"
-  grep -e '# Usage:' -e '# Description:' -e '^command_.*()\s*{' "${0}" | while read -r usage; read -r description; read -r command; do
+  grep -e '^\s*# Usage:' -e '^\s*# Description:' -e '^command_.*()\s*{' "${0}" | while read -r usage; read -r description; read -r command; do
     if [[ ! "${usage}" =~ Usage ]]; then
       echo "Error generating help text."
       exit 1
@@ -490,6 +496,14 @@ command_help() {
   ) | column -t -s $'\t' | sed 's/^---$//g'
 }
 
+# Usage: --env (-e)
+# Description: Output configuration variables for use in other scripts
+command_env() {
+  echo "# letsencrypt.sh configuration"
+  typeset -p CA LICENSE BASEDIR WELLKNOWN PRIVATE_KEY KEYSIZE OPENSSL_CNF ROOTCERT HOOK RENEW_DAYS PRIVATE_KEY_RENEW CONTACT_EMAIL
+  exit 0
+}
+
 args=""
 # change long args to short args
 # inspired by http://kirk.webfinish.com/?p=45
@@ -501,6 +515,7 @@ for arg; do
     --revoke)  args="${args}-r ";;
     --privkey) args="${args}-p ";;
     --config)  args="${args}-f ";;
+    --env)     args="${args}-e ";;
     --*)
       echo "Unknown parameter detected: ${arg}"
       echo
@@ -534,7 +549,7 @@ check_parameters() {
   fi
 }
 
-while getopts ":hcr:s:f:p:" option; do
+while getopts ":hcer:s:f:p:" option; do
   case "${option}" in
     h)
       command_help
@@ -542,6 +557,9 @@ while getopts ":hcr:s:f:p:" option; do
       ;;
     c)
       set_command cron
+      ;;
+    e)
+      set_command env
       ;;
     r)
       set_command revoke
@@ -583,6 +601,9 @@ init_system
 case "${COMMAND}" in
   cron)
     command_cron
+    ;;
+  env)
+    command_env
     ;;
   sign)
     command_sign ${sign_me}
