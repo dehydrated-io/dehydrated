@@ -21,7 +21,7 @@ before_script:
 script:
   - ./letsencrypt.sh --help
   - mv config.sh tmp_config.sh
-  - ./letsencrypt.sh --sign "${TMP_URL}" -f tmp_config.sh
+  - ./letsencrypt.sh --domain "${TMP_URL}" -f tmp_config.sh
   - mv tmp_config.sh config.sh
   - ./letsencrypt.sh --cron
   - ./letsencrypt.sh
