@@ -132,7 +132,7 @@ init_system() {
   pubExponent64="$(printf "%06x" "$(openssl rsa -in "${PRIVATE_KEY}" -noout -text | grep publicExponent | head -1 | cut -d' ' -f2)" | hex2bin | urlbase64)"
   pubMod64="$(printf '%s' "$(openssl rsa -in "${PRIVATE_KEY}" -noout -modulus | cut -d'=' -f2)" | hex2bin | urlbase64)"
 
-  thumbprint="$(printf '%s' "$(printf '%s' '{"e":"'"${pubExponent64}"'","kty":"RSA","n":"'"${pubMod64}"'"}' | openssl sha -sha256)" | hex2bin | urlbase64)"
+  thumbprint="$(printf '%s' '{"e":"'"${pubExponent64}"'","kty":"RSA","n":"'"${pubMod64}"'"}' | openssl sha -sha256 -binary | urlbase64)"
 
   # If we generated a new private key in the step above we have to register it with the acme-server
   if [[ "${register}" = "1" ]]; then
