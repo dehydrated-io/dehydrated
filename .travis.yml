@@ -1,5 +1,5 @@
 sudo: false
-language: python
+language: shell
 
 cache:
   directories:
@@ -19,7 +19,13 @@ before_script:
   - echo "${TMP_URL}" > domains.txt
 
 script:
+  - ./letsencrypt.sh --help
+  - mv config.sh tmp_config.sh
+  - ./letsencrypt.sh --sign "${TMP_URL}" -f tmp_config.sh
+  - mv tmp_config.sh config.sh
+  - ./letsencrypt.sh --cron
   - ./letsencrypt.sh
   - openssl x509 -in "certs/${TMP_URL}/cert.pem" -noout -text
   - openssl verify -verbose -CAfile "certs/lets-encrypt-staging.pem" -purpose sslserver "certs/${TMP_URL}/cert.pem"
-  - ./letsencrypt.sh revoke "certs/${TMP_URL}/cert.pem"
+  - rm private_key.pem
+  - ./letsencrypt.sh --revoke "certs/${TMP_URL}/cert.pem" --privkey "certs/${TMP_URL}/privkey.pem"
