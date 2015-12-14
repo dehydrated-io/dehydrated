@@ -39,7 +39,7 @@ set_defaults() {
 init_system() {
   # Check for config in various locations
   if [[ -z "${CONFIG:-}" ]]; then
-    for check_config in "${SCRIPTDIR}" "${HOME}/.letsencrypt.sh" "/usr/local/etc/letsencrypt.sh" "/etc/letsencrypt.sh" "${PWD}"; do
+    for check_config in "${HOME}/.letsencrypt.sh" "/etc/letsencrypt.sh" "/usr/local/etc/letsencrypt.sh" "${PWD}" "${SCRIPTDIR}"; do
       if [[ -e "${check_config}/config.sh" ]]; then
         BASEDIR="${check_config}"
         CONFIG="${check_config}/config.sh"
