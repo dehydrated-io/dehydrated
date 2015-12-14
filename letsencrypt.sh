@@ -501,6 +501,7 @@ command_help() {
 # Description: Output configuration variables for use in other scripts
 command_env() {
   echo "# letsencrypt.sh configuration"
+  typeset -p CONFIG
   typeset -p CA LICENSE BASEDIR WELLKNOWN PRIVATE_KEY KEYSIZE OPENSSL_CNF ROOTCERT HOOK RENEW_DAYS PRIVATE_KEY_RENEW CONTACT_EMAIL
   exit 0
 }
