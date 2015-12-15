@@ -26,12 +26,13 @@ Default command: cron
 
 Commands:
  --cron (-c)                      Sign/renew non-existant/changed(TODO)/expiring certificates.
- --sign (-s) domain.tld           Force-sign specific certificate from domains.txt, even if not yet expiring or changed.
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
  --help (-h)                      Show help text
  --env (-e)                       Output configuration variables for use in other scripts
 
 Parameters:
+ --domain (-d) domain.tld         Use specified domain name instead of domains.txt, use multiple times for certificate with SAN names
+ --force (-x)                     force renew of certificate even if it is longer valid than value in RENEW_DAYS
  --config (-f) path/to/config.sh  Use specified config file
  --privkey (-p) path/to/key.pem   Use specified private key instead of account key (useful for revocation)
 ```

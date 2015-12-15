@@ -30,7 +30,7 @@ script:
 
   # move config out of the way and try signing certificate by using temporary config location
   - mv config.sh tmp_config.sh
-  - ./letsencrypt.sh --sign "${TMP_URL}" -f tmp_config.sh
+  - ./letsencrypt.sh --domain "${TMP_URL}" -f tmp_config.sh
   - mv tmp_config.sh config.sh
 
   # run in cron mode (should find a non-expiring certificate) + check running without given mode (should default to cron mode)
