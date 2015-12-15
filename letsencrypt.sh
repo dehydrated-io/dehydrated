@@ -407,7 +407,7 @@ command_sign_domains() {
     echo "${PARAM_DOMAIN}" > "${DOMAINS_TXT}"
   fi
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
-  <"${DOMAINS_TXT}" sed 's/^\s*//g;s/\s*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
+  <"${DOMAINS_TXT}" sed 's/^[ 	]*//g;s/[ 	]*$//g' | grep -v '^#' | grep -v '^$' | while read -r line; do
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
     morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
     cert="${BASEDIR}/certs/${domain}/cert.pem"
