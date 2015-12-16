@@ -138,7 +138,7 @@ _CHECK_ERRORLOG
 _TEST "Run in cron mode one last time, with domain in domains.txt and force-resign"
 echo "${TMP_URL}" >> domains.txt
 ./letsencrypt.sh --cron --force > tmplog 2> errorlog
-_CHECK_LOG "Ignoring because --force was specified"
+_CHECK_LOG "Ignoring because renew was forced!"
 _CHECK_NOT_LOG "Generating private key"
 _CHECK_LOG "Requesting challenge for ${TMP_URL}"
 _CHECK_LOG "Challenge is valid!"

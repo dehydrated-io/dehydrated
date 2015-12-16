@@ -413,6 +413,8 @@ command_sign_domains() {
     morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
     cert="${BASEDIR}/certs/${domain}/cert.pem"
 
+    force_renew="${PARAM_FORCE:-no}"
+
     if [[ -z "${morenames}" ]];then
       echo "Processing ${domain}"
     else
@@ -420,15 +422,33 @@ command_sign_domains() {
     fi
 
     if [[ -e "${cert}" ]]; then
-      echo " + Found existing cert..."
+      echo -n " + Checking domain name(s) of existing cert..."
+
+      certnames="$(openssl x509 -in "${cert}" -text -noout | grep DNS: | sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')"
+      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//' | sed 's/^ //')"
+
+      if [[ "${certnames}" = "${givennames}" ]]; then
+        echo " unchanged."
+      else
+        echo " changed!"
+        echo " + Domain name(s) are not matching!"
+        echo " + Names in old certificate: ${certnames}"
+        echo " + Configured names: ${givennames}"
+        echo " + Forcing renew."
+        force_renew="yes"
+      fi
+    fi
+
+    if [[ -e "${cert}" ]]; then
+      echo " + Checking expire date of existing cert..."
 
       valid="$(openssl x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
 
       echo -n " + Valid till ${valid} "
       if openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; then
         echo -n "(Longer than ${RENEW_DAYS} days). "
-        if [[ "${PARAM_FORCE:-}" = "yes" ]]; then
-          echo "Ignoring because --force was specified!"
+        if [[ "${force_renew}" = "yes" ]]; then
+          echo "Ignoring because renew was forced!"
         else
           echo "Skipping!"
           continue
