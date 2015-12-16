@@ -193,7 +193,7 @@ hex2bin() {
 }
 
 get_json_string_value() {
-  grep -Eo '"'"${1}"'":\s*"[^"]*"' | cut -d'"' -f4
+  grep -Eo '"'"${1}"'":[[:space:]]*"[^"]*"' | cut -d'"' -f4
 }
 
 get_json_array() {
@@ -475,7 +475,7 @@ command_help() {
   echo
   (
   echo "Commands:"
-  grep -e '^\s*# Usage:' -e '^\s*# Description:' -e '^command_.*()\s*{' "${0}" | while read -r usage; read -r description; read -r command; do
+  grep -e '^[[:space:]]*# Usage:' -e '^[[:space:]]*# Description:' -e '^command_.*()[[:space:]]*{' "${0}" | while read -r usage; read -r description; read -r command; do
     if [[ ! "${usage}" =~ Usage ]] || [[ ! "${description}" =~ Description ]] || [[ ! "${command}" =~ ^command_ ]]; then
       echo "Error generating help text." >&2
       exit 1
@@ -484,7 +484,7 @@ command_help() {
   done
   echo "---"
   echo "Parameters:"
-  grep -E -e '^\s*# PARAM_Usage:' -e '^\s*# PARAM_Description:' "${0}" | while read -r usage; read -r description; do
+  grep -E -e '^[[:space:]]*# PARAM_Usage:' -e '^[[:space:]]*# PARAM_Description:' "${0}" | while read -r usage; read -r description; do
     if [[ ! "${usage}" =~ Usage ]] || [[ ! "${description}" =~ Description ]]; then
       echo "Error generating help text." >&2
       exit 1
