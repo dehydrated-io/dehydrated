@@ -114,7 +114,7 @@ _CHECK_ERRORLOG
 # Temporarily move config out of the way and try signing certificate by using temporary config location
 _TEST "Try signing using temporary config location and with domain as command line parameter"
 mv config.sh tmp_config.sh
-./letsencrypt.sh --domain "${TMP_URL}" -f tmp_config.sh > tmplog 2> errorlog
+./letsencrypt.sh --cron --domain "${TMP_URL}" -f tmp_config.sh > tmplog 2> errorlog
 _CHECK_LOG "Generating private key"
 _CHECK_LOG "Requesting challenge for ${TMP_URL}"
 _CHECK_LOG "Challenge is valid!"
