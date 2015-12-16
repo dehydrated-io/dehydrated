@@ -420,7 +420,24 @@ command_sign_domains() {
     fi
 
     if [[ -e "${cert}" ]]; then
-      echo " + Found existing cert..."
+      echo " + Checking domain name(s) of existing cert..."
+
+      certnames="$(openssl x509 -in "${cert}" -text -noout | grep DNS: | sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')"
+      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//' | sed 's/^ //')"
+
+      if [[ "${certnames}" = "${givennames}" ]]; then
+        echo " + domain name(s) are matching!"
+      else
+        echo " + domain name(s) are not matching!"
+        echo " + cert  names: ${certnames}"
+        echo " + given names: ${givennames}"
+        echo " + forcing renew"
+        rm "${cert}"
+      fi
+    fi
+
+    if [[ -e "${cert}" ]]; then
+      echo " + Checking expire date of existing cert..."
 
       valid="$(openssl x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
 
