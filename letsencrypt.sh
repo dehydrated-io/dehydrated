@@ -372,7 +372,7 @@ sign_domain() {
   crt_path="${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
   printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "${crt_path}"
   # try to load the certificate to detect corruption
-  echo " + Checking certificate..." >&2
+  echo " + Checking certificate..."
   _openssl x509 -text < "${crt_path}"
 
   # Create fullchain.pem
