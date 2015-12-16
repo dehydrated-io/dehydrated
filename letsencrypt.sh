@@ -155,7 +155,8 @@ init_system() {
   fi
 
   if [[ ! -e "${WELLKNOWN}" ]]; then
-    mkdir -p "${WELLKNOWN}"
+    echo " + ERROR: WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions." >&2
+    exit 1
   fi
 }
 
