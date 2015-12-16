@@ -470,7 +470,7 @@ command_revoke() {
 command_help() {
   echo "Usage: ${0} [-h] [command [argument]] [parameter [argument]] [parameter [argument]] ..."
   echo
-  echo "Default command: cron"
+  echo "Default command: help"
   echo
   (
   echo "Commands:"
@@ -602,7 +602,8 @@ while getopts ":hcer:d:xf:p:" option; do
 done
 
 if [[ -z "${COMMAND}" ]]; then
-  COMMAND="cron"
+  command_help
+  exit 1
 fi
 
 init_system

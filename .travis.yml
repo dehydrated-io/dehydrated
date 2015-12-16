@@ -25,7 +25,7 @@ before_script:
   - echo "${TMP_URL}" > domains.txt
 
 script:
-  # check if help command is worling
+  # check if help command is working
   - ./letsencrypt.sh --help
 
   # move config out of the way and try signing certificate by using temporary config location
@@ -33,9 +33,8 @@ script:
   - ./letsencrypt.sh --domain "${TMP_URL}" -f tmp_config.sh
   - mv tmp_config.sh config.sh
 
-  # run in cron mode (should find a non-expiring certificate) + check running without given mode (should default to cron mode)
+  # run in cron mode (should find a non-expiring certificate)
   - ./letsencrypt.sh --cron
-  - ./letsencrypt.sh
 
   # check if certificate is valid in various ways
   - openssl x509 -in "certs/${TMP_URL}/cert.pem" -noout -text
