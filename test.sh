@@ -10,6 +10,7 @@ if [[ ! "${CI:-false}" == "true" ]]; then
 fi
 
 _TEST() {
+  echo
   echo "${1} "
 }
 _SUBTEST() {
@@ -31,7 +32,7 @@ _FAIL() {
   exit 1
 }
 _CHECK_FILE() {
-  _SUBTEST "Checking if file exists: ${1}"
+  _SUBTEST "Checking if file '${1}' exists..."
   if [[ -e "${1}" ]]; then
     _PASS
   else
@@ -39,7 +40,7 @@ _CHECK_FILE() {
   fi
 }
 _CHECK_LOG() {
-  _SUBTEST "Checking if log contains '${1}'"
+  _SUBTEST "Checking if log contains '${1}'..."
   if grep -- "${1}" tmplog > /dev/null; then
     _PASS
   else
@@ -47,7 +48,7 @@ _CHECK_LOG() {
   fi
 }
 _CHECK_NOT_LOG() {
-  _SUBTEST "Checking if log doesn't contain '${1}'"
+  _SUBTEST "Checking if log doesn't contain '${1}'..."
   if grep -- "${1}" tmplog > /dev/null; then
     _FAIL "Found in log: ${1}"
   else
@@ -150,10 +151,13 @@ rm account_key.pem
 
 # Check if certificate is valid in various ways
 _TEST "Verifying certificate..."
-openssl x509 -in "certs/${TMP_URL}/cert.pem" -noout -text > tmplog 2> errorlog
+_SUBTEST "Verifying certificate on its own..."
+openssl x509 -in "certs/${TMP_URL}/cert.pem" -noout -text > tmplog 2> errorlog && _PASS || _FAIL
 _CHECK_LOG "CN=${TMP_URL}"
-openssl x509 -in "certs/${TMP_URL}/fullchain.pem" -noout -text > /dev/null 2>> errorlog
-(openssl verify -verbose -CAfile "certs/${TMP_URL}/fullchain.pem" -purpose sslserver "certs/${TMP_URL}/fullchain.pem" 2>&1 || true) | (grep -v ': OK$' || true) >> errorlog 2>> errorlog
+_SUBTEST "Verifying file with full chain..."
+openssl x509 -in "certs/${TMP_URL}/fullchain.pem" -noout -text > /dev/null 2>> errorlog && _PASS || _FAIL
+_SUBTEST "Verifying certificate against CA certificate..."
+(openssl verify -verbose -CAfile "certs/${TMP_URL}/fullchain.pem" -purpose sslserver "certs/${TMP_URL}/fullchain.pem" 2>&1 || true) | (grep -v ': OK$' || true) >> errorlog 2>> errorlog && _PASS || _FAIL
 _CHECK_ERRORLOG
 
 # Revoke certificate using certificate key
