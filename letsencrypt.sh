@@ -48,7 +48,7 @@ init_system() {
   fi
 
   if [[ -z "${CONFIG:-}" ]]; then
-    echo "WARNING: No config file found, using default config!"
+    echo "WARNING: No config file found, using default config!" >&2
     sleep 2
   elif [[ -e "${CONFIG}" ]]; then
     if [[ ! "${COMMAND}" = "env" ]]; then
@@ -58,7 +58,7 @@ init_system() {
     # shellcheck disable=SC1090
     . "${CONFIG}"
   else
-    echo "ERROR: Specified config file doesn't exist."
+    echo "ERROR: Specified config file doesn't exist." >&2
     exit 1
   fi
 
@@ -67,7 +67,7 @@ init_system() {
 
   # Check BASEDIR and set default variables
   if [[ ! -d "${BASEDIR}" ]]; then
-    echo "ERROR: BASEDIR does not exist: ${BASEDIR}"
+    echo "ERROR: BASEDIR does not exist: ${BASEDIR}" >&2
     exit 1
   fi
   set_defaults
@@ -104,7 +104,7 @@ init_system() {
   CA_NEW_REG="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-reg)" &&
   # shellcheck disable=SC2015
   CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revoke-cert)" ||
-  (echo "Error retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."; exit 1)
+  (echo "Error retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint." >&2; exit 1)
 
 
   # check private key ...
@@ -114,7 +114,7 @@ init_system() {
     echo "Using private key ${PARAM_PRIVATE_KEY} instead of account key"
     PRIVATE_KEY="${PARAM_PRIVATE_KEY}"
     if ! openssl rsa -in "${PRIVATE_KEY}" -check 2>/dev/null > /dev/null; then
-      echo " + ERROR: private key is not valid, can not continue"
+      echo " + ERROR: private key is not valid, can not continue" >&2
       exit 1
     fi
   else
@@ -136,7 +136,7 @@ init_system() {
   if [[ "${register}" = "1" ]]; then
     echo "+ Registering account key with letsencrypt..."
     if [ -z "${CA_NEW_REG}" ]; then
-      echo " + ERROR: Certificate authority doesn't allow registrations."
+      echo " + ERROR: Certificate authority doesn't allow registrations." >&2
       exit 1
     fi
     # if an email for the contact has been provided then adding it to the registration request
@@ -150,7 +150,7 @@ init_system() {
   if [[ -e "${BASEDIR}/domains.txt" ]]; then
     DOMAINS_TXT="${BASEDIR}/domains.txt"
   else
-    echo "You have to create a domains.txt file listing the domains you want certificates for. Have a look at domains.txt.example."
+    echo " + ERROR: domains.txt not found" >&2
     exit 1
   fi
 
@@ -230,7 +230,7 @@ _request() {
     exit 1
   fi
 
-  cat  "${tempcont}"
+  cat "${tempcont}"
   rm -f "${tempcont}"
 }
 
@@ -279,7 +279,7 @@ sign_domain() {
 
   echo " + Signing domains..."
   if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
-    echo " + ERROR: Certificate authority doesn't allow certificate signing"
+    echo " + ERROR: Certificate authority doesn't allow certificate signing" >&2
     exit 1
   fi
   timestamp="$(date +%s)"
@@ -320,7 +320,7 @@ sign_domain() {
     challenge_uri="$(printf '%s' "${challenge}" | get_json_string_value uri)"
 
     if [[ -z "${challenge_token}" ]] || [[ -z "${challenge_uri}" ]]; then
-      echo "  + Error: Can't retrieve challenges (${response})"
+      echo "  + Error: Can't retrieve challenges (${response})" >&2
       exit 1
     fi
 
@@ -358,7 +358,7 @@ sign_domain() {
     if [[ "${status}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
-      echo " + Challenge is invalid! (returned: ${status})"
+      echo " + Challenge is invalid! (returned: ${status})" >&2
       exit 1
     fi
 
@@ -453,7 +453,7 @@ command_revoke() {
   cert="${1}"
   echo "Revoking ${cert}"
   if [ -z "${CA_REVOKE_CERT}" ]; then
-    echo " + ERROR: Certificate authority doesn't allow certificate revocation."
+    echo " + ERROR: Certificate authority doesn't allow certificate revocation." >&2
     exit 1
   fi
   cert64="$(openssl x509 -in "${cert}" -inform PEM -outform DER | urlbase64)"
@@ -475,14 +475,8 @@ command_help() {
   (
   echo "Commands:"
   grep -e '^\s*# Usage:' -e '^\s*# Description:' -e '^command_.*()\s*{' "${0}" | while read -r usage; read -r description; read -r command; do
-    if [[ ! "${usage}" =~ Usage ]]; then
-      echo "Error generating help text."
-      exit 1
-    elif [[ ! "${description}" =~ Description ]]; then
-      echo "Error generating help text."
-      exit 1
-    elif [[ ! "${command}" =~ ^command_ ]]; then
-      echo "Error generating help text."
+    if [[ ! "${usage}" =~ Usage ]] || [[ ! "${description}" =~ Description ]] || [[ ! "${command}" =~ ^command_ ]]; then
+      echo "Error generating help text." >&2
       exit 1
     fi
     printf " %s\t%s\n" "${usage##"# Usage: "}" "${description##"# Description: "}"
@@ -490,11 +484,8 @@ command_help() {
   echo "---"
   echo "Parameters:"
   grep -E -e '^\s*# PARAM_Usage:' -e '^\s*# PARAM_Description:' "${0}" | while read -r usage; read -r description; do
-    if [[ ! "${usage}" =~ Usage ]]; then
-      echo "Error generating help text."
-      exit 1
-    elif [[ ! "${description}" =~ Description ]]; then
-      echo "Error generating help text."
+    if [[ ! "${usage}" =~ Usage ]] || [[ ! "${description}" =~ Description ]]; then
+      echo "Error generating help text." >&2
       exit 1
     fi
     printf " %s\t%s\n" "${usage##"# PARAM_Usage: "}" "${description##"# PARAM_Description: "}"
@@ -525,9 +516,9 @@ for arg; do
     --config)  args="${args}-f ";;
     --env)     args="${args}-e ";;
     --*)
-      echo "Unknown parameter detected: ${arg}"
-      echo
-      command_help
+      echo "Unknown parameter detected: ${arg}" >&2
+      echo >&2
+      command_help >&2
       exit 1
       ;;
     # pass through anything else
@@ -541,8 +532,8 @@ eval set -- "${args}"
 COMMAND=""
 set_command() {
   if [[ ! -z "${COMMAND}" ]]; then
-    echo "Only one command can be executed at a time."
-    echo "See help (-h) for more information."
+    echo "Only one command can be executed at a time." >&2
+    echo "See help (-h) for more information." >&2
     exit 1
   fi
   COMMAND="${1}"
@@ -550,9 +541,9 @@ set_command() {
 
 check_parameters() {
   if [[ -z "${@}" ]]; then
-    echo "The specified command requires additional parameters. See help:"
-    echo
-    command_help
+    echo "The specified command requires additional parameters. See help:" >&2
+    echo >&2
+    command_help >&2
     exit 1
   fi
 }
@@ -602,9 +593,9 @@ while getopts ":hcer:d:xf:p:" option; do
       PARAM_PRIVATE_KEY="${OPTARG}"
       ;;
     *)
-      echo "Unknown parameter detected: -${OPTARG}"
-      echo
-      command_help
+      echo "Unknown parameter detected: -${OPTARG}" >&2
+      echo >&2
+      command_help >&2
       exit 1
       ;;
   esac
