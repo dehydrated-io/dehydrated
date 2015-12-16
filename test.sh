@@ -46,6 +46,14 @@ _CHECK_LOG() {
     _FAIL "Missing in log: ${1}"
   fi
 }
+_CHECK_NOT_LOG() {
+  _SUBTEST "Checking if log doesn't contain '${1}'"
+  if grep -- "${1}" tmplog > /dev/null; then
+    _FAIL "Found in log: ${1}"
+  else
+    _PASS
+  fi
+}
 _CHECK_ERRORLOG() {
   _SUBTEST "Checking if errorlog is empty..."
   if [[ -z "$(cat errorlog)" ]]; then
@@ -123,6 +131,18 @@ _TEST "Run in cron mode again, this time with domain in domains.txt, should find
 echo "${TMP_URL}" >> domains.txt
 ./letsencrypt.sh --cron > tmplog 2> errorlog
 _CHECK_LOG "Skipping!"
+_CHECK_ERRORLOG
+
+# Run in cron mode one last time, with domain in domains.txt and force-resign (should find certificate, resign anyway, and not generate private key)
+_TEST "Run in cron mode one last time, with domain in domains.txt and force-resign"
+echo "${TMP_URL}" >> domains.txt
+./letsencrypt.sh --cron --force > tmplog 2> errorlog
+_CHECK_LOG "Ignoring because --force was specified"
+_CHECK_NOT_LOG "Generating private key"
+_CHECK_LOG "Requesting challenge for ${TMP_URL}"
+_CHECK_LOG "Challenge is valid!"
+_CHECK_LOG "Creating fullchain.pem"
+_CHECK_LOG "Done!"
 _CHECK_ERRORLOG
 
 # Delete account key (not needed anymore)
