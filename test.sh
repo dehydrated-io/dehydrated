@@ -10,14 +10,13 @@ if [[ ! "${CI:-false}" == "true" ]]; then
 fi
 
 _TEST() {
-  echo -n "${1} "
+  echo "${1} "
+}
+_SUBTEST() {
+  echo -n " + ${1} "
 }
 _PASS() {
-  if [[ -z "$(cat errorlog)" ]]; then
-    echo -e "[\u001B[32mPASS\u001B[0m]"
-  else
-    _FAIL "Non-empty errorlog"
-  fi
+  echo -e "[\u001B[32mPASS\u001B[0m]"
 }
 _FAIL() {
   echo -e "[\u001B[31mFAIL\u001B[0m]"
@@ -32,10 +31,28 @@ _FAIL() {
   exit 1
 }
 _CHECK_FILE() {
-  [[ -e "${1}" ]] || _FAIL "Missing file: ${1}"
+  _SUBTEST "Checking if file exists: ${1}"
+  if [[ -e "${1}" ]]; then
+    _PASS
+  else
+    _FAIL "Missing file: ${1}"
+  fi
 }
 _CHECK_LOG() {
-  grep "${1}" tmplog > /dev/null || _FAIL "Missing in log: ${1}"
+  _SUBTEST "Checking if log contains '${1}'"
+  if grep -- "${1}" tmplog > /dev/null; then
+    _PASS
+  else
+    _FAIL "Missing in log: ${1}"
+  fi
+}
+_CHECK_ERRORLOG() {
+  _SUBTEST "Checking if errorlog is empty..."
+  if [[ -z "$(cat errorlog)" ]]; then
+    _PASS
+  else
+    _FAIL "Non-empty errorlog"
+  fi
 }
 
 # If not found (should be cached in travis) download ngrok
@@ -74,16 +91,16 @@ touch domains.txt
 _TEST "Checking if help command is working..."
 ./letsencrypt.sh --help > tmplog 2> errorlog
 _CHECK_LOG "Default command: help"
-_CHECK_LOG "\--help (-h)"
-_CHECK_LOG "\--domain (-d) domain.tld"
-_PASS
+_CHECK_LOG "--help (-h)"
+_CHECK_LOG "--domain (-d) domain.tld"
+_CHECK_ERRORLOG
 
 # Run in cron mode with empty domains.txt (should only generate private key and exit)
 _TEST "First run in cron mode, checking if private key is generated and registered"
 ./letsencrypt.sh --cron > tmplog 2> errorlog
 _CHECK_LOG "Registering account key"
 _CHECK_FILE "private_key.pem"
-_PASS
+_CHECK_ERRORLOG
 
 # Temporarily move config out of the way and try signing certificate by using temporary config location
 _TEST "Try signing using temporary config location and with domain as command line parameter"
@@ -94,7 +111,7 @@ _CHECK_LOG "Requesting challenge for ${TMP_URL}"
 _CHECK_LOG "Challenge is valid!"
 _CHECK_LOG "Creating fullchain.pem"
 _CHECK_LOG "Done!"
-_PASS
+_CHECK_ERRORLOG
 mv tmp_config.sh config.sh
 
 # Move private key and add new location to config
@@ -106,7 +123,7 @@ _TEST "Run in cron mode again, this time with domain in domains.txt, should find
 echo "${TMP_URL}" >> domains.txt
 ./letsencrypt.sh --cron > tmplog 2> errorlog
 _CHECK_LOG "Skipping!"
-_PASS
+_CHECK_ERRORLOG
 
 # Delete account key (not needed anymore)
 rm account_key.pem
@@ -117,7 +134,7 @@ openssl x509 -in "certs/${TMP_URL}/cert.pem" -noout -text > tmplog 2> errorlog
 _CHECK_LOG "CN=${TMP_URL}"
 openssl x509 -in "certs/${TMP_URL}/fullchain.pem" -noout -text > /dev/null 2>> errorlog
 (openssl verify -verbose -CAfile "certs/${TMP_URL}/fullchain.pem" -purpose sslserver "certs/${TMP_URL}/fullchain.pem" 2>&1 || true) | (grep -v ': OK$' || true) >> errorlog 2>> errorlog
-_PASS
+_CHECK_ERRORLOG
 
 # Revoke certificate using certificate key
 _TEST "Revoking certificate..."
@@ -125,7 +142,7 @@ _TEST "Revoking certificate..."
 _CHECK_LOG "Revoking certs/${TMP_URL}/cert.pem"
 _CHECK_LOG "SUCCESS"
 _CHECK_FILE "certs/${TMP_URL}/cert.pem-revoked"
-_PASS
+_CHECK_ERRORLOG
 
 # All done
 exit 0
