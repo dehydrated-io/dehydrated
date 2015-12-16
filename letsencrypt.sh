@@ -481,8 +481,21 @@ command_sign_domains() {
 # Description: Revoke specified certificate
 command_revoke() {
   cert="${1}"
+  if [[ -L "${cert}" ]]; then
+    # follow symlink and use real certificate name (so we move the real file and not the symlink at the end)
+    local link_target="$(readlink -n "${cert}")"
+    if [[ "${link_target}" =~ "/" ]]; then
+      cert="${link_target}"
+    else
+      cert="$(dirname "${cert}")/${link_target}"
+    fi
+  fi
+  if [[ ! -f "${cert}" ]]; then
+    echo "ERROR: Could not find certificate ${cert}"
+    exit 1
+  fi
   echo "Revoking ${cert}"
-  if [ -z "${CA_REVOKE_CERT}" ]; then
+  if [[ -z "${CA_REVOKE_CERT}" ]]; then
     echo " + ERROR: Certificate authority doesn't allow certificate revocation." >&2
     exit 1
   fi
