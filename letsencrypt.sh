@@ -570,7 +570,6 @@ while getopts ":hcer:d:xf:p:" option; do
       # PARAM_Usage: --domain (-d) domain.tld
       # PARAM_Description: Use specified domain name instead of domains.txt, use multiple times for certificate with SAN names
       check_parameters "${OPTARG:-}"
-      set_command sign_domains
       if [[ -z "${PARAM_DOMAIN:-}" ]]; then
         PARAM_DOMAIN="${OPTARG}"
       else
