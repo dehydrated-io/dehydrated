@@ -153,6 +153,14 @@ _CHECK_ERRORLOG
 # Delete account key (not needed anymore)
 rm account_key.pem
 
+# Check if renewal works
+_TEST "Run in cron mode again, to check if renewal works"
+echo 'RENEW_DAYS="300"' >> config.sh
+./letsencrypt.sh --cron > tmplog 2> errorlog || _FAIL "Script execution failed"
+_CHECK_LOG "Checking domain name(s) of existing cert... unchanged."
+_CHECK_LOG "Renewing!"
+_CHECK_ERRORLOG
+
 # Check if certificate is valid in various ways
 _TEST "Verifying certificate..."
 _SUBTEST "Verifying certificate on its own..."
