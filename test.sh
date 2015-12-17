@@ -92,7 +92,8 @@ mkdir -p .acme-challenges/.well-known/acme-challenge
 ) &
 
 # Generate config and create empty domains.txt
-echo 'CA="https://acme-staging.api.letsencrypt.org/directory"' > config.sh
+echo 'CA="https://testca.kurz.pw/directory"' > config.sh
+echo 'LICENSE="https://testca.kurz.pw/terms/v1"' >> config.sh
 echo 'WELLKNOWN=".acme-challenges/.well-known/acme-challenge"' >> config.sh
 touch domains.txt
 
