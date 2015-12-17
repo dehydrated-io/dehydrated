@@ -400,7 +400,7 @@ sign_domain() {
 
 
 # Usage: --cron (-c)
-# Description: Sign/renew non-existant/changed(TODO)/expiring certificates.
+# Description: Sign/renew non-existant/changed/expiring certificates.
 command_sign_domains() {
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
     # we are using a temporary domains.txt file so we don't need to duplicate any code

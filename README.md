@@ -22,10 +22,10 @@ Feel free to report any issues you find with this script or contribute by submit
 ```text
 Usage: ./letsencrypt.sh [-h] [command [argument]] [parameter [argument]] [parameter [argument]] ...
 
-Default command: cron
+Default command: help
 
 Commands:
- --cron (-c)                      Sign/renew non-existant/changed(TODO)/expiring certificates.
+ --cron (-c)                      Sign/renew non-existant/changed/expiring certificates.
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
  --help (-h)                      Show help text
  --env (-e)                       Output configuration variables for use in other scripts
