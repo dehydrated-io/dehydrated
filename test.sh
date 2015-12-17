@@ -17,6 +17,9 @@ _SUBTEST() {
   echo -n " + ${1} "
 }
 _PASS() {
+  if [[ ! -z "$(cat errorlog)" ]]; then
+    _FAIL
+  fi
   echo -e "[\u001B[32mPASS\u001B[0m]"
 }
 _FAIL() {
