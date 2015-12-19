@@ -80,9 +80,11 @@ fi
 
 # Run ngrok and grab temporary url from logfile
 ngrok/ngrok http 8080 --log stdout --log-format logfmt --log-level debug > tmp.log &
+ngrok/ngrok http 8080 --log stdout --log-format logfmt --log-level debug > tmp2.log &
 sleep 2
 TMP_URL="$(grep -Eo "Hostname:[a-z0-9]+.ngrok.io" tmp.log | head -1 | cut -d':' -f2)"
-if [[ -z "${TMP_URL}" ]]; then
+TMP2_URL="$(grep -Eo "Hostname:[a-z0-9]+.ngrok.io" tmp2.log | head -1 | cut -d':' -f2)"
+if [[ -z "${TMP_URL}" ]] || [[ -z "${TMP2_URL}" ]]; then
   echo "Couldn't get an url from ngrok, not a letsencrypt.sh bug, tests can't continue."
   exit 1
 fi
@@ -118,10 +120,11 @@ _CHECK_ERRORLOG
 # Temporarily move config out of the way and try signing certificate by using temporary config location
 _TEST "Try signing using temporary config location and with domain as command line parameter"
 mv config.sh tmp_config.sh
-./letsencrypt.sh --cron --domain "${TMP_URL}" -f tmp_config.sh > tmplog 2> errorlog || _FAIL "Script execution failed"
+./letsencrypt.sh --cron --domain "${TMP_URL} ${TMP2_URL}" -f tmp_config.sh > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_NOT_LOG "Checking domain name(s) of existing cert"
 _CHECK_LOG "Generating private key"
 _CHECK_LOG "Requesting challenge for ${TMP_URL}"
+_CHECK_LOG "Requesting challenge for ${TMP2_URL}"
 _CHECK_LOG "Challenge is valid!"
 _CHECK_LOG "Creating fullchain.pem"
 _CHECK_LOG "Done!"
@@ -134,7 +137,7 @@ echo 'PRIVATE_KEY="./account_key.pem"' >> config.sh
 
 # Add domain to domains.txt and run in cron mode again (should find a non-expiring certificate and do nothing)
 _TEST "Run in cron mode again, this time with domain in domains.txt, should find non-expiring certificate"
-echo "${TMP_URL}" >> domains.txt
+echo "${TMP_URL} ${TMP2_URL}" >> domains.txt
 ./letsencrypt.sh --cron > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Checking domain name(s) of existing cert... unchanged."
 _CHECK_LOG "Skipping!"
@@ -142,12 +145,12 @@ _CHECK_ERRORLOG
 
 # Run in cron mode one last time, with domain in domains.txt and force-resign (should find certificate, resign anyway, and not generate private key)
 _TEST "Run in cron mode one last time, with domain in domains.txt and force-resign"
-echo "${TMP_URL}" >> domains.txt
 ./letsencrypt.sh --cron --force > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Checking domain name(s) of existing cert... unchanged."
 _CHECK_LOG "Ignoring because renew was forced!"
 _CHECK_NOT_LOG "Generating private key"
 _CHECK_LOG "Requesting challenge for ${TMP_URL}"
+_CHECK_LOG "Requesting challenge for ${TMP2_URL}"
 _CHECK_LOG "Challenge is valid!"
 _CHECK_LOG "Creating fullchain.pem"
 _CHECK_LOG "Done!"
@@ -169,6 +172,7 @@ _TEST "Verifying certificate..."
 _SUBTEST "Verifying certificate on its own..."
 openssl x509 -in "certs/${TMP_URL}/cert.pem" -noout -text > tmplog 2> errorlog && _PASS || _FAIL
 _CHECK_LOG "CN=${TMP_URL}"
+_CHECK_LOG "${TMP2_URL}"
 _SUBTEST "Verifying file with full chain..."
 openssl x509 -in "certs/${TMP_URL}/fullchain.pem" -noout -text > /dev/null 2>> errorlog && _PASS || _FAIL
 _SUBTEST "Verifying certificate against CA certificate..."
