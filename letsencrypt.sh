@@ -25,12 +25,9 @@ CONTACT_EMAIL=
 
 set_defaults() {
   # Default config variables depending on BASEDIR
-  if [[ -z "${PRIVATE_KEY}" ]]; then
-    PRIVATE_KEY="${BASEDIR}/private_key.pem"
-  fi
-  if [[ -z "${WELLKNOWN}" ]]; then
-    WELLKNOWN="${BASEDIR}/.acme-challenges"
-  fi
+
+  : ${PRIVATE_KEY="${BASEDIR}/private_key.pem"}
+  : ${WELLKNOWN="${BASEDIR}/.acme-challenges"}
 
   LOCKFILE="${BASEDIR}/lock"
 }
@@ -72,9 +69,7 @@ init_system() {
   fi
   set_defaults
 
-  if [[ "${COMMAND}" = "env" ]]; then
-    return
-  fi
+  [ "${COMMAND}" = "env" ] && return
 
   # Lockfile handling (prevents concurrent access)
   set -o noclobber
