@@ -306,8 +306,9 @@ sign_domain() {
   done
   SAN="${SAN%%, }"
   echo " + Generating signing request..."
-  local tmp_openssl_cnf="$(mktemp)"
-  cat $OPENSSL_CNF > "${tmp_openssl_cnf}"
+  local tmp_openssl_cnf
+  tmp_openssl_cnf="$(mktemp)"
+  cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
   printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
   openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
   rm -f "${tmp_openssl_cnf}"
@@ -483,8 +484,9 @@ command_revoke() {
   cert="${1}"
   if [[ -L "${cert}" ]]; then
     # follow symlink and use real certificate name (so we move the real file and not the symlink at the end)
-    local link_target="$(readlink -n "${cert}")"
-    if [[ "${link_target}" =~ "/" ]]; then
+    local link_target
+    link_target="$(readlink -n "${cert}")"
+    if [[ "${link_target}" =~ ^/ ]]; then
       cert="${link_target}"
     else
       cert="$(dirname "${cert}")/${link_target}"
