@@ -122,8 +122,8 @@ init_system() {
   fi
 
   # Get public components from private key and calculate thumbprint
-  pubExponent64="$(printf "%06x" "$(openssl rsa -in "${PRIVATE_KEY}" -noout -text | grep publicExponent | head -1 | cut -d' ' -f2)" | hex2bin | urlbase64)"
-  pubMod64="$(printf '%s' "$(openssl rsa -in "${PRIVATE_KEY}" -noout -modulus | cut -d'=' -f2)" | hex2bin | urlbase64)"
+  pubExponent64="$(openssl rsa -in "${PRIVATE_KEY}" -noout -text | grep publicExponent | grep -oE "0x[a-f0-9]+" | cut -d'x' -f2 | hex2bin | urlbase64)"
+  pubMod64="$(openssl rsa -in "${PRIVATE_KEY}" -noout -modulus | cut -d'=' -f2 | hex2bin | urlbase64)"
 
   thumbprint="$(printf '{"e":"%s","kty":"RSA","n":"%s"}' "${pubExponent64}" "${pubMod64}" | openssl sha -sha256 -binary | urlbase64)"
 
