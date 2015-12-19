@@ -215,7 +215,7 @@ _request() {
     echo "  + ERROR: An error occurred while sending ${1}-request to ${2} (Status ${statuscode})" >&2
     echo >&2
     echo "Details:" >&2
-    echo "$(<"${tempcont}"))" >&2
+    cat "${tempcont}" >&2
     rm -f "${tempcont}"
 
     # Wait for hook script to clean the challenge if used
@@ -306,7 +306,11 @@ sign_domain() {
   done
   SAN="${SAN%%, }"
   echo " + Generating signing request..."
-  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config <(cat "${OPENSSL_CNF}" <(printf "[SAN]\nsubjectAltName=%s" "${SAN}"))
+  local tmp_openssl_cnf="$(mktemp)"
+  cat $OPENSSL_CNF > "${tmp_openssl_cnf}"
+  printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
+  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
+  rm -f "${tmp_openssl_cnf}"
 
   # Request and respond to challenges
   for altname in $altnames; do
@@ -469,7 +473,7 @@ command_sign_domains() {
 
   # remove temporary domains.txt file if used
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
-    rm "${DOMAINS_TXT}"
+    rm -f "${DOMAINS_TXT}"
   fi
 }
 
