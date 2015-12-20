@@ -68,6 +68,18 @@ location /.well-known/acme-challenge {
 ...
 ```
 
+An Apache 2.4 `VirtualHost` could contain:
+
+```
+...
+Alias /.well-known/acme-challenge /var/www/letsencrypt
+
+<Location /.well-known/acme-challenge>
+  Require all granted
+</Location>
+...
+```
+
 config.sh:
 ```bash
 ...
