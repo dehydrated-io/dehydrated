@@ -1,0 +1,18 @@
+# Example virtualhost for nginx to redirect every request to https://
+# plus also provide access to acme-challenge.
+# You have to create /var/www/letsencrypt
+# You also need the config for the https-virtualhost, see https://mozilla.github.io/server-side-tls/ssl-config-generator/
+
+server {
+  listen 80;
+  listen [::]:80;
+  server_name www.example.net;
+  location '/.well-known/acme-challenge' {
+  default_type "text/plain";
+  alias /var/www/letsencrypt;
+  }
+
+  location / {
+    return 301 https://$server_name$request_uri;
+  }
+}
