@@ -161,7 +161,7 @@ anti_newline() {
 
 urlbase64() {
   # urlbase64: base64 encoded string with '+' replaced with '-' and '/' replaced with '_'
-  openssl base64 -e | anti_newline | sed 's/=*$//g' | tr '+/' '-_'
+  openssl base64 -e | anti_newline | sed 's:=*$::g;y:+/:-_:'
 }
 
 hex2bin() {
@@ -429,8 +429,8 @@ command_sign_domains() {
     if [[ -e "${cert}" ]]; then
       echo -n " + Checking domain name(s) of existing cert..."
 
-      certnames="$(openssl x509 -in "${cert}" -text -noout | grep DNS: | sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')"
-      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//' | sed 's/^ //')"
+      certnames="$(openssl x509 -in "${cert}" -text -noout | grep DNS: | sed 's/DNS://g' | tr ', ' '\n' | sort -u | tr '\n' ' ' | sed 's/^[[:space:]]*//g;s/[[:space:]]*$//g')"
+      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/^[[:space:]]*//g;s/[[:space:]]*$//g')"
 
       if [[ "${certnames}" = "${givennames}" ]]; then
         echo " unchanged."
