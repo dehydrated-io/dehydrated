@@ -26,8 +26,8 @@ CONTACT_EMAIL=
 set_defaults() {
   # Default config variables depending on BASEDIR
 
-  : ${PRIVATE_KEY="${BASEDIR}/private_key.pem"}
-  : ${WELLKNOWN="${BASEDIR}/.acme-challenges"}
+  : ${PRIVATE_KEY:="${BASEDIR}/private_key.pem"}
+  : ${WELLKNOWN:="${BASEDIR}/.acme-challenges"}
 
   LOCKFILE="${BASEDIR}/lock"
 }
