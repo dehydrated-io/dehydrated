@@ -48,9 +48,7 @@ init_system() {
     echo "WARNING: No config file found, using default config!" >&2
     sleep 2
   elif [[ -e "${CONFIG}" ]]; then
-    if [[ ! "${COMMAND}" = "env" ]]; then
-      echo "Using config file ${CONFIG}"
-    fi
+    [[ "${COMMAND}" = "env" ]] || echo "Using config file ${CONFIG}"
     BASEDIR="$(dirname "${CONFIG}")"
     # shellcheck disable=SC1090
     . "${CONFIG}"
@@ -69,7 +67,7 @@ init_system() {
   fi
   set_defaults
 
-  [ "${COMMAND}" = "env" ] && return
+  [[ "${COMMAND}" = "env" ]] && return
 
   # Lockfile handling (prevents concurrent access)
   set -o noclobber
