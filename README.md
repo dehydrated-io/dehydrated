@@ -53,7 +53,7 @@ with the other domains in the corresponding line being their alternative names.
 
 Boulder (acme-server) is looking for challenge responses under your domain in the `.well-known/acme-challenge` directory
 
-This script uses `http-01`-type verification (for now) so you need to have the that directory available over normal http (no ssl).
+This script uses `http-01`-type verification (for now) so you need to have that directory available over normal http (no ssl).
 
 A full URL would look like `http://example.org/.well-known/acme-challenge/c3VjaC1jaGFsbGVuZ2UtbXVjaA-aW52YWxpZC13b3c`.
 
