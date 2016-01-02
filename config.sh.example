@@ -46,8 +46,8 @@
 # default: <unset>
 #HOOK=
 
-# Minimum days before expiration to automatically renew certificate (default: 14)
-#RENEW_DAYS="14"
+# Minimum days before expiration to automatically renew certificate (default: 30)
+#RENEW_DAYS="30"
 
 # Regenerate private keys instead of just signing new certificates on renewal (default: no)
 #PRIVATE_KEY_RENEW="no"
