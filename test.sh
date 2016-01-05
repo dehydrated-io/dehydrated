@@ -71,7 +71,7 @@ _CHECK_ERRORLOG() {
 if [[ ! -e "ngrok/ngrok" ]]; then
   (
     mkdir -p ngrok
-    cd ngrog
+    cd ngrok
     wget https://dl.ngrok.com/ngrok_2.0.19_linux_amd64.zip -O ngrok.zip
     unzip ngrok.zip ngrok
     chmod +x ngrok
