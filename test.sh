@@ -100,6 +100,7 @@ mkdir -p .acme-challenges/.well-known/acme-challenge
 echo 'CA="https://testca.kurz.pw/directory"' > config.sh
 echo 'LICENSE="https://testca.kurz.pw/terms/v1"' >> config.sh
 echo 'WELLKNOWN=".acme-challenges/.well-known/acme-challenge"' >> config.sh
+echo 'RENEW_DAYS="14"' >> config.sh
 touch domains.txt
 
 # Check if help command is working
