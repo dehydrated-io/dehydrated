@@ -399,6 +399,10 @@ sign_domain() {
   ln -sf "cert-${timestamp}.csr" "${BASEDIR}/certs/${domain}/cert.csr"
   ln -sf "cert-${timestamp}.pem" "${BASEDIR}/certs/${domain}/cert.pem"
 
+  echo " + Creating privcert.pem..."
+  cat ${BASEDIR}/certs/${domain}/privkey.pem ${BASEDIR}/certs/${domain}/cert.pem > privcert-${timestamp}.pem
+  ln -sf privcert-${timestamp}.pem ${BASEDIR}/certs/${domain}/privcert.pem
+
   # Wait for hook script to clean the challenge and to deploy cert if used
   if [[ -n "${HOOK}" ]]; then
       ${HOOK} "deploy_cert" "${domain}" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
