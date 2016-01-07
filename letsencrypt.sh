@@ -25,12 +25,9 @@ CONTACT_EMAIL=
 
 set_defaults() {
   # Default config variables depending on BASEDIR
-  if [[ -z "${PRIVATE_KEY}" ]]; then
-    PRIVATE_KEY="${BASEDIR}/private_key.pem"
-  fi
-  if [[ -z "${WELLKNOWN}" ]]; then
-    WELLKNOWN="${BASEDIR}/.acme-challenges"
-  fi
+
+  : ${PRIVATE_KEY:="${BASEDIR}/private_key.pem"}
+  : ${WELLKNOWN:="${BASEDIR}/.acme-challenges"}
 
   LOCKFILE="${BASEDIR}/lock"
 }
@@ -51,9 +48,7 @@ init_system() {
     echo "WARNING: No config file found, using default config!" >&2
     sleep 2
   elif [[ -e "${CONFIG}" ]]; then
-    if [[ ! "${COMMAND}" = "env" ]]; then
-      echo "Using config file ${CONFIG}"
-    fi
+    [[ "${COMMAND}" = "env" ]] || echo "Using config file ${CONFIG}"
     BASEDIR="$(dirname "${CONFIG}")"
     # shellcheck disable=SC1090
     . "${CONFIG}"
@@ -72,9 +67,7 @@ init_system() {
   fi
   set_defaults
 
-  if [[ "${COMMAND}" = "env" ]]; then
-    return
-  fi
+  [[ "${COMMAND}" = "env" ]] && return
 
   # Lockfile handling (prevents concurrent access)
   set -o noclobber
@@ -166,7 +159,7 @@ anti_newline() {
 
 urlbase64() {
   # urlbase64: base64 encoded string with '+' replaced with '-' and '/' replaced with '_'
-  openssl base64 -e | anti_newline | sed 's/=*$//g' | tr '+/' '-_'
+  openssl base64 -e | anti_newline | sed 's:=*$::g;y:+/:-_:'
 }
 
 hex2bin() {
@@ -434,8 +427,8 @@ command_sign_domains() {
     if [[ -e "${cert}" ]]; then
       echo -n " + Checking domain name(s) of existing cert..."
 
-      certnames="$(openssl x509 -in "${cert}" -text -noout | grep DNS: | sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')"
-      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//' | sed 's/^ //')"
+      certnames="$(openssl x509 -in "${cert}" -text -noout | grep DNS: | sed 's/DNS://g' | tr ', ' '\n' | sort -u | tr '\n' ' ' | sed 's/^[[:space:]]*//g;s/[[:space:]]*$//g')"
+      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/^[[:space:]]*//g;s/[[:space:]]*$//g')"
 
       if [[ "${certnames}" = "${givennames}" ]]; then
         echo " unchanged."
