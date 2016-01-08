@@ -81,6 +81,6 @@ An alternative to setting the WELLKNOWN variable would be to create a symlink to
 
 ### dns-01 challenge
 
-This script also supports the new `dns-01`-type verification. Be aware that at the moment this is not available on the production servers from letsencrypt. Please read `https://community.letsencrypt.org/t/dns-challenge-is-in-staging/8322` for the current state of `dns-01` support.
+This script also supports the new `dns-01`-type verification. Be aware that at the moment this is not available on the production servers from letsencrypt. Please read https://community.letsencrypt.org/t/dns-challenge-is-in-staging/8322 for the current state of `dns-01` support.
 
 You need a hook script that deploys the challenge to your DNS server!
