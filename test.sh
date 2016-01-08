@@ -185,7 +185,7 @@ _TEST "Revoking certificate..."
 ./letsencrypt.sh --revoke "certs/${TMP_URL}/cert.pem" --privkey "certs/${TMP_URL}/privkey.pem" > tmplog 2> errorlog || _FAIL "Script execution failed"
 REAL_CERT="$(readlink -n "certs/${TMP_URL}/cert.pem")"
 _CHECK_LOG "Revoking certs/${TMP_URL}/${REAL_CERT}"
-_CHECK_LOG "SUCCESS"
+_CHECK_LOG "Done."
 _CHECK_FILE "certs/${TMP_URL}/${REAL_CERT}-revoked"
 _CHECK_ERRORLOG
 

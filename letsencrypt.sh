@@ -440,6 +440,8 @@ command_sign_domains() {
 command_revoke() {
   init_system
 
+  [[ -n "${CA_REVOKE_CERT}" ]] || _exiterr "Certificate authority doesn't allow certificate revocation."
+
   cert="${1}"
   if [[ -L "${cert}" ]]; then
     # follow symlink and use real certificate name (so we move the real file and not the symlink at the end)
@@ -451,21 +453,16 @@ command_revoke() {
       cert="$(dirname "${cert}")/${link_target}"
     fi
   fi
-  if [[ ! -f "${cert}" ]]; then
-    echo "ERROR: Could not find certificate ${cert}"
-    exit 1
-  fi
+  [[ -f "${cert}" ]] || _exiterr "Could not find certificate ${cert}"
+
   echo "Revoking ${cert}"
-  if [[ -z "${CA_REVOKE_CERT}" ]]; then
-    echo " + ERROR: Certificate authority doesn't allow certificate revocation." >&2
-    exit 1
-  fi
+
   cert64="$(openssl x509 -in "${cert}" -inform PEM -outform DER | urlbase64)"
   response="$(signed_request "${CA_REVOKE_CERT}" '{"resource": "revoke-cert", "certificate": "'"${cert64}"'"}')"
-  # if there is a problem with our revoke request http_request (via signed_request) will report this and "exit 1" out
+  # if there is a problem with our revoke request _request (via signed_request) will report this and "exit 1" out
   # so if we are here, it is safe to assume the request was successful
-  echo " + SUCCESS"
-  echo " + renaming certificate to ${cert}-revoked"
+  echo " + Done."
+  echo " + Renaming certificate to ${cert}-revoked"
   mv -f "${cert}" "${cert}-revoked"
 }
 
