@@ -8,6 +8,7 @@ umask 077 # paranoid umask, we're creating private keys
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASEDIR="${SCRIPTDIR}"
 
+# Check for script dependencies
 check_dependencies() {
   curl -V > /dev/null 2>&1 || _exiterr "This script requires curl."
   openssl version > /dev/null 2>&1 || _exiterr "This script requres an openssl binary."
@@ -141,6 +142,7 @@ hex2bin() {
   printf -- "$(cat | sed -E -e 's/[[:space:]]//g' -e 's/^(.(.{2})*)$/0\1/' -e 's/(.{2})/\\x\1/g')"
 }
 
+# Get string value from json dictionary
 get_json_string_value() {
   grep -Eo '"'"${1}"'":[[:space:]]*"[^"]*"' | cut -d'"' -f4
 }
@@ -479,6 +481,7 @@ command_env() {
   typeset -p CA LICENSE HOOK RENEW_DAYS PRIVATE_KEY KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
+# Main method (parses script arguments and calls command_* methods)
 main() {
   COMMAND=""
   set_command() {
