@@ -14,6 +14,7 @@ BASEDIR="${SCRIPTDIR}"
 # Default config values
 CA="https://acme-v01.api.letsencrypt.org/directory"
 LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
+CHALLENGETYPE="http-01"
 HOOK=
 RENEW_DAYS="30"
 PRIVATE_KEY=
@@ -71,6 +72,14 @@ init_system() {
     exit 1
   fi
   set_defaults
+
+  if [[ -n "${PARAM_CHALLENGETYPE:-}" ]]; then
+    CHALLENGETYPE="${PARAM_CHALLENGETYPE}"
+  fi
+
+  if [[ -n "${PARAM_HOOK:-}" ]]; then
+    HOOK="${PARAM_HOOK}"
+  fi
 
   if [[ "${COMMAND}" = "env" ]]; then
     return
@@ -321,7 +330,7 @@ sign_domain() {
 
     challenges="$(printf '%s\n' "${response}" | get_json_array challenges)"
     repl=$'\n''{' # fix syntax highlighting in Vim
-    challenge="$(printf "%s" "${challenges//\{/${repl}}" | grep 'http-01')"
+    challenge="$(printf "%s" "${challenges//\{/${repl}}" | grep \""${CHALLENGETYPE}"\")"
     challenge_token="$(printf '%s' "${challenge}" | get_json_string_value token | sed 's/[^A-Za-z0-9_\-]/_/g')"
     challenge_uri="$(printf '%s' "${challenge}" | get_json_string_value uri)"
 
@@ -333,13 +342,20 @@ sign_domain() {
     # Challenge response consists of the challenge token and the thumbprint of our public certificate
     keyauth="${challenge_token}.${thumbprint}"
 
-    # Store challenge response in well-known location and make world-readable (so that a webserver can access it)
-    printf '%s' "${keyauth}" > "${WELLKNOWN}/${challenge_token}"
-    chmod a+r "${WELLKNOWN}/${challenge_token}"
+    if [[ "${CHALLENGETYPE}" = "http-01" ]]; then
+      # Store challenge response in well-known location and make world-readable (so that a webserver can access it)
+      printf '%s' "${keyauth}" > "${WELLKNOWN}/${challenge_token}"
+      chmod a+r "${WELLKNOWN}/${challenge_token}"
+    fi
+
+    keyauth_hook="${keyauth}"
+    if [[ "${CHALLENGETYPE}" = "dns-01" ]]; then
+      keyauth_hook="$(printf '%s' "${keyauth}" | openssl sha -sha256 -binary | urlbase64)"
+    fi
 
     # Wait for hook script to deploy the challenge if used
     if [[ -n "${HOOK}" ]]; then
-        ${HOOK} "deploy_challenge" "${altname}" "${challenge_token}" "${keyauth}"
+        ${HOOK} "deploy_challenge" "${altname}" "${challenge_token}" "${keyauth_hook}"
     fi
 
     # Ask the acme-server to verify our challenge and wait until it becomes valid
@@ -354,11 +370,13 @@ sign_domain() {
       status="$(_request get "${challenge_uri}" | get_json_string_value status)"
     done
 
-    rm -f "${WELLKNOWN}/${challenge_token}"
+    if [[ "${CHALLENGETYPE}" = "http-01" ]]; then
+      rm -f "${WELLKNOWN}/${challenge_token}"
+    fi
 
     # Wait for hook script to clean the challenge if used
     if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token}" ]]; then
-      ${HOOK} "clean_challenge" "${altname}" "${challenge_token}" "${keyauth}"
+      ${HOOK} "clean_challenge" "${altname}" "${challenge_token}" "${keyauth_hook}"
     fi
 
     if [[ "${status}" = "valid" ]]; then
@@ -543,7 +561,7 @@ command_help() {
 command_env() {
   echo "# letsencrypt.sh configuration"
   typeset -p CONFIG
-  typeset -p CA LICENSE BASEDIR WELLKNOWN PRIVATE_KEY KEYSIZE OPENSSL_CNF HOOK RENEW_DAYS PRIVATE_KEY_RENEW CONTACT_EMAIL
+  typeset -p CA LICENSE CHALLENGETYPE BASEDIR WELLKNOWN PRIVATE_KEY KEYSIZE OPENSSL_CNF HOOK RENEW_DAYS PRIVATE_KEY_RENEW CONTACT_EMAIL
   exit 0
 }
 
@@ -560,6 +578,8 @@ for arg; do
     --privkey) args="${args}-p ";;
     --config)  args="${args}-f ";;
     --env)     args="${args}-e ";;
+    --challenge) args="${args}-t ";;
+    --hook)    args="${args}-k ";;
     --*)
       echo "Unknown parameter detected: ${arg}" >&2
       echo >&2
@@ -593,7 +613,7 @@ check_parameters() {
   fi
 }
 
-while getopts ":hcer:d:xf:p:" option; do
+while getopts ":hcer:d:xf:p:t:k:" option; do
   case "${option}" in
     h)
       command_help
@@ -637,6 +657,18 @@ while getopts ":hcer:d:xf:p:" option; do
       check_parameters "${OPTARG:-}"
       PARAM_PRIVATE_KEY="${OPTARG}"
       ;;
+    t)
+      # PARAM_Usage: --challenge (-t) http-01|dns-01
+      # PARAM_Description: Which challenge should be used? Currently http-01 and dns-01 are supported
+      check_parameters "${OPTARG:-}"
+      PARAM_CHALLENGETYPE="${OPTARG}"
+      ;;
+    k)
+      # PARAM_Usage: --hook (-k) path/to/hook.sh
+      # PARAM_Description: Use specified script for hooks
+      check_parameters "${OPTARG:-}"
+      PARAM_HOOK="${OPTARG}"
+      ;;
     *)
       echo "Unknown parameter detected: -${OPTARG}" >&2
       echo >&2
@@ -652,6 +684,16 @@ if [[ -z "${COMMAND}" ]]; then
 fi
 
 init_system
+
+if [[ ! "${CHALLENGETYPE}" = "http-01" ]] && [[ ! "${CHALLENGETYPE}" = "dns-01" ]]; then
+  echo "Unknown challenge type ${CHALLENGETYPE} ... can not continue"
+  exit 1;
+fi
+
+if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
+  echo "Challenge type dns-01 needs a hook script for deployment ... can not continue"
+  exit 1;
+fi
 
 case "${COMMAND}" in
   sign_domains)

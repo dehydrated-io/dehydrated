@@ -35,6 +35,8 @@ Parameters:
  --force (-x)                     force renew of certificate even if it is longer valid than value in RENEW_DAYS
  --config (-f) path/to/config.sh  Use specified config file
  --privkey (-p) path/to/key.pem   Use specified private key instead of account key (useful for revocation)
+ --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported
+ --hook (-k) path/to/hook.sh      Use specified script for hooks
 ```
 
 ### domains.txt
