@@ -52,18 +52,14 @@ load_config() {
     # shellcheck disable=SC1090
     . "${CONFIG}"
   else
-    echo "Specified config file doesn't exist." >&2
-    exit 1
+    _exiterr "Specified config file doesn't exist."
   fi
 
   # Remove slash from end of BASEDIR. Mostly for cleaner outputs, doesn't change functionality.
   BASEDIR="${BASEDIR%%/}"
 
   # Check BASEDIR and set default variables
-  if [[ ! -d "${BASEDIR}" ]]; then
-   echo "BASEDIR does not exist: ${BASEDIR}" >&2
-   exit 1
-  fi
+  [[ -d "${BASEDIR}" ]] || _exiterr "BASEDIR does not exist: ${BASEDIR}"
 }
 
 # Initialize system
