@@ -31,10 +31,10 @@ Commands:
  --env (-e)                       Output configuration variables for use in other scripts
 
 Parameters:
- --domain (-d) domain.tld         Use specified domain name instead of domains.txt, use multiple times for certificate with SAN names
- --force (-x)                     force renew of certificate even if it is longer valid than value in RENEW_DAYS
- --config (-f) path/to/config.sh  Use specified config file
+ --domain (-d) domain.tld         Use specified domain name(s) instead of domains.txt entry (one certificate!)
+ --force (-x)                     Force renew of certificate even if it is longer valid than value in RENEW_DAYS
  --privkey (-p) path/to/key.pem   Use specified private key instead of account key (useful for revocation)
+ --config (-f) path/to/config.sh  Use specified config file
 ```
 
 ### domains.txt
@@ -53,7 +53,7 @@ with the other domains in the corresponding line being their alternative names.
 
 Boulder (acme-server) is looking for challenge responses under your domain in the `.well-known/acme-challenge` directory
 
-This script uses `http-01`-type verification (for now) so you need to have the that directory available over normal http (no ssl).
+This script uses `http-01`-type verification (for now) so you need to have that directory available over normal http (no ssl).
 
 A full URL would look like `http://example.org/.well-known/acme-challenge/c3VjaC1jaGFsbGVuZ2UtbXVjaA-aW52YWxpZC13b3c`.
 
