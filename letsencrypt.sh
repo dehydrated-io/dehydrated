@@ -18,6 +18,17 @@ check_dependencies() {
 
 # Setup default config values, search for and load configuration files
 load_config() {
+  # Check for config in various locations
+  if [[ -z "${CONFIG:-}" ]]; then
+    for check_config in "/etc/letsencrypt.sh" "/usr/local/etc/letsencrypt.sh" "${PWD}" "${SCRIPTDIR}"; do
+      if [[ -e "${check_config}/config.sh" ]]; then
+        BASEDIR="${check_config}"
+        CONFIG="${check_config}/config.sh"
+        break
+      fi
+    done
+  fi
+
   # Default values
   CA="https://acme-v01.api.letsencrypt.org/directory"
   LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
@@ -30,17 +41,6 @@ load_config() {
   OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
   CONTACT_EMAIL=
   LOCKFILE="${BASEDIR}/lock"
-
-  # Check for config in various locations
-  if [[ -z "${CONFIG:-}" ]]; then
-    for check_config in "/etc/letsencrypt.sh" "/usr/local/etc/letsencrypt.sh" "${PWD}" "${SCRIPTDIR}"; do
-      if [[ -e "${check_config}/config.sh" ]]; then
-        BASEDIR="${check_config}"
-        CONFIG="${check_config}/config.sh"
-        break
-      fi
-    done
-  fi
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
