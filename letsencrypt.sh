@@ -145,10 +145,6 @@ get_json_string_value() {
   grep -Eo '"'"${1}"'":[[:space:]]*"[^"]*"' | cut -d'"' -f4
 }
 
-get_json_array() {
-  grep -Eo '"'"${1}"'":[^\[]*\[[^]]*]'
-}
-
 # OpenSSL writes to stderr/stdout even when there are no errors. So just
 # display the output if the exit code was != 0 to simplify debugging.
 _openssl() {
@@ -200,6 +196,7 @@ http_request() {
   rm -f "${tempcont}"
 }
 
+# Send signed request
 signed_request() {
   # Encode payload as urlbase64
   payload64="$(printf '%s' "${2}" | urlbase64)"
@@ -223,20 +220,20 @@ signed_request() {
   http_request post "${1}" "${data}"
 }
 
+# Create certificate for domain(s)
 sign_domain() {
   domain="${1}"
   altnames="${*}"
+  timestamp="$(date +%s)"
 
   echo " + Signing domains..."
   if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
-    echo " + ERROR: Certificate authority doesn't allow certificate signing" >&2
-    exit 1
+    _exiterr "Certificate authority doesn't allow certificate signing"
   fi
-  timestamp="$(date +%s)"
 
   # If there is no existing certificate directory => make it
   if [[ ! -e "${BASEDIR}/certs/${domain}" ]]; then
-    echo " + make directory ${BASEDIR}/certs/${domain} ..."
+    echo " + Creating new directory ${BASEDIR}/certs/${domain} ..."
     mkdir -p "${BASEDIR}/certs/${domain}"
   fi
 
@@ -249,12 +246,12 @@ sign_domain() {
   fi
 
   # Generate signing request config and the actual signing request
+  echo " + Generating signing request..."
   SAN=""
-  for altname in $altnames; do
+  for altname in ${altnames}; do
     SAN+="DNS:${altname}, "
   done
   SAN="${SAN%%, }"
-  echo " + Generating signing request..."
   local tmp_openssl_cnf
   tmp_openssl_cnf="$(mktemp)"
   cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
@@ -263,20 +260,19 @@ sign_domain() {
   rm -f "${tmp_openssl_cnf}"
 
   # Request and respond to challenges
-  for altname in $altnames; do
+  for altname in ${altnames}; do
     # Ask the acme-server for new challenge token and extract them from the resulting json block
     echo " + Requesting challenge for ${altname}..."
     response="$(signed_request "${CA_NEW_AUTHZ}" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}')"
 
-    challenges="$(printf '%s\n' "${response}" | get_json_array challenges)"
+    challenges="$(printf '%s\n' "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]')"
     repl=$'\n''{' # fix syntax highlighting in Vim
     challenge="$(printf "%s" "${challenges//\{/${repl}}" | grep 'http-01')"
     challenge_token="$(printf '%s' "${challenge}" | get_json_string_value token | sed 's/[^A-Za-z0-9_\-]/_/g')"
     challenge_uri="$(printf '%s' "${challenge}" | get_json_string_value uri)"
 
     if [[ -z "${challenge_token}" ]] || [[ -z "${challenge_uri}" ]]; then
-      echo "  + Error: Can't retrieve challenges (${response})" >&2
-      exit 1
+      _exiterr "Can't retrieve challenges (${response})"
     fi
 
     # Challenge response consists of the challenge token and the thumbprint of our public certificate
@@ -287,17 +283,14 @@ sign_domain() {
     chmod a+r "${WELLKNOWN}/${challenge_token}"
 
     # Wait for hook script to deploy the challenge if used
-    if [[ -n "${HOOK}" ]]; then
-        ${HOOK} "deploy_challenge" "${altname}" "${challenge_token}" "${keyauth}"
-    fi
+    [[ -n "${HOOK}" ]] && ${HOOK} "deploy_challenge" "${altname}" "${challenge_token}" "${keyauth}"
 
-    # Ask the acme-server to verify our challenge and wait until it becomes valid
+    # Ask the acme-server to verify our challenge and wait until it is no longer pending
     echo " + Responding to challenge for ${altname}..."
     result="$(signed_request "${challenge_uri}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}')"
 
     status="$(printf '%s\n' "${result}" | get_json_string_value status)"
 
-    # get status until a result is reached => not pending anymore
     while [[ "${status}" = "pending" ]]; do
       sleep 1
       status="$(http_request get "${challenge_uri}" | get_json_string_value status)"
@@ -313,10 +306,8 @@ sign_domain() {
     if [[ "${status}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
-      echo " + Challenge is invalid! (returned: ${status})" >&2
-      exit 1
+      _exiterr "Challenge is invalid! (returned: ${status})"
     fi
-
   done
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
@@ -325,7 +316,8 @@ sign_domain() {
   crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | openssl base64 -e)"
   crt_path="${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
   printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "${crt_path}"
-  # try to load the certificate to detect corruption
+
+  # Try to load the certificate to detect corruption
   echo " + Checking certificate..."
   _openssl x509 -text < "${crt_path}"
 
@@ -333,30 +325,25 @@ sign_domain() {
   echo " + Creating fullchain.pem..."
   cat "${crt_path}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
   http_request get "$(openssl x509 -in "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem"
-  if ! grep "BEGIN CERTIFICATE" "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" > /dev/null 2>&1; then
+  if ! grep -q "BEGIN CERTIFICATE" "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem"; then
     openssl x509 -in "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" -inform DER -out "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" -outform PEM
   fi
-  ln -sf "chain-${timestamp}.pem" "${BASEDIR}/certs/${domain}/chain.pem"
   cat "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
+
+  # Update symlinks
+  [[ "${privkey}" = "privkey.pem" ]] || ln -sf "privkey-${timestamp}.pem" "${BASEDIR}/certs/${domain}/privkey.pem"
+
+  ln -sf "chain-${timestamp}.pem" "${BASEDIR}/certs/${domain}/chain.pem"
   ln -sf "fullchain-${timestamp}.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
-
-  # Update remaining symlinks
-  if [ ! "${privkey}" = "privkey.pem" ]; then
-    ln -sf "privkey-${timestamp}.pem" "${BASEDIR}/certs/${domain}/privkey.pem"
-  fi
-
   ln -sf "cert-${timestamp}.csr" "${BASEDIR}/certs/${domain}/cert.csr"
   ln -sf "cert-${timestamp}.pem" "${BASEDIR}/certs/${domain}/cert.pem"
 
   # Wait for hook script to clean the challenge and to deploy cert if used
-  if [[ -n "${HOOK}" ]]; then
-      ${HOOK} "deploy_cert" "${domain}" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
-  fi
+  [[ -n "${HOOK}" ]] && ${HOOK} "deploy_cert" "${domain}" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
 
   unset challenge_token
   echo " + Done!"
 }
-
 
 # Usage: --cron (-c)
 # Description: Sign/renew non-existant/changed/expiring certificates.
