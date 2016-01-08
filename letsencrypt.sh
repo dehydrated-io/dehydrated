@@ -165,6 +165,7 @@ _openssl() {
   fi
 }
 
+# Send http(s) request with specified method
 http_request() {
   tempcont="$(mktemp)"
 
@@ -174,6 +175,8 @@ http_request() {
     statuscode="$(curl -s -w "%{http_code}" -o "${tempcont}" "${2}")"
   elif [[ "${1}" = "post" ]]; then
     statuscode="$(curl -s -w "%{http_code}" -o "${tempcont}" "${2}" -d "${3}")"
+  else
+    _exiterr "Unknown request method: ${1}"
   fi
 
   if [[ ! "${statuscode:0:1}" = "2" ]]; then
@@ -184,15 +187,12 @@ http_request() {
     rm -f "${tempcont}"
 
     # Wait for hook script to clean the challenge if used
-    if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token:+set}"  ]]; then
+    if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token:+set}" ]]; then
       ${HOOK} "clean_challenge" '' "${challenge_token}" "${keyauth}"
     fi
 
     # remove temporary domains.txt file if used
-    if [[ -n "${PARAM_DOMAIN:-}" ]]; then
-      rm "${DOMAINS_TXT}"
-    fi
-
+    [[ -n "${PARAM_DOMAIN:-}" ]] && rm "${DOMAINS_TXT}"
     exit 1
   fi
 
