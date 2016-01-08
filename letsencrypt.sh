@@ -8,6 +8,13 @@ umask 077 # paranoid umask, we're creating private keys
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASEDIR="${SCRIPTDIR}"
 
+check_dependencies() {
+  curl -V > /dev/null 2>&1 || _exiterr "This script requires curl."
+  openssl version > /dev/null 2>&1 || _exiterr "This script requres an openssl binary."
+  sed "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requres sed."
+  grep -V > /dev/null 2>&1 || _exiterr "This script requres grep."
+}
+
 # Setup default config values, search for and load configuration files
 load_config() {
   # Default values
@@ -147,6 +154,12 @@ init_system() {
     echo " + ERROR: WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions." >&2
     exit 1
   fi
+}
+
+# Print error message and exit with error
+_exiterr() {
+  echo "ERROR: ${1}" >&2
+  exit 1
 }
 
 anti_newline() {
@@ -384,6 +397,8 @@ sign_domain() {
 # Usage: --cron (-c)
 # Description: Sign/renew non-existant/changed/expiring certificates.
 command_sign_domains() {
+  init_system
+
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
     # we are using a temporary domains.txt file so we don't need to duplicate any code
     DOMAINS_TXT="$(mktemp)"
@@ -453,6 +468,8 @@ command_sign_domains() {
 # Usage: --revoke (-r) path/to/cert.pem
 # Description: Revoke specified certificate
 command_revoke() {
+  init_system
+
   cert="${1}"
   if [[ -L "${cert}" ]]; then
     # follow symlink and use real certificate name (so we move the real file and not the symlink at the end)
@@ -514,124 +531,106 @@ command_help() {
 # Description: Output configuration variables for use in other scripts
 command_env() {
   echo "# letsencrypt.sh configuration"
-  typeset -p CA LICENSE BASEDIR WELLKNOWN PRIVATE_KEY KEYSIZE OPENSSL_CNF HOOK RENEW_DAYS PRIVATE_KEY_RENEW CONTACT_EMAIL
-  exit 0
+  load_config
+  typeset -p CA LICENSE HOOK RENEW_DAYS PRIVATE_KEY KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
-args=""
-# change long args to short args
-# inspired by http://kirk.webfinish.com/?p=45
-for arg; do
-  case "${arg}" in
-    --help)    args="${args}-h ";;
-    --cron)    args="${args}-c ";;
-    --domain)  args="${args}-d ";;
-    --force )  args="${args}-x ";;
-    --revoke)  args="${args}-r ";;
-    --privkey) args="${args}-p ";;
-    --config)  args="${args}-f ";;
-    --env)     args="${args}-e ";;
-    --*)
-      echo "Unknown parameter detected: ${arg}" >&2
+main() {
+  COMMAND=""
+  set_command() {
+    [[ -z "${COMMAND}" ]] || _exiterr "Only one command can be executed at a time. See help (-h) for more information."
+    COMMAND="${1}"
+  }
+
+  check_parameters() {
+    if [[ -z "${1:-}" ]]; then
+      echo "The specified command requires additional parameters. See help:" >&2
       echo >&2
       command_help >&2
       exit 1
-      ;;
-    # pass through anything else
-    *) args="${args}\"${arg}\" ";;
-    esac
-done
+    elif [[ "${1:0:1}" = "-" ]]; then
+      _exiterr "Invalid argument: ${1}"
+    fi
+  }
 
-# Reset the positional parameters to the short options
-eval set -- "${args}"
+  while (( "${#}" )); do
+    case "${1}" in
+      --help|-h)
+        command_help
+        exit 0
+        ;;
 
-COMMAND=""
-set_command() {
-  if [[ ! -z "${COMMAND}" ]]; then
-    echo "Only one command can be executed at a time." >&2
-    echo "See help (-h) for more information." >&2
-    exit 1
-  fi
-  COMMAND="${1}"
-}
+      --env|-e)
+        set_command env
+        ;;
 
-check_parameters() {
-  if [[ -z "${@}" ]]; then
-    echo "The specified command requires additional parameters. See help:" >&2
-    echo >&2
-    command_help >&2
-    exit 1
-  fi
-}
+      --cron|-c)
+        set_command sign_domains
+        ;;
 
-while getopts ":hcer:d:xf:p:" option; do
-  case "${option}" in
-    h)
-      command_help
-      exit 0
-      ;;
-    c)
-      set_command sign_domains
-      ;;
-    e)
-      set_command env
-      ;;
-    r)
-      set_command revoke
-      check_parameters "${OPTARG:-}"
-      revoke_me="${OPTARG}"
-      ;;
-    d)
+      --revoke|-r)
+        shift 1
+        set_command revoke
+        check_parameters "${1:-}"
+        PARAM_REVOKECERT="${1}"
+        ;;
+
       # PARAM_Usage: --domain (-d) domain.tld
-      # PARAM_Description: Use specified domain name instead of domains.txt, use multiple times for certificate with SAN names
-      check_parameters "${OPTARG:-}"
-      if [[ -z "${PARAM_DOMAIN:-}" ]]; then
-        PARAM_DOMAIN="${OPTARG}"
-      else
-        PARAM_DOMAIN="${PARAM_DOMAIN} ${OPTARG}"
-       fi
-      ;;
-    x)
+      # PARAM_Description: Use specified domain name(s) instead of domains.txt entry (one certificate!)
+      --domain|-d)
+        shift 1
+        check_parameters "${1:-}"
+        if [[ -z "${PARAM_DOMAIN:-}" ]]; then
+          PARAM_DOMAIN="${1}"
+        else
+          PARAM_DOMAIN="${PARAM_DOMAIN} ${1}"
+         fi
+        ;;
+
+
       # PARAM_Usage: --force (-x)
-      # PARAM_Description: force renew of certificate even if it is longer valid than value in RENEW_DAYS
-      PARAM_FORCE="yes"
-      ;;
-    f)
-      # PARAM_Usage: --config (-f) path/to/config.sh
-      # PARAM_Description: Use specified config file
-      check_parameters "${OPTARG:-}"
-      CONFIG="${OPTARG}"
-      ;;
-    p)
+      # PARAM_Description: Force renew of certificate even if it is longer valid than value in RENEW_DAYS
+      --force|-x)
+        PARAM_FORCE="yes"
+        ;;
+
       # PARAM_Usage: --privkey (-p) path/to/key.pem
       # PARAM_Description: Use specified private key instead of account key (useful for revocation)
-      check_parameters "${OPTARG:-}"
-      PARAM_PRIVATE_KEY="${OPTARG}"
-      ;;
-    *)
-      echo "Unknown parameter detected: -${OPTARG}" >&2
-      echo >&2
-      command_help >&2
-      exit 1
-      ;;
+      --privkey|-p)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_PRIVATE_KEY="${1}"
+        ;;
+
+      # PARAM_Usage: --config (-f) path/to/config.sh
+      # PARAM_Description: Use specified config file
+      --config|-f)
+        shift 1
+        check_parameters "${1:-}"
+        CONFIG="${1}"
+        ;;
+
+      *)
+        echo "Unknown parameter detected: ${1}" >&2
+        echo >&2
+        command_help >&2
+        exit 1
+        ;;
+    esac
+
+    shift 1
+  done
+
+  case "${COMMAND}" in
+    env) command_env;;
+    sign_domains) command_sign_domains;;
+    revoke) command_revoke "${PARAM_REVOKECERT}";;
+    *) command_help; exit1;;
   esac
-done
+}
 
-if [[ -z "${COMMAND}" ]]; then
-  command_help
-  exit 1
-fi
+# Check for missing dependencies
+check_dependencies
 
-init_system
-
-case "${COMMAND}" in
-  sign_domains)
-    command_sign_domains
-    ;;
-  env)
-    command_env
-    ;;
-  revoke)
-    command_revoke "${revoke_me}"
-    ;;
-esac
+# Run script
+main "${@:-}"
