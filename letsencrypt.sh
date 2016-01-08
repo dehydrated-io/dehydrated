@@ -33,7 +33,7 @@ load_config() {
   # Default values
   CA="https://acme-v01.api.letsencrypt.org/directory"
   LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
-  CHALLENGETYPE="http-01"  
+  CHALLENGETYPE="http-01"
   HOOK=
   RENEW_DAYS="30"
   PRIVATE_KEY="${BASEDIR}/private_key.pem"
@@ -63,22 +63,12 @@ load_config() {
   # Check BASEDIR and set default variables
   [[ -d "${BASEDIR}" ]] || _exiterr "BASEDIR does not exist: ${BASEDIR}"
 
-  if [[ -n "${PARAM_HOOK:-}" ]]; then
-    HOOK="${PARAM_HOOK}"
-  fi
+  [[ -n "${PARAM_HOOK:-}" ]] && HOOK="${PARAM_HOOK}"
+  [[ -n "${PARAM_CHALLENGETYPE:-}" ]] && CHALLENGETYPE="${PARAM_CHALLENGETYPE}"
 
-  if [[ -n "${PARAM_CHALLENGETYPE:-}" ]]; then
-    CHALLENGETYPE="${PARAM_CHALLENGETYPE}"
-  fi
-
-  case "${CHALLENGETYPE}" in
-    http-01|dns-01) ;; # We suppport these types
-    *) echo "Unknown challenge type ${CHALLENGETYPE} ... can not continue"; exit 1;;
-  esac
-
+  [[ "${CHALLENGETYPE}" =~ (http-01|dns-01) ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... can not continue."
   if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
-   echo "Challenge type dns-01 needs a hook script for deployment ... can not continue"
-   exit 1
+   _exiterr "Challenge type dns-01 needs a hook script for deployment... can not continue."
   fi
 }
 
@@ -296,16 +286,18 @@ sign_domain() {
     # Challenge response consists of the challenge token and the thumbprint of our public certificate
     keyauth="${challenge_token}.${thumbprint}"
 
-    if [[ "${CHALLENGETYPE}" = "http-01" ]]; then
-      # Store challenge response in well-known location and make world-readable (so that a webserver can access it)
-      printf '%s' "${keyauth}" > "${WELLKNOWN}/${challenge_token}"
-      chmod a+r "${WELLKNOWN}/${challenge_token}"
-    fi
-
-    keyauth_hook="${keyauth}"
-    if [[ "${CHALLENGETYPE}" = "dns-01" ]]; then
-      keyauth_hook="$(printf '%s' "${keyauth}" | openssl sha -sha256 -binary | urlbase64)"
-    fi
+    case "${CHALLENGETYPE}" in
+      "http-01")
+        # Store challenge response in well-known location and make world-readable (so that a webserver can access it)
+        printf '%s' "${keyauth}" > "${WELLKNOWN}/${challenge_token}"
+        chmod a+r "${WELLKNOWN}/${challenge_token}"
+        keyauth_hook="${keyauth}"
+        ;;
+      "dns-01")
+        # Generate DNS entry content for dns-01 validation
+        keyauth_hook="$(printf '%s' "${keyauth}" | openssl sha -sha256 -binary | urlbase64)"
+        ;;
+    esac
 
     # Wait for hook script to deploy the challenge if used
     [[ -n "${HOOK}" ]] && ${HOOK} "deploy_challenge" "${altname}" "${challenge_token}" "${keyauth_hook}"
@@ -321,9 +313,7 @@ sign_domain() {
       status="$(http_request get "${challenge_uri}" | get_json_string_value status)"
     done
 
-    if [[ "${CHALLENGETYPE}" = "http-01" ]]; then
-      rm -f "${WELLKNOWN}/${challenge_token}"
-    fi
+    [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
 
     # Wait for hook script to clean the challenge if used
     if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token}" ]]; then
