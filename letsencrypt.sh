@@ -65,33 +65,14 @@ load_config() {
   fi
 }
 
+# Initialize system
 init_system() {
   load_config
 
-  if [[ "${COMMAND}" = "env" ]]; then
-    return
-  fi
-
   # Lockfile handling (prevents concurrent access)
-  set -o noclobber
-  if ! { date > "${LOCKFILE}"; } 2>/dev/null; then
-    echo "  + ERROR: Lock file '${LOCKFILE}' present, aborting." >&2
-    LOCKFILE="" # so remove_lock doesn't remove it
-    exit 1
-  fi
-  set +o noclobber
-
-  remove_lock() {
-    if [[ -n "${LOCKFILE}" ]]; then
-        rm -f "${LOCKFILE}"
-    fi
-  }
+  ( set -C; date > "${LOCKFILE}" ) 2>/dev/null || _exiterr "Lock file '${LOCKFILE}' present, aborting."
+  remove_lock() { rm -f "${LOCKFILE}"; }
   trap 'remove_lock' EXIT
-
-  # Export some environment variables to be used in hook script
-  export WELLKNOWN
-  export BASEDIR
-  export CONFIG
 
   # Get CA URLs
   CA_DIRECTORY="$(http_request get "${CA}")"
@@ -100,27 +81,26 @@ init_system() {
   CA_NEW_REG="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-reg)" &&
   # shellcheck disable=SC2015
   CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revoke-cert)" ||
-  (echo "Error retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint." >&2; exit 1)
+  _exiterr "Problem retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."
 
+  # Export some environment variables to be used in hook script
+  export WELLKNOWN BASEDIR CONFIG
 
-  # check private key ...
-  register="0"
+  # Checking for private key ...
+  register_new_key="no"
   if [[ -n "${PARAM_PRIVATE_KEY:-}" ]]; then
     # a private key was specified from the command line so use it for this run
     echo "Using private key ${PARAM_PRIVATE_KEY} instead of account key"
     PRIVATE_KEY="${PARAM_PRIVATE_KEY}"
-    if ! openssl rsa -in "${PRIVATE_KEY}" -check 2>/dev/null > /dev/null; then
-      echo " + ERROR: private key is not valid, can not continue" >&2
-      exit 1
-    fi
   else
     # Check if private account key exists, if it doesn't exist yet generate a new one (rsa key)
     if [[ ! -e "${PRIVATE_KEY}" ]]; then
       echo "+ Generating account key..."
       _openssl genrsa -out "${PRIVATE_KEY}" "${KEYSIZE}"
-      register="1"
+      register_new_key="yes"
     fi
   fi
+  openssl rsa -in "${PRIVATE_KEY}" -check 2>/dev/null > /dev/null || _exiterr "Private key is not valid, can not continue."
 
   # Get public components from private key and calculate thumbprint
   pubExponent64="$(openssl rsa -in "${PRIVATE_KEY}" -noout -text | grep publicExponent | grep -oE "0x[a-f0-9]+" | cut -d'x' -f2 | hex2bin | urlbase64)"
@@ -129,13 +109,10 @@ init_system() {
   thumbprint="$(printf '{"e":"%s","kty":"RSA","n":"%s"}' "${pubExponent64}" "${pubMod64}" | openssl sha -sha256 -binary | urlbase64)"
 
   # If we generated a new private key in the step above we have to register it with the acme-server
-  if [[ "${register}" = "1" ]]; then
+  if [[ "${register_new_key}" = "yes" ]]; then
     echo "+ Registering account key with letsencrypt..."
-    if [ -z "${CA_NEW_REG}" ]; then
-      echo " + ERROR: Certificate authority doesn't allow registrations." >&2
-      exit 1
-    fi
-    # if an email for the contact has been provided then adding it to the registration request
+    [[ ! -z "${CA_NEW_REG}" ]] || _exiterr "Certificate authority doesn't allow registrations."
+    # If an email for the contact has been provided then adding it to the registration request
     if [[ -n "${CONTACT_EMAIL}" ]]; then
       signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"$LICENSE"'"}' > /dev/null
     else
@@ -143,17 +120,7 @@ init_system() {
     fi
   fi
 
-  if [[ -e "${BASEDIR}/domains.txt" ]]; then
-    DOMAINS_TXT="${BASEDIR}/domains.txt"
-  else
-    echo " + ERROR: domains.txt not found" >&2
-    exit 1
-  fi
-
-  if [[ ! -e "${WELLKNOWN}" ]]; then
-    echo " + ERROR: WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions." >&2
-    exit 1
-  fi
+  [[ -d "${WELLKNOWN}" ]] || _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
 }
 
 # Print error message and exit with error
@@ -400,10 +367,14 @@ command_sign_domains() {
   init_system
 
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
-    # we are using a temporary domains.txt file so we don't need to duplicate any code
     DOMAINS_TXT="$(mktemp)"
-    echo "${PARAM_DOMAIN}" > "${DOMAINS_TXT}"
+    printf -- "${PARAM_DOMAIN}" > "${DOMAINS_TXT}"
+  elif [[ -e "${BASEDIR}/domains.txt" ]]; then
+    DOMAINS_TXT="${BASEDIR}/domains.txt"
+  else
+    _exiterr "domains.txt not found and --domain not given"
   fi
+
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
   <"${DOMAINS_TXT}" sed 's/^[[:space:]]*//g;s/[[:space:]]*$//g' | grep -vE '^(#|$)' | while read -r line; do
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
@@ -415,11 +386,11 @@ command_sign_domains() {
     if [[ -z "${morenames}" ]];then
       echo "Processing ${domain}"
     else
-      echo "Processing ${domain} with SAN: ${morenames}"
+      echo "Processing ${domain} with alternative names: ${morenames}"
     fi
 
     if [[ -e "${cert}" ]]; then
-      echo -n " + Checking domain name(s) of existing cert..."
+      printf " + Checking domain name(s) of existing cert..."
 
       certnames="$(openssl x509 -in "${cert}" -text -noout | grep DNS: | sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')"
       givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//' | sed 's/^ //')"
@@ -438,12 +409,11 @@ command_sign_domains() {
 
     if [[ -e "${cert}" ]]; then
       echo " + Checking expire date of existing cert..."
-
       valid="$(openssl x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
 
-      echo -n " + Valid till ${valid} "
+      printf " + Valid till %s " "${valid}"
       if openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; then
-        echo -n "(Longer than ${RENEW_DAYS} days). "
+        printf "(Longer than %d days). " "${RENEW_DAYS}"
         if [[ "${force_renew}" = "yes" ]]; then
           echo "Ignoring because renew was forced!"
         else
@@ -456,13 +426,13 @@ command_sign_domains() {
     fi
 
     # shellcheck disable=SC2086
-    sign_domain $line
+    sign_domain ${line}
   done || true
 
   # remove temporary domains.txt file if used
-  if [[ -n "${PARAM_DOMAIN:-}" ]]; then
-    rm -f "${DOMAINS_TXT}"
-  fi
+  [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"
+
+  exit 0
 }
 
 # Usage: --revoke (-r) path/to/cert.pem
