@@ -158,27 +158,10 @@ urlbase64() {
   openssl base64 -e | anti_newline | sed 's/=*$//g' | tr '+/' '-_'
 }
 
+# Convert hex string to binary data
 hex2bin() {
-  # Store hex string from stdin
-  tmphex="$(cat)"
-
-  # Remove spaces
-  hex=''
-  for ((i=0; i<${#tmphex}; i+=1)); do
-    test "${tmphex:$i:1}" == " " || hex="${hex}${tmphex:$i:1}"
-  done
-
-  # Add leading zero
-  test $((${#hex} & 1)) == 0 || hex="0${hex}"
-
-  # Convert to escaped string
-  escapedhex=''
-  for ((i=0; i<${#hex}; i+=2)); do
-    escapedhex=$escapedhex\\x${hex:$i:2}
-  done
-
-  # Convert to binary data
-  printf -- "${escapedhex}"
+  # Remove spaces, add leading zero, escape as hex string and parse with printf
+  printf -- "$(cat | sed -E -e 's/[[:space:]]//g' -e 's/^(.(.{2})*)$/0\1/' -e 's/(.{2})/\\x\1/g')"
 }
 
 get_json_string_value() {
