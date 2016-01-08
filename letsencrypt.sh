@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 set -e
 set -u
 set -o pipefail
@@ -7,38 +6,26 @@ umask 077 # paranoid umask, we're creating private keys
 
 # Get the directory in which this script is stored
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-# directory for config, private key and certificates
 BASEDIR="${SCRIPTDIR}"
 
-# Default config values
-CA="https://acme-v01.api.letsencrypt.org/directory"
-LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
-HOOK=
-RENEW_DAYS="30"
-PRIVATE_KEY=
-KEYSIZE="4096"
-WELLKNOWN=
-PRIVATE_KEY_RENEW="no"
-OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
-CONTACT_EMAIL=
-
-set_defaults() {
-  # Default config variables depending on BASEDIR
-  if [[ -z "${PRIVATE_KEY}" ]]; then
-    PRIVATE_KEY="${BASEDIR}/private_key.pem"
-  fi
-  if [[ -z "${WELLKNOWN}" ]]; then
-    WELLKNOWN="${BASEDIR}/.acme-challenges"
-  fi
-
+# Setup default config values, search for and load configuration files
+load_config() {
+  # Default values
+  CA="https://acme-v01.api.letsencrypt.org/directory"
+  LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
+  HOOK=
+  RENEW_DAYS="14"
+  PRIVATE_KEY="${BASEDIR}/private_key.pem"
+  KEYSIZE="4096"
+  WELLKNOWN="${BASEDIR}/.acme-challenges"
+  PRIVATE_KEY_RENEW="no"
+  OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
+  CONTACT_EMAIL=
   LOCKFILE="${BASEDIR}/lock"
-}
 
-init_system() {
   # Check for config in various locations
   if [[ -z "${CONFIG:-}" ]]; then
-    for check_config in "${HOME}/.letsencrypt.sh" "/etc/letsencrypt.sh" "/usr/local/etc/letsencrypt.sh" "${PWD}" "${SCRIPTDIR}"; do
+    for check_config in "/etc/letsencrypt.sh" "/usr/local/etc/letsencrypt.sh" "${PWD}" "${SCRIPTDIR}"; do
       if [[ -e "${check_config}/config.sh" ]]; then
         BASEDIR="${check_config}"
         CONFIG="${check_config}/config.sh"
@@ -48,17 +35,16 @@ init_system() {
   fi
 
   if [[ -z "${CONFIG:-}" ]]; then
-    echo "WARNING: No config file found, using default config!" >&2
-    sleep 2
+    echo "#" >&2
+    echo "# !! WARNING !! No config file found, using default config!" >&2
+    echo "#" >&2
   elif [[ -e "${CONFIG}" ]]; then
-    if [[ ! "${COMMAND}" = "env" ]]; then
-      echo "Using config file ${CONFIG}"
-    fi
+    echo "# INFO: Using config file ${CONFIG}"
     BASEDIR="$(dirname "${CONFIG}")"
     # shellcheck disable=SC1090
     . "${CONFIG}"
   else
-    echo "ERROR: Specified config file doesn't exist." >&2
+    echo "Specified config file doesn't exist." >&2
     exit 1
   fi
 
@@ -67,10 +53,13 @@ init_system() {
 
   # Check BASEDIR and set default variables
   if [[ ! -d "${BASEDIR}" ]]; then
-    echo "ERROR: BASEDIR does not exist: ${BASEDIR}" >&2
-    exit 1
+   echo "BASEDIR does not exist: ${BASEDIR}" >&2
+   exit 1
   fi
-  set_defaults
+}
+
+init_system() {
+  load_config
 
   if [[ "${COMMAND}" = "env" ]]; then
     return
@@ -542,7 +531,6 @@ command_help() {
 # Description: Output configuration variables for use in other scripts
 command_env() {
   echo "# letsencrypt.sh configuration"
-  typeset -p CONFIG
   typeset -p CA LICENSE BASEDIR WELLKNOWN PRIVATE_KEY KEYSIZE OPENSSL_CNF HOOK RENEW_DAYS PRIVATE_KEY_RENEW CONTACT_EMAIL
   exit 0
 }
