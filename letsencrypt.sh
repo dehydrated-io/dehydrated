@@ -388,6 +388,8 @@ command_sign_domains() {
 
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
   <"${DOMAINS_TXT}" sed 's/^[[:space:]]*//g;s/[[:space:]]*$//g' | (grep -vE '^(#|$)' || true) | while read -r line; do
+    # clean line from tabs and multiple spaces (tab -> space, multiple space -> single space, remove leading+trailing space)
+    line="$(echo -n "${line}" | sed 's/\t/ /g' | sed 's/  */ /g' | sed 's/^ //' | sed 's/ $//')"
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
     morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
     cert="${BASEDIR}/certs/${domain}/cert.pem"
