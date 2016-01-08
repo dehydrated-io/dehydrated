@@ -502,29 +502,22 @@ command_revoke() {
 # Usage: --help (-h)
 # Description: Show help text
 command_help() {
-  echo "Usage: ${0} [-h] [command [argument]] [parameter [argument]] [parameter [argument]] ..."
-  echo
-  echo "Default command: help"
-  echo
-  (
+  printf "Usage: %s [-h] [command [argument]] [parameter [argument]] [parameter [argument]] ...\n\n" "${0}"
+  printf "Default command: help\n\n"
   echo "Commands:"
   grep -e '^[[:space:]]*# Usage:' -e '^[[:space:]]*# Description:' -e '^command_.*()[[:space:]]*{' "${0}" | while read -r usage; read -r description; read -r command; do
     if [[ ! "${usage}" =~ Usage ]] || [[ ! "${description}" =~ Description ]] || [[ ! "${command}" =~ ^command_ ]]; then
-      echo "Error generating help text." >&2
-      exit 1
+      _exiterr "Error generating help text."
     fi
-    printf " %s\t%s\n" "${usage##"# Usage: "}" "${description##"# Description: "}"
+    printf " %-32s %s\n" "${usage##"# Usage: "}" "${description##"# Description: "}"
   done
-  echo "---"
-  echo "Parameters:"
+  printf -- "\nParameters:\n"
   grep -E -e '^[[:space:]]*# PARAM_Usage:' -e '^[[:space:]]*# PARAM_Description:' "${0}" | while read -r usage; read -r description; do
     if [[ ! "${usage}" =~ Usage ]] || [[ ! "${description}" =~ Description ]]; then
-      echo "Error generating help text." >&2
-      exit 1
+      _exiterr "Error generating help text."
     fi
-    printf " %s\t%s\n" "${usage##"# PARAM_Usage: "}" "${description##"# PARAM_Description: "}"
+    printf " %-32s %s\n" "${usage##"# PARAM_Usage: "}" "${description##"# PARAM_Description: "}"
   done
-  ) | column -t -s $'\t' | sed 's/^---$//g'
 }
 
 # Usage: --env (-e)
