@@ -36,6 +36,7 @@ Parameters:
  --privkey (-p) path/to/key.pem   Use specified private key instead of account key (useful for revocation)
  --config (-f) path/to/config.sh  Use specified config file
  --hook (-k) path/to/hook.sh      Use specified script for hooks
+ --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported
 ```
 
 ### domains.txt
@@ -78,6 +79,12 @@ WELLKNOWN="/var/www/letsencrypt"
 
 An alternative to setting the WELLKNOWN variable would be to create a symlink to the default location next to the script (or BASEDIR):
 `ln -s /var/www/letsencrypt .acme-challenges`
+
+### dns-01 challenge
+
+This script also supports the new `dns-01`-type verification. Be aware that at the moment this is not available on the production servers from letsencrypt. Please read `https://community.letsencrypt.org/t/dns-challenge-is-in-staging/8322` for the current state of `dns-01` support.
+
+You need a hook script that deploys the challenge to your DNS server!
 
 ## Import
 
