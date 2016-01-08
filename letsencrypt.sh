@@ -98,7 +98,7 @@ init_system() {
   export CONFIG
 
   # Get CA URLs
-  CA_DIRECTORY="$(_request get "${CA}")"
+  CA_DIRECTORY="$(http_request get "${CA}")"
   CA_NEW_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-cert)" &&
   CA_NEW_AUTHZ="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-authz)" &&
   CA_NEW_REG="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-reg)" &&
@@ -200,7 +200,7 @@ get_json_array() {
   grep -Eo '"'"${1}"'":[^\[]*\[[^]]*]'
 }
 
-_request() {
+http_request() {
   tempcont="$(mktemp)"
 
   if [[ "${1}" = "head" ]]; then
@@ -256,7 +256,7 @@ signed_request() {
   payload64="$(printf '%s' "${2}" | urlbase64)"
 
   # Retrieve nonce from acme-server
-  nonce="$(_request head "${CA}" | grep Replay-Nonce: | awk -F ': ' '{print $2}' | anti_newline)"
+  nonce="$(http_request head "${CA}" | grep Replay-Nonce: | awk -F ': ' '{print $2}' | anti_newline)"
 
   # Build header with just our public key and algorithm information
   header='{"alg": "RS256", "jwk": {"e": "'"${pubExponent64}"'", "kty": "RSA", "n": "'"${pubMod64}"'"}}'
@@ -271,7 +271,7 @@ signed_request() {
   # Send header + extended header + payload + signature to the acme-server
   data='{"header": '"${header}"', "protected": "'"${protected64}"'", "payload": "'"${payload64}"'", "signature": "'"${signed64}"'"}'
 
-  _request post "${1}" "${data}"
+  http_request post "${1}" "${data}"
 }
 
 sign_domain() {
@@ -351,7 +351,7 @@ sign_domain() {
     # get status until a result is reached => not pending anymore
     while [[ "${status}" = "pending" ]]; do
       sleep 1
-      status="$(_request get "${challenge_uri}" | get_json_string_value status)"
+      status="$(http_request get "${challenge_uri}" | get_json_string_value status)"
     done
 
     rm -f "${WELLKNOWN}/${challenge_token}"
@@ -383,7 +383,7 @@ sign_domain() {
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
   cat "${crt_path}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
-  _request get "$(openssl x509 -in "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem"
+  http_request get "$(openssl x509 -in "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem"
   if ! grep "BEGIN CERTIFICATE" "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" > /dev/null 2>&1; then
     openssl x509 -in "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" -inform DER -out "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" -outform PEM
   fi
@@ -503,7 +503,7 @@ command_revoke() {
   fi
   cert64="$(openssl x509 -in "${cert}" -inform PEM -outform DER | urlbase64)"
   response="$(signed_request "${CA_REVOKE_CERT}" '{"resource": "revoke-cert", "certificate": "'"${cert64}"'"}')"
-  # if there is a problem with our revoke request _request (via signed_request) will report this and "exit 1" out
+  # if there is a problem with our revoke request http_request (via signed_request) will report this and "exit 1" out
   # so if we are here, it is safe to assume the request was successful
   echo " + SUCCESS"
   echo " + renaming certificate to ${cert}-revoked"
