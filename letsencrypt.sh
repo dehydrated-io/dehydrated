@@ -22,7 +22,7 @@ load_config() {
   CA="https://acme-v01.api.letsencrypt.org/directory"
   LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
   HOOK=
-  RENEW_DAYS="14"
+  RENEW_DAYS="30"
   PRIVATE_KEY="${BASEDIR}/private_key.pem"
   KEYSIZE="4096"
   WELLKNOWN="${BASEDIR}/.acme-challenges"
