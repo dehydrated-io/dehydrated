@@ -60,6 +60,10 @@ load_config() {
 
   # Check BASEDIR and set default variables
   [[ -d "${BASEDIR}" ]] || _exiterr "BASEDIR does not exist: ${BASEDIR}"
+
+  if [[ -n "${PARAM_HOOK:-}" ]]; then
+    HOOK="${PARAM_HOOK}"
+  fi
 }
 
 # Initialize system
@@ -551,6 +555,14 @@ main() {
         shift 1
         check_parameters "${1:-}"
         CONFIG="${1}"
+        ;;
+
+      # PARAM_Usage: --hook (-k) path/to/hook.sh
+      # PARAM_Description: Use specified script for hooks
+      --hook|-k)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_HOOK="${1}"
         ;;
 
       *)

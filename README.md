@@ -35,6 +35,7 @@ Parameters:
  --force (-x)                     Force renew of certificate even if it is longer valid than value in RENEW_DAYS
  --privkey (-p) path/to/key.pem   Use specified private key instead of account key (useful for revocation)
  --config (-f) path/to/config.sh  Use specified config file
+ --hook (-k) path/to/hook.sh      Use specified script for hooks
 ```
 
 ### domains.txt
