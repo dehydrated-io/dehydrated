@@ -152,6 +152,22 @@ get_json_array() {
   grep -Eo '"'"${1}"'":[^\[]*\[[^]]*]'
 }
 
+# OpenSSL writes to stderr/stdout even when there are no errors. So just
+# display the output if the exit code was != 0 to simplify debugging.
+_openssl() {
+  set +e
+  out="$(openssl "${@}" 2>&1)"
+  res=$?
+  set -e
+  if [[ $res -ne 0 ]]; then
+    echo "  + ERROR: failed to run $* (Exitcode: $res)" >&2
+    echo >&2
+    echo "Details:" >&2
+    echo "$out" >&2
+    exit $res
+  fi
+}
+
 http_request() {
   tempcont="$(mktemp)"
 
@@ -185,22 +201,6 @@ http_request() {
 
   cat "${tempcont}"
   rm -f "${tempcont}"
-}
-
-# OpenSSL writes to stderr/stdout even when there are no errors. So just
-# display the output if the exit code was != 0 to simplify debugging.
-_openssl() {
-  set +e
-  out="$(openssl "${@}" 2>&1)"
-  res=$?
-  set -e
-  if [[ $res -ne 0 ]]; then
-    echo "  + ERROR: failed to run $* (Exitcode: $res)" >&2
-    echo >&2
-    echo "Details:" >&2
-    echo "$out" >&2
-    exit $res
-  fi
 }
 
 signed_request() {
