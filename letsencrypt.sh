@@ -14,6 +14,7 @@ check_dependencies() {
   openssl version > /dev/null 2>&1 || _exiterr "This script requres an openssl binary."
   sed "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requres sed."
   grep -V > /dev/null 2>&1 || _exiterr "This script requres grep."
+  mktemp -u > /dev/null 2>&1 || _exiterr "This script requires mktemp."
 }
 
 # Setup default config values, search for and load configuration files
