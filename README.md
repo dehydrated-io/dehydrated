@@ -11,6 +11,8 @@ Current features:
 - Renewal if a certificate is about to expire or SAN (subdomains) changed
 - Certificate revocation
 
+If you want to import existing keys from the official letsencrypt client have a look at [Import from official letsencrypt client](https://github.com/lukas2511/letsencrypt.sh/wiki/Import-from-official-letsencrypt-client).
+
 Please keep in mind that this software and even the acme-protocol are relatively young and may still have some unresolved issues.
 Feel free to report any issues you find with this script or contribute by submitting a pullrequest.
 
@@ -82,7 +84,3 @@ An alternative to setting the WELLKNOWN variable would be to create a symlink to
 This script also supports the new `dns-01`-type verification. Be aware that at the moment this is not available on the production servers from letsencrypt. Please read `https://community.letsencrypt.org/t/dns-challenge-is-in-staging/8322` for the current state of `dns-01` support.
 
 You need a hook script that deploys the challenge to your DNS server!
-
-## Import
-
-If you want to import existing keys from the official letsencrypt client have a look at [Import from official letsencrypt client](https://github.com/lukas2511/letsencrypt.sh/wiki/Import-from-official-letsencrypt-client).
