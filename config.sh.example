@@ -5,7 +5,6 @@
 #                                                      #
 # This file is looked for in the following locations:  #
 # $SCRIPTDIR/config.sh (next to this script)           #
-# ${HOME}/.letsencrypt.sh/config.sh (in user home)     #
 # /usr/local/etc/letsencrypt.sh/config.sh              #
 # /etc/letsencrypt.sh/config.sh                        #
 # ${PWD}/config.sh (in current working-directory)      #
