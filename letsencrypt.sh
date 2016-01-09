@@ -14,7 +14,7 @@ check_dependencies() {
   openssl version > /dev/null 2>&1 || _exiterr "This script requres an openssl binary."
   sed "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requres sed."
   grep -V > /dev/null 2>&1 || _exiterr "This script requres grep."
-  mktemp -u > /dev/null 2>&1 || _exiterr "This script requires mktemp."
+  mktemp -u -t XXXXXX > /dev/null 2>&1 || _exiterr "This script requires mktemp."
 }
 
 # Setup default config values, search for and load configuration files
@@ -171,7 +171,7 @@ _openssl() {
 
 # Send http(s) request with specified method
 http_request() {
-  tempcont="$(mktemp)"
+  tempcont="$(mktemp -t XXXXXX)"
 
   if [[ "${1}" = "head" ]]; then
     statuscode="$(curl -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
@@ -261,7 +261,7 @@ sign_domain() {
   done
   SAN="${SAN%%, }"
   local tmp_openssl_cnf
-  tmp_openssl_cnf="$(mktemp)"
+  tmp_openssl_cnf="$(mktemp -t XXXXXX)"
   cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
   printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
   openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
@@ -368,7 +368,7 @@ command_sign_domains() {
   init_system
 
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
-    DOMAINS_TXT="$(mktemp)"
+    DOMAINS_TXT="$(mktemp -t XXXXXX)"
     printf -- "${PARAM_DOMAIN}" > "${DOMAINS_TXT}"
   elif [[ -e "${BASEDIR}/domains.txt" ]]; then
     DOMAINS_TXT="${BASEDIR}/domains.txt"
