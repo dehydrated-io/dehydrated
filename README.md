@@ -28,6 +28,7 @@ Commands:
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
  --help (-h)                      Show help text
  --env (-e)                       Output configuration variables for use in other scripts
+ --cleanup (-gc)                  Remove old and not used files in certs directory
 
 Parameters:
  --domain (-d) domain.tld         Use specified domain name(s) instead of domains.txt entry (one certificate!)

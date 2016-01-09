@@ -496,6 +496,32 @@ command_env() {
   typeset -p CA LICENSE CHALLENGETYPE HOOK RENEW_DAYS PRIVATE_KEY KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
+# Usage: --cleanup (-gc)
+# Description: Clean up the certs directory and delete old files
+command_cleanup() {
+  load_config
+  echo "Cleaning up"
+  for dir in ${BASEDIR}/certs/*/;
+  do
+    [[ -z "$(readlink -q "${dir}/cert.pem")" ]] && continue # no certificates created by this file, so skip
+
+    usedfiles[0]="${dir}$(readlink "${dir}/cert.pem")"
+    usedfiles[1]="${dir}$(readlink "${dir}/cert.csr")"
+    usedfiles[2]="${dir}$(readlink "${dir}/chain.pem")"
+    usedfiles[3]="${dir}$(readlink "${dir}/fullchain.pem")"
+    usedfiles[4]="${dir}$(readlink "${dir}/privkey.pem")"
+
+    echo " + Cleaning in ${dir}"
+    for file in ${dir}*;
+    do
+      if [[ -z "$(readlink -q "${file}")" ]] && ! $(echo ${usedfiles[@]} | grep -q "${file}"); then
+        rm -f "${file}"
+      fi
+    done
+  done
+  echo " + Done!"
+}
+
 # Main method (parses script arguments and calls command_* methods)
 main() {
   COMMAND=""
@@ -535,6 +561,10 @@ main() {
         set_command revoke
         check_parameters "${1:-}"
         PARAM_REVOKECERT="${1}"
+        ;;
+
+      --cleanup|-gc)
+        set_command cleanup
         ;;
 
       # PARAM_Usage: --domain (-d) domain.tld
@@ -603,6 +633,7 @@ main() {
     env) command_env;;
     sign_domains) command_sign_domains;;
     revoke) command_revoke "${PARAM_REVOKECERT}";;
+    cleanup) command_cleanup;;
     *) command_help; exit1;;
   esac
 }
