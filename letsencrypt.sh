@@ -127,7 +127,9 @@ init_system() {
     fi
   fi
 
-  [[ -d "${WELLKNOWN}" ]] || _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
+  if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" ]]; then
+      _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
+  fi
 }
 
 # Print error message and exit with error
