@@ -515,7 +515,7 @@ main() {
     fi
   }
 
-  [[ "${@}" == "" ]] && eval set -- "--help"
+  [[ -z "${@}" ]] && eval set -- "--help"
 
   while (( "${#}" )); do
     case "${1}" in
