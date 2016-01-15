@@ -78,7 +78,7 @@ init_system() {
 
   # Lockfile handling (prevents concurrent access)
   LOCKDIR="$(dirname "${LOCKFILE}")"
-  [[ -w "${LOCKDIR}" ]] || _exiterr "Directory ${LOCKDIR} for LOCKFILE ${LOCKFILE} is now writable, aborting."
+  [[ -w "${LOCKDIR}" ]] || _exiterr "Directory ${LOCKDIR} for LOCKFILE ${LOCKFILE} is not writable, aborting."
   ( set -C; date > "${LOCKFILE}" ) 2>/dev/null || _exiterr "Lock file '${LOCKFILE}' present, aborting."
   remove_lock() { rm -f "${LOCKFILE}"; }
   trap 'remove_lock' EXIT
