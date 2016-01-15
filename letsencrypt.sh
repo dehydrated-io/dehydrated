@@ -607,7 +607,7 @@ main() {
     env) command_env;;
     sign_domains) command_sign_domains;;
     revoke) command_revoke "${PARAM_REVOKECERT}";;
-    *) command_help; exit1;;
+    *) command_help; exit 1;;
   esac
 }
 
