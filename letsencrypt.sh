@@ -12,7 +12,7 @@ BASEDIR="${SCRIPTDIR}"
 check_dependencies() {
   curl -V > /dev/null 2>&1 || _exiterr "This script requires curl."
   openssl version > /dev/null 2>&1 || _exiterr "This script requres an openssl binary."
-  sed "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requres sed."
+  sed -E "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requres sed with support for extended (modern) regular expressions."
   grep -V > /dev/null 2>&1 || _exiterr "This script requres grep."
   mktemp -u -t XXXXXX > /dev/null 2>&1 || _exiterr "This script requires mktemp."
 }
