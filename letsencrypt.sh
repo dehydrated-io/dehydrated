@@ -145,7 +145,7 @@ init_system() {
 
 # Different sed version for different os types...
 _sed() {
-  if [ "${OSTYPE}" = "Linux" ]; then
+  if [[ "${OSTYPE}" = "Linux" ]]; then
     sed -r "${@}"
   else
     sed -E "${@}"
@@ -520,8 +520,6 @@ command_env() {
 
 # Main method (parses script arguments and calls command_* methods)
 main() {
-  OSTYPE="$(uname)"
-
   COMMAND=""
   set_command() {
     [[ -z "${COMMAND}" ]] || _exiterr "Only one command can be executed at a time. See help (-h) for more information."
@@ -632,6 +630,9 @@ main() {
     *) command_help; exit 1;;
   esac
 }
+
+# Determine OS type
+OSTYPE="$(uname)"
 
 # Check for missing dependencies
 check_dependencies
