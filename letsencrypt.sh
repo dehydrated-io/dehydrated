@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# letsencrypt.sh by lukas2511
+# Source: https://github.com/lukas2511/letsencrypt.sh
+
 set -e
 set -u
 set -o pipefail
