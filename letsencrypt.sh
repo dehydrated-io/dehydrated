@@ -11,9 +11,9 @@ BASEDIR="${SCRIPTDIR}"
 # Check for script dependencies
 check_dependencies() {
   curl -V > /dev/null 2>&1 || _exiterr "This script requires curl."
-  openssl version > /dev/null 2>&1 || _exiterr "This script requres an openssl binary."
-  sed "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requres sed."
-  grep -V > /dev/null 2>&1 || _exiterr "This script requres grep."
+  openssl version > /dev/null 2>&1 || _exiterr "This script requires an openssl binary."
+  sed -E "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requires sed with support for extended (modern) regular expressions."
+  grep -V > /dev/null 2>&1 || _exiterr "This script requires grep."
   mktemp -u -t XXXXXX > /dev/null 2>&1 || _exiterr "This script requires mktemp."
 }
 
@@ -77,6 +77,8 @@ init_system() {
   load_config
 
   # Lockfile handling (prevents concurrent access)
+  LOCKDIR="$(dirname "${LOCKFILE}")"
+  [[ -w "${LOCKDIR}" ]] || _exiterr "Directory ${LOCKDIR} for LOCKFILE ${LOCKFILE} is not writable, aborting."
   ( set -C; date > "${LOCKFILE}" ) 2>/dev/null || _exiterr "Lock file '${LOCKFILE}' present, aborting."
   remove_lock() { rm -f "${LOCKFILE}"; }
   trap 'remove_lock' EXIT
@@ -127,7 +129,9 @@ init_system() {
     fi
   fi
 
-  [[ -d "${WELLKNOWN}" ]] || _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
+  if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" ]]; then
+      _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
+  fi
 }
 
 # Print error message and exit with error
@@ -605,7 +609,7 @@ main() {
     env) command_env;;
     sign_domains) command_sign_domains;;
     revoke) command_revoke "${PARAM_REVOKECERT}";;
-    *) command_help; exit1;;
+    *) command_help; exit 1;;
   esac
 }
 
