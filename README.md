@@ -84,3 +84,7 @@ An alternative to setting the WELLKNOWN variable would be to create a symlink to
 This script also supports the new `dns-01`-type verification. Be aware that at the moment this is not available on the production servers from letsencrypt. Please read https://community.letsencrypt.org/t/dns-challenge-is-in-staging/8322 for the current state of `dns-01` support.
 
 You need a hook script that deploys the challenge to your DNS server!
+
+### Elliptic Curve Cryptography (ECC)
+
+This script also supports certificates with Elliptic Curve public keys! Be aware that at the moment this is not available on the production servers from letsencrypt. Please read https://community.letsencrypt.org/t/ecdsa-testing-on-staging/8809/ for the current state of ECC support.

@@ -53,6 +53,7 @@ load_config() {
   KEYSIZE="4096"
   WELLKNOWN="${BASEDIR}/.acme-challenges"
   PRIVATE_KEY_RENEW="no"
+  KEY_ALGO=rsa
   OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
   CONTACT_EMAIL=
   LOCKFILE="${BASEDIR}/lock"
@@ -78,11 +79,13 @@ load_config() {
 
   [[ -n "${PARAM_HOOK:-}" ]] && HOOK="${PARAM_HOOK}"
   [[ -n "${PARAM_CHALLENGETYPE:-}" ]] && CHALLENGETYPE="${PARAM_CHALLENGETYPE}"
+  [[ -n "${PARAM_KEY_ALGO:-}" ]] && KEY_ALGO="${PARAM_KEY_ALGO}"
 
   [[ "${CHALLENGETYPE}" =~ (http-01|dns-01) ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... can not continue."
   if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
    _exiterr "Challenge type dns-01 needs a hook script for deployment... can not continue."
   fi
+  [[ "${KEY_ALGO}" =~ ^(rsa|prime256v1|secp384r1)$ ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... can not continue."
 }
 
 # Initialize system
@@ -276,7 +279,10 @@ sign_domain() {
   if [[ ! -f "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
     echo " + Generating private key..."
     privkey="privkey-${timestamp}.pem"
-    _openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}"
+    case "${KEY_ALGO}" in
+      rsa) _openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}";;
+      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem";;
+    esac
   fi
 
   # Generate signing request config and the actual signing request
@@ -614,6 +620,14 @@ main() {
         shift 1
         check_parameters "${1:-}"
         PARAM_CHALLENGETYPE="${1}"
+        ;;
+
+      # PARAM_Usage: --algo (-a) rsa|prime256v1|secp384r1
+      # PARAM_Description: Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
+      --algo|-a)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_KEY_ALGO="${1}"
         ;;
 
       *)
