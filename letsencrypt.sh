@@ -10,11 +10,20 @@ BASEDIR="${SCRIPTDIR}"
 
 # Check for script dependencies
 check_dependencies() {
-  curl -V > /dev/null 2>&1 || _exiterr "This script requires curl."
+  # just execute some dummy and/or version commands to see if required tools exist and are actually usable
   openssl version > /dev/null 2>&1 || _exiterr "This script requires an openssl binary."
   _sed "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requires sed with support for extended (modern) regular expressions."
   grep -V > /dev/null 2>&1 || _exiterr "This script requires grep."
   mktemp -u -t XXXXXX > /dev/null 2>&1 || _exiterr "This script requires mktemp."
+
+  # curl returns with an error code in some ancient versions so we have to catch that
+  set +e
+  curl -V > /dev/null 2>&1
+  set -e
+  retcode="$?"
+  if [[ ! "${retcode}" = "0" ]] && [[ ! "${retcode}" = "2" ]]; then
+    _exiterr "This script requires curl."
+  fi
 }
 
 # Setup default config values, search for and load configuration files
