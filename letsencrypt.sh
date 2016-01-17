@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# letsencrypt.sh by lukas2511
+# Source: https://github.com/lukas2511/letsencrypt.sh
+
 set -e
 set -u
 set -o pipefail
@@ -10,11 +14,20 @@ BASEDIR="${SCRIPTDIR}"
 
 # Check for script dependencies
 check_dependencies() {
-  curl -V > /dev/null 2>&1 || _exiterr "This script requires curl."
-  openssl version > /dev/null 2>&1 || _exiterr "This script requres an openssl binary."
-  sed "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requres sed."
-  grep -V > /dev/null 2>&1 || _exiterr "This script requres grep."
+  # just execute some dummy and/or version commands to see if required tools exist and are actually usable
+  openssl version > /dev/null 2>&1 || _exiterr "This script requires an openssl binary."
+  _sed "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requires sed with support for extended (modern) regular expressions."
+  grep -V > /dev/null 2>&1 || _exiterr "This script requires grep."
   mktemp -u -t XXXXXX > /dev/null 2>&1 || _exiterr "This script requires mktemp."
+
+  # curl returns with an error code in some ancient versions so we have to catch that
+  set +e
+  curl -V > /dev/null 2>&1
+  set -e
+  retcode="$?"
+  if [[ ! "${retcode}" = "0" ]] && [[ ! "${retcode}" = "2" ]]; then
+    _exiterr "This script requires curl."
+  fi
 }
 
 # Setup default config values, search for and load configuration files
@@ -40,6 +53,7 @@ load_config() {
   KEYSIZE="4096"
   WELLKNOWN="${BASEDIR}/.acme-challenges"
   PRIVATE_KEY_RENEW="no"
+  KEY_ALGO=rsa
   OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
   CONTACT_EMAIL=
   LOCKFILE="${BASEDIR}/lock"
@@ -65,11 +79,13 @@ load_config() {
 
   [[ -n "${PARAM_HOOK:-}" ]] && HOOK="${PARAM_HOOK}"
   [[ -n "${PARAM_CHALLENGETYPE:-}" ]] && CHALLENGETYPE="${PARAM_CHALLENGETYPE}"
+  [[ -n "${PARAM_KEY_ALGO:-}" ]] && KEY_ALGO="${PARAM_KEY_ALGO}"
 
   [[ "${CHALLENGETYPE}" =~ (http-01|dns-01) ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... can not continue."
   if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
    _exiterr "Challenge type dns-01 needs a hook script for deployment... can not continue."
   fi
+  [[ "${KEY_ALGO}" =~ ^(rsa|prime256v1|secp384r1)$ ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... can not continue."
 }
 
 # Initialize system
@@ -77,6 +93,8 @@ init_system() {
   load_config
 
   # Lockfile handling (prevents concurrent access)
+  LOCKDIR="$(dirname "${LOCKFILE}")"
+  [[ -w "${LOCKDIR}" ]] || _exiterr "Directory ${LOCKDIR} for LOCKFILE ${LOCKFILE} is not writable, aborting."
   ( set -C; date > "${LOCKFILE}" ) 2>/dev/null || _exiterr "Lock file '${LOCKFILE}' present, aborting."
   remove_lock() { rm -f "${LOCKFILE}"; }
   trap 'remove_lock' EXIT
@@ -127,7 +145,18 @@ init_system() {
     fi
   fi
 
-  [[ -d "${WELLKNOWN}" ]] || _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
+  if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" ]]; then
+      _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
+  fi
+}
+
+# Different sed version for different os types...
+_sed() {
+  if [[ "${OSTYPE}" = "Linux" ]]; then
+    sed -r "${@}"
+  else
+    sed -E "${@}"
+  fi
 }
 
 # Print error message and exit with error
@@ -139,13 +168,13 @@ _exiterr() {
 # Encode data as url-safe formatted base64
 urlbase64() {
   # urlbase64: base64 encoded string with '+' replaced with '-' and '/' replaced with '_'
-  openssl base64 -e | tr -d '\n\r' | sed -e 's:=*$::g' -e 'y:+/:-_:'
+  openssl base64 -e | tr -d '\n\r' | _sed -e 's:=*$::g' -e 'y:+/:-_:'
 }
 
 # Convert hex string to binary data
 hex2bin() {
   # Remove spaces, add leading zero, escape as hex string and parse with printf
-  printf -- "$(cat | sed -E -e 's/[[:space:]]//g' -e 's/^(.(.{2})*)$/0\1/' -e 's/(.{2})/\\x\1/g')"
+  printf -- "$(cat | _sed -e 's/[[:space:]]//g' -e 's/^(.(.{2})*)$/0\1/' -e 's/(.{2})/\\x\1/g')"
 }
 
 # Get string value from json dictionary
@@ -250,7 +279,10 @@ sign_domain() {
   if [[ ! -f "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
     echo " + Generating private key..."
     privkey="privkey-${timestamp}.pem"
-    _openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}"
+    case "${KEY_ALGO}" in
+      rsa) _openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}";;
+      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem";;
+    esac
   fi
 
   # Generate signing request config and the actual signing request
@@ -276,7 +308,7 @@ sign_domain() {
     challenges="$(printf '%s\n' "${response}" | grep -Eo '"challenges":[^\[]*\[[^]]*]')"
     repl=$'\n''{' # fix syntax highlighting in Vim
     challenge="$(printf "%s" "${challenges//\{/${repl}}" | grep \""${CHALLENGETYPE}"\")"
-    challenge_token="$(printf '%s' "${challenge}" | get_json_string_value token | sed 's/[^A-Za-z0-9_\-]/_/g')"
+    challenge_token="$(printf '%s' "${challenge}" | get_json_string_value token | _sed 's/[^A-Za-z0-9_\-]/_/g')"
     challenge_uri="$(printf '%s' "${challenge}" | get_json_string_value uri)"
 
     if [[ -z "${challenge_token}" ]] || [[ -z "${challenge_uri}" ]]; then
@@ -377,7 +409,7 @@ command_sign_domains() {
   fi
 
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
-  <"${DOMAINS_TXT}" sed -E -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true) | while read -r line; do
+  <"${DOMAINS_TXT}" _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true) | while read -r line; do
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
     morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
     cert="${BASEDIR}/certs/${domain}/cert.pem"
@@ -393,8 +425,8 @@ command_sign_domains() {
     if [[ -e "${cert}" ]]; then
       printf " + Checking domain name(s) of existing cert..."
 
-      certnames="$(openssl x509 -in "${cert}" -text -noout | grep DNS: | sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')"
-      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//' | sed 's/^ //')"
+      certnames="$(openssl x509 -in "${cert}" -text -noout | grep DNS: | _sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//')"
+      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | _sed 's/^ //')"
 
       if [[ "${certnames}" = "${givennames}" ]]; then
         echo " unchanged."
@@ -590,6 +622,14 @@ main() {
         PARAM_CHALLENGETYPE="${1}"
         ;;
 
+      # PARAM_Usage: --algo (-a) rsa|prime256v1|secp384r1
+      # PARAM_Description: Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
+      --algo|-a)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_KEY_ALGO="${1}"
+        ;;
+
       *)
         echo "Unknown parameter detected: ${1}" >&2
         echo >&2
@@ -605,9 +645,12 @@ main() {
     env) command_env;;
     sign_domains) command_sign_domains;;
     revoke) command_revoke "${PARAM_REVOKECERT}";;
-    *) command_help; exit1;;
+    *) command_help; exit 1;;
   esac
 }
+
+# Determine OS type
+OSTYPE="$(uname)"
 
 # Check for missing dependencies
 check_dependencies
