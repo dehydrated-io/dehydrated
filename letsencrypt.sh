@@ -526,6 +526,25 @@ command_sign_domains() {
   exit 0
 }
 
+# Usage: --signcsr (-s) path/to/csr.pem
+# Description: Sign a given CSR, output CRT on stdout (advanced usage)
+command_sign_csr() {
+  # redirect stdout to stderr
+  # leave stdout over at fd 3 to output the cert
+  exec 3>&1 1>&2
+
+  init_system
+
+  csrfile="${1}"
+  if [ ! -r "${csrfile}" ]; then
+    _exiterr "Could not read certificate signing request ${csrfile}"
+  fi
+
+  sign_csr "$(< "${csrfile}" )"
+
+  exit 0
+}
+
 # Usage: --revoke (-r) path/to/cert.pem
 # Description: Revoke specified certificate
 command_revoke() {
@@ -622,6 +641,13 @@ main() {
         set_command sign_domains
         ;;
 
+      --signcsr|-s)
+        shift 1
+        set_command sign_csr
+        check_parameters "${1:-}"
+        PARAM_CSR="${1}"
+        ;;
+
       --revoke|-r)
         shift 1
         set_command revoke
@@ -702,6 +728,7 @@ main() {
   case "${COMMAND}" in
     env) command_env;;
     sign_domains) command_sign_domains;;
+    sign_csr) command_sign_csr "${PARAM_CSR}";;
     revoke) command_revoke "${PARAM_REVOKECERT}";;
     *) command_help; exit 1;;
   esac

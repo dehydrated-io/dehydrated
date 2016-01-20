@@ -8,6 +8,7 @@ Other dependencies are: curl, sed, grep, mktemp (all found on almost any system,
 
 Current features:
 - Signing of a list of domains
+- Signing of a CSR
 - Renewal if a certificate is about to expire or SAN (subdomains) changed
 - Certificate revocation
 
@@ -25,6 +26,7 @@ Default command: help
 
 Commands:
  --cron (-c)                      Sign/renew non-existant/changed/expiring certificates.
+ --signcsr (-s) path/to/csr.pem   Sign a given CSR, output CRT on stdout (advanced usage)
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
  --help (-h)                      Show help text
  --env (-e)                       Output configuration variables for use in other scripts
