@@ -257,6 +257,36 @@ signed_request() {
   http_request post "${1}" "${data}"
 }
 
+# Extracts all subject names from a CSR
+# Outputs either the CN, or the SANs, one per line
+extract_altnames() {
+  csr="${1}" # the CSR itself (not a file)
+
+  if ! <<<"${csr}" openssl req -verify -noout 2>/dev/null; then
+    _exiterr "Certificate signing request isn't valid"
+  fi
+
+  reqtext="$( <<<"${csr}" openssl req -noout -text )"
+  if <<<"$reqtext" grep -q '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$'; then
+    # SANs used, extract these
+    altnames="$( <<<"${reqtext}" grep -A1 '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$' | tail -n1 )"
+    # split to one per line:
+    altnames="$( <<<"${altnames}" _sed -e 's/^[[:space:]]*//; s/, /\'$'\n''/' )"
+    # we can only get DNS: ones signed
+    if [ -n "$( <<<"${altnames}" grep -v '^DNS:' )" ]; then
+      _exiterr "Certificate signing request contains non-DNS Subject Alternative Names"
+    fi
+    # strip away the DNS: prefix
+    altnames="$( <<<"${altnames}" _sed -e 's/^DNS://' )"
+    echo "$altnames"
+
+  else
+    # No SANs, extract CN
+    altnames="$( <<<"${reqtext}" grep '^[[:space:]]*Subject:' | _sed -e 's/.* CN=([^ /,]*).*/\1/' )"
+    echo "$altnames"
+  fi
+}
+
 # Create certificate for domain(s) and outputs it FD 3
 sign_csr() {
   csr="${1}" # the CSR itself (not a file)
@@ -269,6 +299,9 @@ sign_csr() {
 
   shift 1 || true
   altnames="${*:-}"
+  if [ -z "$altnames" ]; then
+    altnames="$( extract_altnames "$csr" )"
+  fi
 
   if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
     _exiterr "Certificate authority doesn't allow certificate signing"
