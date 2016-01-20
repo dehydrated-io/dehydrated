@@ -257,47 +257,22 @@ signed_request() {
   http_request post "${1}" "${data}"
 }
 
-# Create certificate for domain(s)
-sign_domain() {
-  domain="${1}"
-  altnames="${*}"
-  timestamp="$(date +%s)"
+# Create certificate for domain(s) and outputs it FD 3
+sign_csr() {
+  csr="${1}" # the CSR itself (not a file)
 
-  echo " + Signing domains..."
+  if { true >&3; } 2>/dev/null; then
+    : # fd 3 looks OK
+  else
+    _exiterr "sign_csr: FD 3 not open"
+  fi
+
+  shift 1 || true
+  altnames="${*:-}"
+
   if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
     _exiterr "Certificate authority doesn't allow certificate signing"
   fi
-
-  # If there is no existing certificate directory => make it
-  if [[ ! -e "${BASEDIR}/certs/${domain}" ]]; then
-    echo " + Creating new directory ${BASEDIR}/certs/${domain} ..."
-    mkdir -p "${BASEDIR}/certs/${domain}"
-  fi
-
-  privkey="privkey.pem"
-  # generate a new private key if we need or want one
-  if [[ ! -f "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
-    echo " + Generating private key..."
-    privkey="privkey-${timestamp}.pem"
-    case "${KEY_ALGO}" in
-      rsa) _openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}";;
-      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem";;
-    esac
-  fi
-
-  # Generate signing request config and the actual signing request
-  echo " + Generating signing request..."
-  SAN=""
-  for altname in ${altnames}; do
-    SAN+="DNS:${altname}, "
-  done
-  SAN="${SAN%%, }"
-  local tmp_openssl_cnf
-  tmp_openssl_cnf="$(mktemp -t XXXXXX)"
-  cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
-  printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
-  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
-  rm -f "${tmp_openssl_cnf}"
 
   # Request and respond to challenges
   for altname in ${altnames}; do
@@ -361,14 +336,64 @@ sign_domain() {
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
   echo " + Requesting certificate..."
-  csr64="$(openssl req -in "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -outform DER | urlbase64)"
+  csr64="$( <<<"${csr}" openssl req -outform DER | urlbase64)"
   crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | openssl base64 -e)"
-  crt_path="${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
-  printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "${crt_path}"
+  crt="$( printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" )"
 
   # Try to load the certificate to detect corruption
   echo " + Checking certificate..."
-  _openssl x509 -text < "${crt_path}"
+  _openssl x509 -text <<<"${crt}"
+
+  echo "${crt}" >&3
+
+  unset challenge_token
+  echo " + Done!"
+}
+
+# Create certificate for domain(s)
+sign_domain() {
+  domain="${1}"
+  altnames="${*}"
+  timestamp="$(date +%s)"
+
+  echo " + Signing domains..."
+  if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
+    _exiterr "Certificate authority doesn't allow certificate signing"
+  fi
+
+  # If there is no existing certificate directory => make it
+  if [[ ! -e "${BASEDIR}/certs/${domain}" ]]; then
+    echo " + Creating new directory ${BASEDIR}/certs/${domain} ..."
+    mkdir -p "${BASEDIR}/certs/${domain}"
+  fi
+
+  privkey="privkey.pem"
+  # generate a new private key if we need or want one
+  if [[ ! -f "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
+    echo " + Generating private key..."
+    privkey="privkey-${timestamp}.pem"
+    case "${KEY_ALGO}" in
+      rsa) _openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}";;
+      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem";;
+    esac
+  fi
+
+  # Generate signing request config and the actual signing request
+  echo " + Generating signing request..."
+  SAN=""
+  for altname in ${altnames}; do
+    SAN+="DNS:${altname}, "
+  done
+  SAN="${SAN%%, }"
+  local tmp_openssl_cnf
+  tmp_openssl_cnf="$(mktemp -t XXXXXX)"
+  cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
+  printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
+  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
+  rm -f "${tmp_openssl_cnf}"
+
+  crt_path="${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
+  sign_csr "$(< "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" )" ${altnames} 3>"${crt_path}"
 
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
