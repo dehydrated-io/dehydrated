@@ -49,14 +49,14 @@ load_config() {
   CHALLENGETYPE="http-01"
   HOOK=
   RENEW_DAYS="30"
-  PRIVATE_KEY="${BASEDIR}/private_key.pem"
+  PRIVATE_KEY=
   KEYSIZE="4096"
-  WELLKNOWN="${BASEDIR}/.acme-challenges"
+  WELLKNOWN=
   PRIVATE_KEY_RENEW="no"
   KEY_ALGO=rsa
   OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
   CONTACT_EMAIL=
-  LOCKFILE="${BASEDIR}/lock"
+  LOCKFILE=
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -76,6 +76,10 @@ load_config() {
 
   # Check BASEDIR and set default variables
   [[ -d "${BASEDIR}" ]] || _exiterr "BASEDIR does not exist: ${BASEDIR}"
+
+  [[ -z "${PRIVATE_KEY}" ]] && PRIVATE_KEY="${BASEDIR}/private_key.pem"
+  [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="${BASEDIR}/.acme-challenges"
+  [[ -z "${LOCKFILE}" ]] && LOCKFILE="${BASEDIR}/lock"
 
   [[ -n "${PARAM_HOOK:-}" ]] && HOOK="${PARAM_HOOK}"
   [[ -n "${PARAM_CHALLENGETYPE:-}" ]] && CHALLENGETYPE="${PARAM_CHALLENGETYPE}"
