@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 ########################################################
 # This is the main config file for letsencrypt.sh      #
 #                                                      #
