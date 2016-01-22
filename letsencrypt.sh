@@ -47,6 +47,7 @@ load_config() {
   CA="https://acme-v01.api.letsencrypt.org/directory"
   LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
   CHALLENGETYPE="http-01"
+  CONFIG_D=
   HOOK=
   RENEW_DAYS="30"
   PRIVATE_KEY=
@@ -60,15 +61,33 @@ load_config() {
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
-    echo "# !! WARNING !! No config file found, using default config!" >&2
+    echo "# !! WARNING !! No main config file found, using default config!" >&2
     echo "#" >&2
   elif [[ -e "${CONFIG}" ]]; then
-    echo "# INFO: Using config file ${CONFIG}"
+    echo "# INFO: Using main config file ${CONFIG}"
     BASEDIR="$(dirname "${CONFIG}")"
     # shellcheck disable=SC1090
     . "${CONFIG}"
   else
     _exiterr "Specified config file doesn't exist."
+  fi
+
+  if [[ -n "${CONFIG_D}" ]]; then
+    if [[ ! -d "${CONFIG_D}" ]]; then
+      _exiterr "The path ${CONFIG_D} specified for CONFIG_D does not point to a directory." >&2
+    fi
+
+    for check_config_d in ${CONFIG_D}/*.sh; do
+      if [[ ! -e "${check_config_d}" ]]; then
+        echo "# !! WARNING !! Extra configuration directory ${CONFIG_D} exists, but no configuration found in it." >&2
+        break
+      elif [[ -f "${check_config_d}" ]] && [[ -r "${check_config_d}" ]]; then
+        echo "# INFO: Using additional config file ${check_config_d}"
+        . ${check_config_d}
+      else
+        _exiterr "Specified additional config ${check_config_d} is not readable or not a file at all." >&2
+      fi
+   done
   fi
 
   # Remove slash from end of BASEDIR. Mostly for cleaner outputs, doesn't change functionality.
