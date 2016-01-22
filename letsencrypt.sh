@@ -433,13 +433,13 @@ command_sign_domains() {
   fi
 
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
-  <"${DOMAINS_TXT}" _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true) | while read -r line; do
+  domain_list=`_sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' ${DOMAINS_TXT} | (grep -vE '^(#|$)' || true)`
+  for line in "$domain_list"; do
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
     morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
     cert="${BASEDIR}/certs/${domain}/cert.pem"
 
     force_renew="${PARAM_FORCE:-no}"
-
     if [[ -z "${morenames}" ]];then
       echo "Processing ${domain}"
     else
