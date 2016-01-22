@@ -365,7 +365,8 @@ sign_domain() {
 
     while [[ "${status}" = "pending" ]]; do
       sleep 1
-      status="$(http_request get "${challenge_uri}" | get_json_string_value status)"
+      result="$(http_request get "${challenge_uri}")"
+      status="$(printf '%s\n' "${result}" | get_json_string_value status)"
     done
 
     [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
@@ -378,7 +379,7 @@ sign_domain() {
     if [[ "${status}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
-      _exiterr "Challenge is invalid! (returned: ${status})"
+      _exiterr "Challenge is invalid! (returned: ${status}) (result: ${result})"
     fi
   done
 
