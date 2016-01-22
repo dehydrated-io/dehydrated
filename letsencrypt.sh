@@ -440,6 +440,7 @@ command_sign_domains() {
     cert="${BASEDIR}/certs/${domain}/cert.pem"
 
     force_renew="${PARAM_FORCE:-no}"
+
     if [[ -z "${morenames}" ]];then
       echo "Processing ${domain}"
     else
