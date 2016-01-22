@@ -54,7 +54,7 @@ load_config() {
   WELLKNOWN=
   PRIVATE_KEY_RENEW="no"
   KEY_ALGO=rsa
-  OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
+  OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
   CONTACT_EMAIL=
   LOCKFILE=
 
