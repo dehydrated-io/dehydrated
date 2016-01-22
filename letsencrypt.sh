@@ -280,47 +280,55 @@ signed_request() {
   http_request post "${1}" "${data}"
 }
 
-# Create certificate for domain(s)
-sign_domain() {
-  domain="${1}"
-  altnames="${*}"
-  timestamp="$(date +%s)"
+# Extracts all subject names from a CSR
+# Outputs either the CN, or the SANs, one per line
+extract_altnames() {
+  csr="${1}" # the CSR itself (not a file)
 
-  echo " + Signing domains..."
+  if ! <<<"${csr}" openssl req -verify -noout 2>/dev/null; then
+    _exiterr "Certificate signing request isn't valid"
+  fi
+
+  reqtext="$( <<<"${csr}" openssl req -noout -text )"
+  if <<<"$reqtext" grep -q '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$'; then
+    # SANs used, extract these
+    altnames="$( <<<"${reqtext}" grep -A1 '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$' | tail -n1 )"
+    # split to one per line:
+    altnames="$( <<<"${altnames}" _sed -e 's/^[[:space:]]*//; s/, /\'$'\n''/' )"
+    # we can only get DNS: ones signed
+    if [ -n "$( <<<"${altnames}" grep -v '^DNS:' )" ]; then
+      _exiterr "Certificate signing request contains non-DNS Subject Alternative Names"
+    fi
+    # strip away the DNS: prefix
+    altnames="$( <<<"${altnames}" _sed -e 's/^DNS://' )"
+    echo "$altnames"
+
+  else
+    # No SANs, extract CN
+    altnames="$( <<<"${reqtext}" grep '^[[:space:]]*Subject:' | _sed -e 's/.* CN=([^ /,]*).*/\1/' )"
+    echo "$altnames"
+  fi
+}
+
+# Create certificate for domain(s) and outputs it FD 3
+sign_csr() {
+  csr="${1}" # the CSR itself (not a file)
+
+  if { true >&3; } 2>/dev/null; then
+    : # fd 3 looks OK
+  else
+    _exiterr "sign_csr: FD 3 not open"
+  fi
+
+  shift 1 || true
+  altnames="${*:-}"
+  if [ -z "$altnames" ]; then
+    altnames="$( extract_altnames "$csr" )"
+  fi
+
   if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
     _exiterr "Certificate authority doesn't allow certificate signing"
   fi
-
-  # If there is no existing certificate directory => make it
-  if [[ ! -e "${BASEDIR}/certs/${domain}" ]]; then
-    echo " + Creating new directory ${BASEDIR}/certs/${domain} ..."
-    mkdir -p "${BASEDIR}/certs/${domain}"
-  fi
-
-  privkey="privkey.pem"
-  # generate a new private key if we need or want one
-  if [[ ! -f "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
-    echo " + Generating private key..."
-    privkey="privkey-${timestamp}.pem"
-    case "${KEY_ALGO}" in
-      rsa) _openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}";;
-      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem";;
-    esac
-  fi
-
-  # Generate signing request config and the actual signing request
-  echo " + Generating signing request..."
-  SAN=""
-  for altname in ${altnames}; do
-    SAN+="DNS:${altname}, "
-  done
-  SAN="${SAN%%, }"
-  local tmp_openssl_cnf
-  tmp_openssl_cnf="$(mktemp -t XXXXXX)"
-  cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
-  printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
-  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
-  rm -f "${tmp_openssl_cnf}"
 
   # Request and respond to challenges
   for altname in ${altnames}; do
@@ -385,14 +393,64 @@ sign_domain() {
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
   echo " + Requesting certificate..."
-  csr64="$(openssl req -in "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -outform DER | urlbase64)"
+  csr64="$( <<<"${csr}" openssl req -outform DER | urlbase64)"
   crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | openssl base64 -e)"
-  crt_path="${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
-  printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "${crt_path}"
+  crt="$( printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" )"
 
   # Try to load the certificate to detect corruption
   echo " + Checking certificate..."
-  _openssl x509 -text < "${crt_path}"
+  _openssl x509 -text <<<"${crt}"
+
+  echo "${crt}" >&3
+
+  unset challenge_token
+  echo " + Done!"
+}
+
+# Create certificate for domain(s)
+sign_domain() {
+  domain="${1}"
+  altnames="${*}"
+  timestamp="$(date +%s)"
+
+  echo " + Signing domains..."
+  if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
+    _exiterr "Certificate authority doesn't allow certificate signing"
+  fi
+
+  # If there is no existing certificate directory => make it
+  if [[ ! -e "${BASEDIR}/certs/${domain}" ]]; then
+    echo " + Creating new directory ${BASEDIR}/certs/${domain} ..."
+    mkdir -p "${BASEDIR}/certs/${domain}"
+  fi
+
+  privkey="privkey.pem"
+  # generate a new private key if we need or want one
+  if [[ ! -f "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
+    echo " + Generating private key..."
+    privkey="privkey-${timestamp}.pem"
+    case "${KEY_ALGO}" in
+      rsa) _openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}";;
+      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem";;
+    esac
+  fi
+
+  # Generate signing request config and the actual signing request
+  echo " + Generating signing request..."
+  SAN=""
+  for altname in ${altnames}; do
+    SAN+="DNS:${altname}, "
+  done
+  SAN="${SAN%%, }"
+  local tmp_openssl_cnf
+  tmp_openssl_cnf="$(mktemp -t XXXXXX)"
+  cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
+  printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
+  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
+  rm -f "${tmp_openssl_cnf}"
+
+  crt_path="${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
+  sign_csr "$(< "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" )" ${altnames} 3>"${crt_path}"
 
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
@@ -488,6 +546,25 @@ command_sign_domains() {
 
   # remove temporary domains.txt file if used
   [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"
+
+  exit 0
+}
+
+# Usage: --signcsr (-s) path/to/csr.pem
+# Description: Sign a given CSR, output CRT on stdout (advanced usage)
+command_sign_csr() {
+  # redirect stdout to stderr
+  # leave stdout over at fd 3 to output the cert
+  exec 3>&1 1>&2
+
+  init_system
+
+  csrfile="${1}"
+  if [ ! -r "${csrfile}" ]; then
+    _exiterr "Could not read certificate signing request ${csrfile}"
+  fi
+
+  sign_csr "$(< "${csrfile}" )"
 
   exit 0
 }
@@ -588,6 +665,13 @@ main() {
         set_command sign_domains
         ;;
 
+      --signcsr|-s)
+        shift 1
+        set_command sign_csr
+        check_parameters "${1:-}"
+        PARAM_CSR="${1}"
+        ;;
+
       --revoke|-r)
         shift 1
         set_command revoke
@@ -668,6 +752,7 @@ main() {
   case "${COMMAND}" in
     env) command_env;;
     sign_domains) command_sign_domains;;
+    sign_csr) command_sign_csr "${PARAM_CSR}";;
     revoke) command_revoke "${PARAM_REVOKECERT}";;
     *) command_help; exit 1;;
   esac
