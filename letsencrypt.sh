@@ -18,7 +18,11 @@ fi
 
 set -e
 set -u
-set -o pipefail
+if [[ -n "${ISZSH}" ]]; then
+  set +o FUNCTION_ARGZERO
+else
+  set -o pipefail
+fi
 umask 077 # paranoid umask, we're creating private keys
 
 # Get the directory in which this script is stored
