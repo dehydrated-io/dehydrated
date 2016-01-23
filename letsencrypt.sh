@@ -73,6 +73,7 @@ load_config() {
   WELLKNOWN=
   PRIVATE_KEY_RENEW="no"
   KEY_ALGO=rsa
+  OPENSSL_BIN=`which openssl`
   OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
   CONTACT_EMAIL=
   LOCKFILE=
@@ -106,6 +107,10 @@ load_config() {
         _exiterr "Specified additional config ${check_config_d} is not readable or not a file at all." >&2
       fi
    done
+   if [[ "${OPENSSL_BIN}" != "`which openssl`" ]]; then
+     ${OPENSSL_BIN} version > /dev/null 2>&1 || _exiterr "This script requires an openssl binary."
+   fi
+   echo -n "# INFO: OpenSSL version "; ${OPENSSL_BIN} version | tr '\n' ' '; echo
   fi
 
   # Remove slash from end of BASEDIR. Mostly for cleaner outputs, doesn't change functionality.
@@ -227,7 +232,7 @@ get_json_string_value() {
 # display the output if the exit code was != 0 to simplify debugging.
 _openssl() {
   set +e
-  out="$(openssl "${@}" 2>&1)"
+  out="$(${OPENSSL_BIN} "${@}" 2>&1)"
   res=$?
   set -e
   if [[ $res -ne 0 ]]; then
