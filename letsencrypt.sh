@@ -1,7 +1,20 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # letsencrypt.sh by lukas2511
 # Source: https://github.com/lukas2511/letsencrypt.sh
+
+THISSHELL=`ps p $$ | awk '{print $5}' | tail -1`
+if [ "${THISSHELL}" = "/bin/sh" ]; then
+  # Not in a compatible script interpreter
+  # Find compatible shell and re-exec
+  for NEWSHELL in bash zsh; do
+    if [ `which ${NEWSHELL}` ]; then
+      exec `which ${NEWSHELL} -c $0 $*`
+    fi
+  done
+  echo "ERROR: This script requires either bash or zsh" >&2
+  exit 1
+fi
 
 set -e
 set -u
