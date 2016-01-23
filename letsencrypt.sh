@@ -387,12 +387,12 @@ sign_csr() {
     echo " + Responding to challenge for ${altname}..."
     result="$(signed_request "${challenge_uri}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}')"
 
-    status="$(printf '%s\n' "${result}" | get_json_string_value status)"
+    reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
 
-    while [[ "${status}" = "pending" ]]; do
+    while [[ "${reqstatus}" = "pending" ]]; do
       sleep 1
       result="$(http_request get "${challenge_uri}")"
-      status="$(printf '%s\n' "${result}" | get_json_string_value status)"
+      reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
     done
 
     [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
@@ -402,10 +402,10 @@ sign_csr() {
       ${HOOK} "clean_challenge" "${altname}" "${challenge_token}" "${keyauth_hook}"
     fi
 
-    if [[ "${status}" = "valid" ]]; then
+    if [[ "${reqstatus}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
-      _exiterr "Challenge is invalid! (returned: ${status}) (result: ${result})"
+      _exiterr "Challenge is invalid! (returned: ${reqstatus}) (result: ${result})"
     fi
   done
 
