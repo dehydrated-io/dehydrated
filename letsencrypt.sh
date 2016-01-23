@@ -22,7 +22,7 @@ set -o pipefail
 umask 077 # paranoid umask, we're creating private keys
 
 # Get the directory in which this script is stored
-SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPTDIR=$(dirname $(cd -P -- "$(dirname -- "$0")" && printf '%s\n' "$(pwd -P)/$(basename -- "$0")"))
 BASEDIR="${SCRIPTDIR}"
 
 # Check for script dependencies
