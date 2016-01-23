@@ -8,6 +8,7 @@ Other dependencies are: curl, sed, grep, mktemp (all found on almost any system,
 
 Current features:
 - Signing of a list of domains
+- Signing of a CSR
 - Renewal if a certificate is about to expire or SAN (subdomains) changed
 - Certificate revocation
 
@@ -25,6 +26,7 @@ Default command: help
 
 Commands:
  --cron (-c)                      Sign/renew non-existant/changed/expiring certificates.
+ --signcsr (-s) path/to/csr.pem   Sign a given CSR, output CRT on stdout (advanced usage)
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
  --help (-h)                      Show help text
  --env (-e)                       Output configuration variables for use in other scripts
@@ -84,6 +86,17 @@ An alternative to setting the WELLKNOWN variable would be to create a symlink to
 This script also supports the new `dns-01`-type verification. Be aware that at the moment this is not available on the production servers from letsencrypt. Please read https://community.letsencrypt.org/t/dns-challenge-is-in-staging/8322 for the current state of `dns-01` support.
 
 You need a hook script that deploys the challenge to your DNS server!
+
+The hook script (indicated in the config.sh file or the --hook/-k command line argument) gets four arguments: an operation name (clean_challenge, deploy_challenge, or deploy_cert) and some operands for that. For deploy_challenge $2 is the domain name for which the certificate is required, $3 is a "challenge token" (which is not needed for dns-01), and $4 is a token which needs to be inserted in a TXT record for the domain.
+
+Typically, you will need to split the subdomain name in two, the subdomain name and the domain name separately. For example, for "my.example.com", you'll need "my" and "example.com" separately. You then have to prefix "_acme-challenge." before the subdomain name, as in "_acme-challenge.my" and set a TXT record for that on the domain (e.g. "example.com") which has the value supplied in $4
+
+That could be done manually (as most providers don't have a DNS API), by having your hook script echo $1, $2 and $4 and then wait (read -s -r -e < /dev/tty) - give it a little time to get into their DNS system. Usually providers give you a boxes to put "_acme-challenge.my" and the token value in, and a dropdown to choose the record type, TXT. 
+
+Or when you do have a DNS API, pass the details accordingly to achieve the same thing.
+
+You can delete the TXT record when called with operation clean_challenge, when $2 is also the domain name.
+
 
 ### Elliptic Curve Cryptography (ECC)
 

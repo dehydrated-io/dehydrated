@@ -47,23 +47,24 @@ load_config() {
   CA="https://acme-v01.api.letsencrypt.org/directory"
   LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
   CHALLENGETYPE="http-01"
+  CONFIG_D=
   HOOK=
   RENEW_DAYS="30"
-  PRIVATE_KEY="${BASEDIR}/private_key.pem"
+  PRIVATE_KEY=
   KEYSIZE="4096"
-  WELLKNOWN="${BASEDIR}/.acme-challenges"
+  WELLKNOWN=
   PRIVATE_KEY_RENEW="no"
   KEY_ALGO=rsa
-  OPENSSL_CNF="$(openssl version -d | cut -d'"' -f2)/openssl.cnf"
+  OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
   CONTACT_EMAIL=
-  LOCKFILE="${BASEDIR}/lock"
+  LOCKFILE=
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
-    echo "# !! WARNING !! No config file found, using default config!" >&2
+    echo "# !! WARNING !! No main config file found, using default config!" >&2
     echo "#" >&2
   elif [[ -e "${CONFIG}" ]]; then
-    echo "# INFO: Using config file ${CONFIG}"
+    echo "# INFO: Using main config file ${CONFIG}"
     BASEDIR="$(dirname "${CONFIG}")"
     # shellcheck disable=SC1090
     . "${CONFIG}"
@@ -71,11 +72,33 @@ load_config() {
     _exiterr "Specified config file doesn't exist."
   fi
 
+  if [[ -n "${CONFIG_D}" ]]; then
+    if [[ ! -d "${CONFIG_D}" ]]; then
+      _exiterr "The path ${CONFIG_D} specified for CONFIG_D does not point to a directory." >&2
+    fi
+
+    for check_config_d in ${CONFIG_D}/*.sh; do
+      if [[ ! -e "${check_config_d}" ]]; then
+        echo "# !! WARNING !! Extra configuration directory ${CONFIG_D} exists, but no configuration found in it." >&2
+        break
+      elif [[ -f "${check_config_d}" ]] && [[ -r "${check_config_d}" ]]; then
+        echo "# INFO: Using additional config file ${check_config_d}"
+        . ${check_config_d}
+      else
+        _exiterr "Specified additional config ${check_config_d} is not readable or not a file at all." >&2
+      fi
+   done
+  fi
+
   # Remove slash from end of BASEDIR. Mostly for cleaner outputs, doesn't change functionality.
   BASEDIR="${BASEDIR%%/}"
 
   # Check BASEDIR and set default variables
   [[ -d "${BASEDIR}" ]] || _exiterr "BASEDIR does not exist: ${BASEDIR}"
+
+  [[ -z "${PRIVATE_KEY}" ]] && PRIVATE_KEY="${BASEDIR}/private_key.pem"
+  [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="${BASEDIR}/.acme-challenges"
+  [[ -z "${LOCKFILE}" ]] && LOCKFILE="${BASEDIR}/lock"
 
   [[ -n "${PARAM_HOOK:-}" ]] && HOOK="${PARAM_HOOK}"
   [[ -n "${PARAM_CHALLENGETYPE:-}" ]] && CHALLENGETYPE="${PARAM_CHALLENGETYPE}"
@@ -257,47 +280,55 @@ signed_request() {
   http_request post "${1}" "${data}"
 }
 
-# Create certificate for domain(s)
-sign_domain() {
-  domain="${1}"
-  altnames="${*}"
-  timestamp="$(date +%s)"
+# Extracts all subject names from a CSR
+# Outputs either the CN, or the SANs, one per line
+extract_altnames() {
+  csr="${1}" # the CSR itself (not a file)
 
-  echo " + Signing domains..."
+  if ! <<<"${csr}" openssl req -verify -noout 2>/dev/null; then
+    _exiterr "Certificate signing request isn't valid"
+  fi
+
+  reqtext="$( <<<"${csr}" openssl req -noout -text )"
+  if <<<"$reqtext" grep -q '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$'; then
+    # SANs used, extract these
+    altnames="$( <<<"${reqtext}" grep -A1 '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$' | tail -n1 )"
+    # split to one per line:
+    altnames="$( <<<"${altnames}" _sed -e 's/^[[:space:]]*//; s/, /\'$'\n''/' )"
+    # we can only get DNS: ones signed
+    if [ -n "$( <<<"${altnames}" grep -v '^DNS:' )" ]; then
+      _exiterr "Certificate signing request contains non-DNS Subject Alternative Names"
+    fi
+    # strip away the DNS: prefix
+    altnames="$( <<<"${altnames}" _sed -e 's/^DNS://' )"
+    echo "$altnames"
+
+  else
+    # No SANs, extract CN
+    altnames="$( <<<"${reqtext}" grep '^[[:space:]]*Subject:' | _sed -e 's/.* CN=([^ /,]*).*/\1/' )"
+    echo "$altnames"
+  fi
+}
+
+# Create certificate for domain(s) and outputs it FD 3
+sign_csr() {
+  csr="${1}" # the CSR itself (not a file)
+
+  if { true >&3; } 2>/dev/null; then
+    : # fd 3 looks OK
+  else
+    _exiterr "sign_csr: FD 3 not open"
+  fi
+
+  shift 1 || true
+  altnames="${*:-}"
+  if [ -z "$altnames" ]; then
+    altnames="$( extract_altnames "$csr" )"
+  fi
+
   if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
     _exiterr "Certificate authority doesn't allow certificate signing"
   fi
-
-  # If there is no existing certificate directory => make it
-  if [[ ! -e "${BASEDIR}/certs/${domain}" ]]; then
-    echo " + Creating new directory ${BASEDIR}/certs/${domain} ..."
-    mkdir -p "${BASEDIR}/certs/${domain}"
-  fi
-
-  privkey="privkey.pem"
-  # generate a new private key if we need or want one
-  if [[ ! -f "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
-    echo " + Generating private key..."
-    privkey="privkey-${timestamp}.pem"
-    case "${KEY_ALGO}" in
-      rsa) _openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}";;
-      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem";;
-    esac
-  fi
-
-  # Generate signing request config and the actual signing request
-  echo " + Generating signing request..."
-  SAN=""
-  for altname in ${altnames}; do
-    SAN+="DNS:${altname}, "
-  done
-  SAN="${SAN%%, }"
-  local tmp_openssl_cnf
-  tmp_openssl_cnf="$(mktemp -t XXXXXX)"
-  cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
-  printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
-  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
-  rm -f "${tmp_openssl_cnf}"
 
   # Request and respond to challenges
   for altname in ${altnames}; do
@@ -342,7 +373,8 @@ sign_domain() {
 
     while [[ "${status}" = "pending" ]]; do
       sleep 1
-      status="$(http_request get "${challenge_uri}" | get_json_string_value status)"
+      result="$(http_request get "${challenge_uri}")"
+      status="$(printf '%s\n' "${result}" | get_json_string_value status)"
     done
 
     [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
@@ -355,20 +387,70 @@ sign_domain() {
     if [[ "${status}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
-      _exiterr "Challenge is invalid! (returned: ${status})"
+      _exiterr "Challenge is invalid! (returned: ${status}) (result: ${result})"
     fi
   done
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
   echo " + Requesting certificate..."
-  csr64="$(openssl req -in "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -outform DER | urlbase64)"
+  csr64="$( <<<"${csr}" openssl req -outform DER | urlbase64)"
   crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | openssl base64 -e)"
-  crt_path="${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
-  printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" > "${crt_path}"
+  crt="$( printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" )"
 
   # Try to load the certificate to detect corruption
   echo " + Checking certificate..."
-  _openssl x509 -text < "${crt_path}"
+  _openssl x509 -text <<<"${crt}"
+
+  echo "${crt}" >&3
+
+  unset challenge_token
+  echo " + Done!"
+}
+
+# Create certificate for domain(s)
+sign_domain() {
+  domain="${1}"
+  altnames="${*}"
+  timestamp="$(date +%s)"
+
+  echo " + Signing domains..."
+  if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
+    _exiterr "Certificate authority doesn't allow certificate signing"
+  fi
+
+  # If there is no existing certificate directory => make it
+  if [[ ! -e "${BASEDIR}/certs/${domain}" ]]; then
+    echo " + Creating new directory ${BASEDIR}/certs/${domain} ..."
+    mkdir -p "${BASEDIR}/certs/${domain}"
+  fi
+
+  privkey="privkey.pem"
+  # generate a new private key if we need or want one
+  if [[ ! -f "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
+    echo " + Generating private key..."
+    privkey="privkey-${timestamp}.pem"
+    case "${KEY_ALGO}" in
+      rsa) _openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}";;
+      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem";;
+    esac
+  fi
+
+  # Generate signing request config and the actual signing request
+  echo " + Generating signing request..."
+  SAN=""
+  for altname in ${altnames}; do
+    SAN+="DNS:${altname}, "
+  done
+  SAN="${SAN%%, }"
+  local tmp_openssl_cnf
+  tmp_openssl_cnf="$(mktemp -t XXXXXX)"
+  cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
+  printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
+  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
+  rm -f "${tmp_openssl_cnf}"
+
+  crt_path="${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
+  sign_csr "$(< "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" )" ${altnames} 3>"${crt_path}"
 
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
@@ -464,6 +546,25 @@ command_sign_domains() {
 
   # remove temporary domains.txt file if used
   [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"
+
+  exit 0
+}
+
+# Usage: --signcsr (-s) path/to/csr.pem
+# Description: Sign a given CSR, output CRT on stdout (advanced usage)
+command_sign_csr() {
+  # redirect stdout to stderr
+  # leave stdout over at fd 3 to output the cert
+  exec 3>&1 1>&2
+
+  init_system
+
+  csrfile="${1}"
+  if [ ! -r "${csrfile}" ]; then
+    _exiterr "Could not read certificate signing request ${csrfile}"
+  fi
+
+  sign_csr "$(< "${csrfile}" )"
 
   exit 0
 }
@@ -564,6 +665,13 @@ main() {
         set_command sign_domains
         ;;
 
+      --signcsr|-s)
+        shift 1
+        set_command sign_csr
+        check_parameters "${1:-}"
+        PARAM_CSR="${1}"
+        ;;
+
       --revoke|-r)
         shift 1
         set_command revoke
@@ -644,6 +752,7 @@ main() {
   case "${COMMAND}" in
     env) command_env;;
     sign_domains) command_sign_domains;;
+    sign_csr) command_sign_csr "${PARAM_CSR}";;
     revoke) command_revoke "${PARAM_REVOKECERT}";;
     *) command_help; exit 1;;
   esac
