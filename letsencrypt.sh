@@ -663,7 +663,7 @@ main() {
 
   [[ -z "${@}" ]] && eval set -- "--help"
 
-  while (( "${#}" )); do
+  while (( ${#} )); do
     case "${1}" in
       --help|-h)
         command_help
