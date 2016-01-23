@@ -9,7 +9,7 @@ if [ "${THISSHELL}" = "/bin/sh" ]; then
   # Find compatible shell and re-exec
   for NEWSHELL in bash zsh; do
     if [ `which ${NEWSHELL}` ]; then
-      exec `which ${NEWSHELL}` "-c $0 $*"
+      exec `which ${NEWSHELL}` -c $0 $*
     fi
   done
   echo "ERROR: This script requires either bash or zsh" >&2
