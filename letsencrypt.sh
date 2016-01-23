@@ -20,6 +20,7 @@ set -e
 set -u
 if [[ -n "${ISZSH}" ]]; then
   set +o FUNCTION_ARGZERO
+  set -o SH_WORD_SPLIT
 else
   set -o pipefail
 fi
