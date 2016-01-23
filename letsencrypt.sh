@@ -495,14 +495,14 @@ command_sign_domains() {
 
   declare -a domain_list=()
   while read -r line; do
-    domain_list+=($line)
+    domain_list+=("$line")
   done < $FILTERED_DOMAINS_TXT
   rm -f $FILTERED_DOMAINS_TXT
 
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
   numdomains=${#domain_list[@]}
   for (( i=0; i<${numdomains}; i++ )); do
-    line=${domain_list[$i]}
+    line="${domain_list[$i]}"
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
     morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
     cert="${BASEDIR}/certs/${domain}/cert.pem"
