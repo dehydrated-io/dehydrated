@@ -16,6 +16,7 @@ if [ "${THISSHELL}" = "/bin/sh" ]; then
   echo "ERROR: This script requires either bash or zsh" >&2
   exit 1
 fi
+ISZSH="`$SHELL -c 'echo $ZSH_VERSION'`"
 
 set -e
 set -u
