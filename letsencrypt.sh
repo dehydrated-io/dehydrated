@@ -1,5 +1,5 @@
 #!/bin/sh
-
+set -x
 # letsencrypt.sh by lukas2511
 # Source: https://github.com/lukas2511/letsencrypt.sh
 
