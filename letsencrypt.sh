@@ -10,7 +10,7 @@ if [ "${THISSHELL}" = "/bin/sh" ]; then
   for NEWSHELL in bash zsh; do
     if [ `command -v ${NEWSHELL}` ]; then
       echo "# INFO: Re-exec in ${NEWSHELL}"
-      exec `which ${NEWSHELL}` -c $0 $*
+      exec `which ${NEWSHELL}` ${0} ${*}
     fi
   done
   echo "ERROR: This script requires either bash or zsh" >&2
