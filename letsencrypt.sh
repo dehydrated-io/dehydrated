@@ -10,7 +10,7 @@ if [ "${THISSHELL}" = "/bin/sh" ]; then
   for NEWSHELL in bash zsh; do
     if [ `command -v ${NEWSHELL}` ]; then
       echo "# INFO: Re-exec in ${NEWSHELL}"
-      exec `which ${NEWSHELL}` ${0} ${*}
+      exec `command -v ${NEWSHELL}` ${0} ${*}
     fi
   done
   echo "ERROR: This script requires either bash or zsh" >&2
@@ -75,7 +75,7 @@ load_config() {
   WELLKNOWN=
   PRIVATE_KEY_RENEW="no"
   KEY_ALGO=rsa
-  OPENSSL_BIN=`which openssl`
+  OPENSSL_BIN=`command -v openssl`
   OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
   CONTACT_EMAIL=
   LOCKFILE=
