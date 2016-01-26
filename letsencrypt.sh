@@ -8,6 +8,9 @@ set -u
 set -o pipefail
 umask 077 # paranoid umask, we're creating private keys
 
+# duplicate scripts IO handles
+exec 4<&0 5>&1 6>&2
+
 # Get the directory in which this script is stored
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASEDIR="${SCRIPTDIR}"
@@ -244,7 +247,7 @@ http_request() {
 
     # Wait for hook script to clean the challenge if used
     if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token:+set}" ]]; then
-      ${HOOK} "clean_challenge" '' "${challenge_token}" "${keyauth}"
+      ${HOOK} "clean_challenge" '' "${challenge_token}" "${keyauth}" <&4 >&5 2>&6
     fi
 
     # remove temporary domains.txt file if used
@@ -363,7 +366,7 @@ sign_csr() {
     esac
 
     # Wait for hook script to deploy the challenge if used
-    [[ -n "${HOOK}" ]] && ${HOOK} "deploy_challenge" "${altname}" "${challenge_token}" "${keyauth_hook}"
+    [[ -n "${HOOK}" ]] && ${HOOK} "deploy_challenge" "${altname}" "${challenge_token}" "${keyauth_hook}" <&4 >&5 2>&6
 
     # Ask the acme-server to verify our challenge and wait until it is no longer pending
     echo " + Responding to challenge for ${altname}..."
@@ -381,7 +384,7 @@ sign_csr() {
 
     # Wait for hook script to clean the challenge if used
     if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token}" ]]; then
-      ${HOOK} "clean_challenge" "${altname}" "${challenge_token}" "${keyauth_hook}"
+      ${HOOK} "clean_challenge" "${altname}" "${challenge_token}" "${keyauth_hook}" <&4 >&5 2>&6
     fi
 
     if [[ "${status}" = "valid" ]]; then
@@ -470,7 +473,7 @@ sign_domain() {
   ln -sf "cert-${timestamp}.pem" "${BASEDIR}/certs/${domain}/cert.pem"
 
   # Wait for hook script to clean the challenge and to deploy cert if used
-  [[ -n "${HOOK}" ]] && ${HOOK} "deploy_cert" "${domain}" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
+  [[ -n "${HOOK}" ]] && ${HOOK} "deploy_cert" "${domain}" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem" <&4 >&5 2>&6
 
   unset challenge_token
   echo " + Done!"
