@@ -26,8 +26,8 @@ check_dependencies() {
   # curl returns with an error code in some ancient versions so we have to catch that
   set +e
   curl -V > /dev/null 2>&1
-  set -e
   retcode="$?"
+  set -e
   if [[ ! "${retcode}" = "0" ]] && [[ ! "${retcode}" = "2" ]]; then
     _exiterr "This script requires curl."
   fi
