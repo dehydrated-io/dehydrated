@@ -251,7 +251,7 @@ http_request() {
     fi
 
     # remove temporary domains.txt file if used
-    [[ -n "${PARAM_DOMAIN:-}" ]] && rm "${DOMAINS_TXT}"
+    [[ -n "${PARAM_DOMAIN:-}" && -n "${DOMAINS_TXT:-}" ]] && rm "${DOMAINS_TXT}"
     exit 1
   fi
 
