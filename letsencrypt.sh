@@ -8,7 +8,7 @@ if [ "${THISSHELL}" = "/bin/sh" ]; then
   # Not in a compatible script interpreter
   # Find compatible shell and re-exec
   for NEWSHELL in bash zsh; do
-    if [ `which ${NEWSHELL}` ]; then
+    if [ `command -v ${NEWSHELL}` ]; then
       echo "# INFO: Re-exec in ${NEWSHELL}"
       exec `which ${NEWSHELL}` -c $0 $*
     fi
