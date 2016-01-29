@@ -479,6 +479,50 @@ sign_domain() {
   echo " + Done!"
 }
 
+# Usage: --check (-C)
+# Description: Check for expiring/expired certificates.
+command_check_domains() {
+  init_system
+
+  if [[ -n "${PARAM_DOMAIN:-}" ]]; then
+    DOMAINS_TXT="$(mktemp -t XXXXXX)"
+    printf -- "${PARAM_DOMAIN}" > "${DOMAINS_TXT}"
+  elif [[ -e "${BASEDIR}/domains.txt" ]]; then
+    DOMAINS_TXT="${BASEDIR}/domains.txt"
+  else
+    _exiterr "domains.txt not found and --domain not given"
+  fi
+
+  # Check if existing certificate are about to expire(d)
+  <"${DOMAINS_TXT}" _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true) | while read -r line; do
+    domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
+    cert="${BASEDIR}/certs/${domain}/cert.pem"
+
+    if [[ -e "${cert}" ]]; then
+
+      if openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; then
+        echo "${domain} valid"
+        continue
+      else
+        if openssl x509 -checkend 0 -noout -in "${cert}"; then
+          echo "${domain} expiring"
+          exit 1
+        else
+          echo "${domain} expired"
+          exit 2
+        fi
+
+      fi
+    fi
+
+  done
+
+  # remove temporary domains.txt file if used
+  [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"
+
+  exit 0
+}
+
 # Usage: --cron (-c)
 # Description: Sign/renew non-existant/changed/expiring certificates.
 command_sign_domains() {
@@ -668,6 +712,10 @@ main() {
         set_command sign_domains
         ;;
 
+      --check|-C)
+        set_command check_domains
+        ;;
+
       --signcsr|-s)
         shift 1
         set_command sign_csr
@@ -755,6 +803,7 @@ main() {
   case "${COMMAND}" in
     env) command_env;;
     sign_domains) command_sign_domains;;
+    check_domains) command_check_domains;;
     sign_csr) command_sign_csr "${PARAM_CSR}";;
     revoke) command_revoke "${PARAM_REVOKECERT}";;
     *) command_help; exit 1;;
