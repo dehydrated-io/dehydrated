@@ -1,18 +1,38 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # letsencrypt.sh by lukas2511
 # Source: https://github.com/lukas2511/letsencrypt.sh
 
+THISSHELL=`ps p $$ | awk '{print $5}' | tail -1`
+if [ "${THISSHELL}" = "/bin/sh" ]; then
+  # Not in a compatible script interpreter
+  # Find compatible shell and re-exec
+  for NEWSHELL in bash zsh; do
+    if [ `command -v ${NEWSHELL}` ]; then
+      echo "# INFO: Re-exec in ${NEWSHELL}"
+      exec `command -v ${NEWSHELL}` ${0} ${*}
+    fi
+  done
+  echo "ERROR: This script requires either bash or zsh" >&2
+  exit 1
+fi
+ISZSH="`$SHELL -c 'echo $ZSH_VERSION'`"
+
 set -e
 set -u
-set -o pipefail
+if [[ -n "${ISZSH}" ]]; then
+  set +o FUNCTION_ARGZERO
+  set -o SH_WORD_SPLIT
+else
+  set -o pipefail
+fi
 umask 077 # paranoid umask, we're creating private keys
 
 # duplicate scripts IO handles
 exec 4<&0 5>&1 6>&2
 
 # Get the directory in which this script is stored
-SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPTDIR=$(dirname $(cd -P -- "$(dirname -- "$0")" && printf '%s\n' "$(pwd -P)/$(basename -- "$0")"))
 BASEDIR="${SCRIPTDIR}"
 
 # Check for script dependencies
@@ -58,6 +78,7 @@ load_config() {
   WELLKNOWN=
   PRIVATE_KEY_RENEW="no"
   KEY_ALGO=rsa
+  OPENSSL_BIN=`command -v openssl`
   OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
   CONTACT_EMAIL=
   LOCKFILE=
@@ -91,6 +112,10 @@ load_config() {
         _exiterr "Specified additional config ${check_config_d} is not readable or not a file at all." >&2
       fi
    done
+   if [[ "${OPENSSL_BIN}" != "`which openssl`" ]]; then
+     ${OPENSSL_BIN} version > /dev/null 2>&1 || _exiterr "This script requires an openssl binary."
+   fi
+   echo -n "# INFO: OpenSSL version "; ${OPENSSL_BIN} version | tr '\n' ' '; echo
   fi
 
   # Remove slash from end of BASEDIR. Mostly for cleaner outputs, doesn't change functionality.
@@ -157,7 +182,7 @@ init_system() {
   pubExponent64="$(openssl rsa -in "${PRIVATE_KEY}" -noout -text | grep publicExponent | grep -oE "0x[a-f0-9]+" | cut -d'x' -f2 | hex2bin | urlbase64)"
   pubMod64="$(openssl rsa -in "${PRIVATE_KEY}" -noout -modulus | cut -d'=' -f2 | hex2bin | urlbase64)"
 
-  thumbprint="$(printf '{"e":"%s","kty":"RSA","n":"%s"}' "${pubExponent64}" "${pubMod64}" | openssl sha -sha256 -binary | urlbase64)"
+  thumbprint="$(printf '{"e":"%s","kty":"RSA","n":"%s"}' "${pubExponent64}" "${pubMod64}" | openssl dgst -sha256 -binary | urlbase64)"
 
   # If we generated a new private key in the step above we have to register it with the acme-server
   if [[ "${register_new_key}" = "yes" ]]; then
@@ -212,7 +237,7 @@ get_json_string_value() {
 # display the output if the exit code was != 0 to simplify debugging.
 _openssl() {
   set +e
-  out="$(openssl "${@}" 2>&1)"
+  out="$(${OPENSSL_BIN} "${@}" 2>&1)"
   res=$?
   set -e
   if [[ $res -ne 0 ]]; then
@@ -372,12 +397,12 @@ sign_csr() {
     echo " + Responding to challenge for ${altname}..."
     result="$(signed_request "${challenge_uri}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}')"
 
-    status="$(printf '%s\n' "${result}" | get_json_string_value status)"
+    reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
 
-    while [[ "${status}" = "pending" ]]; do
+    while [[ "${reqstatus}" = "pending" ]]; do
       sleep 1
       result="$(http_request get "${challenge_uri}")"
-      status="$(printf '%s\n' "${result}" | get_json_string_value status)"
+      reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
     done
 
     [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
@@ -387,10 +412,10 @@ sign_csr() {
       ${HOOK} "clean_challenge" "${altname}" "${challenge_token}" "${keyauth_hook}" <&4 >&5 2>&6
     fi
 
-    if [[ "${status}" = "valid" ]]; then
+    if [[ "${reqstatus}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
-      _exiterr "Challenge is invalid! (returned: ${status}) (result: ${result})"
+      _exiterr "Challenge is invalid! (returned: ${reqstatus}) (result: ${result})"
     fi
   done
 
@@ -653,7 +678,7 @@ main() {
 
   [[ -z "${@}" ]] && eval set -- "--help"
 
-  while (( "${#}" )); do
+  while (( ${#} )); do
     case "${1}" in
       --help|-h)
         command_help
