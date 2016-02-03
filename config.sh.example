@@ -54,6 +54,9 @@
 # default: <unset>
 #HOOK=
 
+# Chain clean_challenge|deploy_challenge arguments together into one hook call per certificate (default: no)
+#HOOK_CHAIN="no"
+
 # Minimum days before expiration to automatically renew certificate (default: 30)
 #RENEW_DAYS="30"
 

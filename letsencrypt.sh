@@ -52,6 +52,7 @@ load_config() {
   CHALLENGETYPE="http-01"
   CONFIG_D=
   HOOK=
+  HOOK_CHAIN="no"
   RENEW_DAYS="30"
   PRIVATE_KEY=
   KEYSIZE="4096"
@@ -333,7 +334,9 @@ sign_csr() {
     _exiterr "Certificate authority doesn't allow certificate signing"
   fi
 
-  # Request and respond to challenges
+  local idx=0
+  local -a challenge_uris challenge_tokens keyauths deploy_args
+  # Request challenges
   for altname in ${altnames}; do
     # Ask the acme-server for new challenge token and extract them from the resulting json block
     echo " + Requesting challenge for ${altname}..."
@@ -365,34 +368,67 @@ sign_csr() {
         ;;
     esac
 
+    challenge_uris[$idx]="${challenge_uri}"
+    keyauths[$idx]="${keyauth}"
+    challenge_tokens[$idx]="${challenge_token}"
+    # Note: assumes args will never have spaces!
+    deploy_args[$idx]="${altname} ${challenge_token} ${keyauth_hook}"
+    idx=$((idx+1))
+  done
+
+  # Wait for hook script to deploy the challenges if used
+  [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && ${HOOK} "deploy_challenge" ${deploy_args[@]} <&4 >&5 2>&6
+
+  # Respond to challenges
+  idx=0
+  for altname in ${altnames}; do
+    challenge_token="${challenge_tokens[$idx]}"
+    keyauth="${keyauths[$idx]}"
+
     # Wait for hook script to deploy the challenge if used
-    [[ -n "${HOOK}" ]] && ${HOOK} "deploy_challenge" "${altname}" "${challenge_token}" "${keyauth_hook}" <&4 >&5 2>&6
+    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && ${HOOK} "deploy_challenge" ${deploy_args[$idx]} <&4 >&5 2>&6
 
     # Ask the acme-server to verify our challenge and wait until it is no longer pending
     echo " + Responding to challenge for ${altname}..."
-    result="$(signed_request "${challenge_uri}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}')"
+    result="$(signed_request "${challenge_uris[$idx]}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}')"
 
     status="$(printf '%s\n' "${result}" | get_json_string_value status)"
 
     while [[ "${status}" = "pending" ]]; do
       sleep 1
-      result="$(http_request get "${challenge_uri}")"
+      result="$(http_request get "${challenge_uris[$idx]}")"
       status="$(printf '%s\n' "${result}" | get_json_string_value status)"
     done
 
     [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
 
     # Wait for hook script to clean the challenge if used
-    if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token}" ]]; then
-      ${HOOK} "clean_challenge" "${altname}" "${challenge_token}" "${keyauth_hook}" <&4 >&5 2>&6
+    if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token}" ]]; then
+      ${HOOK} "clean_challenge" ${deploy_args[$idx]} <&4 >&5 2>&6
     fi
+    idx=$((idx+1))
 
     if [[ "${status}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
-      _exiterr "Challenge is invalid! (returned: ${status}) (result: ${result})"
+      break
     fi
   done
+
+  # Wait for hook script to clean the challenges if used
+  [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && ${HOOK} "clean_challenge" ${deploy_args[@]} <&4 >&5 2>&6
+
+  if [[ "${status}" != "valid" ]]; then
+    # Clean up any remaining challenge_tokens if we stopped early
+    if [[ "${CHALLENGETYPE}" = "http-01" ]]; then
+      while [ $idx -lt ${#challenge_tokens[@]} ]; do
+        rm -f "${WELLKNOWN}/${challenge_tokens[$idx]}"
+        idx=$((idx+1))
+      done
+    fi
+
+    _exiterr "Challenge is invalid! (returned: ${status}) (result: ${result})"
+  fi
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
   echo " + Requesting certificate..."
@@ -629,7 +665,7 @@ command_help() {
 command_env() {
   echo "# letsencrypt.sh configuration"
   load_config
-  typeset -p CA LICENSE CHALLENGETYPE HOOK RENEW_DAYS PRIVATE_KEY KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
+  typeset -p CA LICENSE CHALLENGETYPE HOOK HOOK_CHAIN RENEW_DAYS PRIVATE_KEY KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
 # Main method (parses script arguments and calls command_* methods)
