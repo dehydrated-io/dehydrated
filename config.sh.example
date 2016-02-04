@@ -65,3 +65,6 @@
 
 # E-mail to use during the registration (default: <unset>)
 #CONTACT_EMAIL=
+
+# Lockfile location, to prevent concurrent access (default: $BASEDIR/lock)
+#LOCKFILE="${BASEDIR}/lock"
