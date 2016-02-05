@@ -465,7 +465,7 @@ sign_domain() {
 
   privkey="privkey.pem"
   # generate a new private key if we need or want one
-  if [[ ! -f "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
+  if [[ ! -r "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
     echo " + Generating private key..."
     privkey="privkey-${timestamp}.pem"
     case "${KEY_ALGO}" in
