@@ -7,6 +7,7 @@
 import sys
 import getopt
 from boto import route53
+from time import sleep
 
 help_text = 'route53_txt_record.py -a <create|delete> -d [fqd] -t [token]'
 
@@ -23,21 +24,19 @@ def create_txt_record(fqd, token):
     zone_name = get_zone_name(fqd)
     conn = route53_connect()
     zone = conn.get_zone(zone_name)
-    change_set = route53.record.ResourceRecordSets(conn, zone.id)
-    changes = change_set.add_change("CREATE", "_acme-challenge." + fqd, type="TXT", ttl=60)
-    changes.add_value('"token={token}"'.format(token=token))
-    change_set.commit()
+    status = zone.add_record("TXT", "_acme-challenge." + fqd, '"{token}"'.format(token=token), ttl=60)
+
+    while status == "PENDING":
+        status.update()
+        sleep(0.1)
 
 
 def delete_txt_record(fqd, token):
     zone_name = get_zone_name(fqd)
     conn = route53_connect()
     zone = conn.get_zone(zone_name)
-    change_set = route53.record.ResourceRecordSets(conn, zone.id)
-    changes = change_set.add_change("DELETE", "_acme-challenge." + fqd, type="TXT", ttl=60)
-    changes.add_value('"token={token}"'.format(token=token))
-    change_set.commit()
-     
+    record = zone.find_records("_acme-challenge." + fqd, "TXT", desired=1, all=False)
+    zone.delete_record(record)
 
 def parse_and_run(argv):
     try:
