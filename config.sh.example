@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ########################################################
-# This is the config file for letsencrypt.sh           #
+# This is the main config file for letsencrypt.sh      #
 #                                                      #
 # This file is looked for in the following locations:  #
 # $SCRIPTDIR/config.sh (next to this script)           #
@@ -20,6 +20,12 @@
 
 # Which challenge should be used? Currently http-01 and dns-01 are supported
 #CHALLENGETYPE="http-01"
+
+# Path to a directory containing additional config files, allowing to override
+# the defaults found in the main configuration file. Additional config files
+# in this directory needs to be named with a '.sh' ending.
+# default: <unset>
+#CONFIG_D=
 
 # Base directory for account key, generated certificates and list of domains (default: $SCRIPTDIR -- uses config directory if undefined)
 #BASEDIR=$SCRIPTDIR
@@ -48,11 +54,20 @@
 # default: <unset>
 #HOOK=
 
+# Chain clean_challenge|deploy_challenge arguments together into one hook call per certificate (default: no)
+#HOOK_CHAIN="no"
+
 # Minimum days before expiration to automatically renew certificate (default: 30)
 #RENEW_DAYS="30"
 
 # Regenerate private keys instead of just signing new certificates on renewal (default: no)
 #PRIVATE_KEY_RENEW="no"
 
+# Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
+#KEY_ALGO=rsa
+
 # E-mail to use during the registration (default: <unset>)
 #CONTACT_EMAIL=
+
+# Lockfile location, to prevent concurrent access (default: $BASEDIR/lock)
+#LOCKFILE="${BASEDIR}/lock"
