@@ -28,7 +28,9 @@ def create_txt_record(fqd, token):
 
     while status == "PENDING":
         status.update()
-        sleep(0.1)
+        sleep(0.5)
+
+    sleep(10)
 
 
 def delete_txt_record(fqd, token):

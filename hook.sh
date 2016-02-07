@@ -22,7 +22,6 @@ function deploy_challenge {
 
     cd tools/
     python route53_txt_record.py -a create -d $DOMAIN -t $TOKEN_VALUE
-    sleep 30
 }
 
 function clean_challenge {
@@ -55,6 +54,9 @@ function deploy_cert {
     #   The path of the file containing the signed certificate.
     # - CHAINFILE
     #   The path of the file containing the full certificate chain.
+
+    cd tools/
+    python certs_to_s3.py -d $DOMAIN -k $KEYFILE -c $CERTFILE
 }
 
 HANDLER=$1; shift; $HANDLER $@
