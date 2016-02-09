@@ -34,7 +34,7 @@ CHALLENGETYPE="dns-01"
 #WELLKNOWN="${BASEDIR}/.acme-challenges"
 
 # Location of private account key (default: $BASEDIR/private_key.pem)
-PRIVATE_KEY="/Users/aaron/Source/pl/devops/aws/deployment/roles/webserver/files/presence_learning_letsencrypt.key"
+PRIVATE_KEY="/usr/local/bin/letsencrypt/presence_learning_letsencrypt.key"
 
 # Default keysize for private keys (default: 4096)
 #KEYSIZE="4096"
