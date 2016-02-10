@@ -306,7 +306,7 @@ extract_altnames() {
     # SANs used, extract these
     altnames="$( <<<"${reqtext}" grep -A1 '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$' | tail -n1 )"
     # split to one per line:
-    altnames="$( <<<"${altnames}" _sed -e 's/^[[:space:]]*//; s/, /\'$'\n''/' )"
+    altnames="$( <<<"${altnames}" _sed -e 's/^[[:space:]]*//; s/, /\'$'\n''/g' )"
     # we can only get DNS: ones signed
     if [ -n "$( <<<"${altnames}" grep -v '^DNS:' )" ]; then
       _exiterr "Certificate signing request contains non-DNS Subject Alternative Names"
