@@ -140,7 +140,7 @@ echo 'PRIVATE_KEY="./account_key.pem"' >> config.sh
 
 # Add third domain to command-lime, should force renewal.
 _TEST "Run in cron mode again, this time adding third domain, should force renewal."
-./letsencrypt.sh --cron --domain "${TMP_URL}" --domain "${TMP2_URL}" --domain "${TMP3_URL}" -f tmp_config.sh > tmplog 2> errorlog || _FAIL "Script execution failed"
+./letsencrypt.sh --cron --domain "${TMP_URL}" --domain "${TMP2_URL}" --domain "${TMP3_URL}" > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Domain name(s) are not matching!"
 _CHECK_LOG "Forcing renew."
 _CHECK_LOG "Requesting challenge for ${TMP_URL}"
