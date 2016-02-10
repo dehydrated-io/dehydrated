@@ -6,6 +6,7 @@
 set -e
 set -u
 set -o pipefail
+[[ -n "${ZSH_VERSION:-}" ]] && set -o SH_WORD_SPLIT && set +o FUNCTION_ARGZERO
 umask 077 # paranoid umask, we're creating private keys
 
 # duplicate scripts IO handles
@@ -342,7 +343,11 @@ sign_csr() {
   fi
 
   local idx=0
-  local -a challenge_uris challenge_tokens keyauths deploy_args
+  if [[ -n "${ZSH_VERSION:-}" ]]; then
+    local -A challenge_uris challenge_tokens keyauths deploy_args
+  else
+    local -a challenge_uris challenge_tokens keyauths deploy_args
+  fi
   # Request challenges
   for altname in ${altnames}; do
     # Ask the acme-server for new challenge token and extract them from the resulting json block
@@ -399,12 +404,12 @@ sign_csr() {
     echo " + Responding to challenge for ${altname}..."
     result="$(signed_request "${challenge_uris[$idx]}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}')"
 
-    status="$(printf '%s\n' "${result}" | get_json_string_value status)"
+    reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
 
-    while [[ "${status}" = "pending" ]]; do
+    while [[ "${reqstatus}" = "pending" ]]; do
       sleep 1
       result="$(http_request get "${challenge_uris[$idx]}")"
-      status="$(printf '%s\n' "${result}" | get_json_string_value status)"
+      reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
     done
 
     [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
@@ -415,7 +420,7 @@ sign_csr() {
     fi
     idx=$((idx+1))
 
-    if [[ "${status}" = "valid" ]]; then
+    if [[ "${reqstatus}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
       break
@@ -425,7 +430,7 @@ sign_csr() {
   # Wait for hook script to clean the challenges if used
   [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && ${HOOK} "clean_challenge" ${deploy_args[@]}
 
-  if [[ "${status}" != "valid" ]]; then
+  if [[ "${reqstatus}" != "valid" ]]; then
     # Clean up any remaining challenge_tokens if we stopped early
     if [[ "${CHALLENGETYPE}" = "http-01" ]]; then
       while [ $idx -lt ${#challenge_tokens[@]} ]; do
@@ -434,7 +439,7 @@ sign_csr() {
       done
     fi
 
-    _exiterr "Challenge is invalid! (returned: ${status}) (result: ${result})"
+    _exiterr "Challenge is invalid! (returned: ${reqstatus}) (result: ${result})"
   fi
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
@@ -696,7 +701,7 @@ main() {
 
   [[ -z "${@}" ]] && eval set -- "--help"
 
-  while (( "${#}" )); do
+  while (( ${#} )); do
     case "${1}" in
       --help|-h)
         command_help
