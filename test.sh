@@ -176,7 +176,9 @@ _CHECK_ERRORLOG
 # Check if signcsr command is working
 _TEST "Running signcsr command"
 ./letsencrypt.sh --signcsr certs/${TMP_URL}/cert.csr > tmplog 2> errorlog || _FAIL "Script execution failed"
-_CHECK_ERRORLOG
+_CHECK_LOG "BEGIN CERTIFICATE"
+_CHECK_LOG "END CERTIFICATE"
+_CHECK_NOT_LOG "ERROR"
 
 # Delete account key (not needed anymore)
 rm account_key.pem
