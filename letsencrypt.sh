@@ -229,6 +229,7 @@ _openssl() {
     echo >&2
     echo "Details:" >&2
     echo "${out}" >&2
+    echo >&2
     exit ${res}
   fi
 }
@@ -255,7 +256,7 @@ http_request() {
     rm -f "${tempcont}"
 
     # Wait for hook script to clean the challenge if used
-    if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token:+set}" ]]; then
+    if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token:+set}" ]]; then
       ${HOOK} "clean_challenge" '' "${challenge_token}" "${keyauth}" <&4 >&5 2>&6
     fi
 
