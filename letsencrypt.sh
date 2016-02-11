@@ -772,7 +772,7 @@ main() {
     fi
   }
 
-  [[ -z "${@}" ]] && eval set -- "--help"
+  [[ -z "${@}" ]] && set -- "--help"
 
   while (( ${#} )); do
     case "${1}" in
