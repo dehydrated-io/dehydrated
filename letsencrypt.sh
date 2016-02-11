@@ -6,13 +6,21 @@
 set -e
 set -u
 set -o pipefail
+[[ -n "${ZSH_VERSION:-}" ]] && set -o SH_WORD_SPLIT && set +o FUNCTION_ARGZERO
 umask 077 # paranoid umask, we're creating private keys
 
 # duplicate scripts IO handles
 exec 4<&0 5>&1 6>&2
 
-# Get the directory in which this script is stored
-SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Find directory in which this script is stored by traversing all symbolic links
+SOURCE="${0}"
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+SCRIPTDIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
 BASEDIR="${SCRIPTDIR}"
 
 # Check for script dependencies
@@ -216,12 +224,13 @@ _openssl() {
   out="$(openssl "${@}" 2>&1)"
   res=$?
   set -e
-  if [[ $res -ne 0 ]]; then
-    echo "  + ERROR: failed to run $* (Exitcode: $res)" >&2
+  if [[ ${res} -ne 0 ]]; then
+    echo "  + ERROR: failed to run $* (Exitcode: ${res})" >&2
     echo >&2
     echo "Details:" >&2
-    echo "$out" >&2
-    exit $res
+    echo "${out}" >&2
+    echo >&2
+    exit ${res}
   fi
 }
 
@@ -247,7 +256,7 @@ http_request() {
     rm -f "${tempcont}"
 
     # Wait for hook script to clean the challenge if used
-    if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token:+set}" ]]; then
+    if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token:+set}" ]]; then
       ${HOOK} "clean_challenge" '' "${challenge_token}" "${keyauth}" <&4 >&5 2>&6
     fi
 
@@ -294,23 +303,23 @@ extract_altnames() {
   fi
 
   reqtext="$( <<<"${csr}" openssl req -noout -text )"
-  if <<<"$reqtext" grep -q '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$'; then
+  if <<<"${reqtext}" grep -q '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$'; then
     # SANs used, extract these
     altnames="$( <<<"${reqtext}" grep -A1 '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$' | tail -n1 )"
     # split to one per line:
-    altnames="$( <<<"${altnames}" _sed -e 's/^[[:space:]]*//; s/, /\'$'\n''/' )"
+    altnames="$( <<<"${altnames}" _sed -e 's/^[[:space:]]*//; s/, /\'$'\n''/g' )"
     # we can only get DNS: ones signed
     if [ -n "$( <<<"${altnames}" grep -v '^DNS:' )" ]; then
       _exiterr "Certificate signing request contains non-DNS Subject Alternative Names"
     fi
     # strip away the DNS: prefix
     altnames="$( <<<"${altnames}" _sed -e 's/^DNS://' )"
-    echo "$altnames"
+    echo "${altnames}"
 
   else
     # No SANs, extract CN
     altnames="$( <<<"${reqtext}" grep '^[[:space:]]*Subject:' | _sed -e 's/.* CN=([^ /,]*).*/\1/' )"
-    echo "$altnames"
+    echo "${altnames}"
   fi
 }
 
@@ -326,8 +335,8 @@ sign_csr() {
 
   shift 1 || true
   altnames="${*:-}"
-  if [ -z "$altnames" ]; then
-    altnames="$( extract_altnames "$csr" )"
+  if [ -z "${altnames}" ]; then
+    altnames="$( extract_altnames "${csr}" )"
   fi
 
   if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
@@ -335,7 +344,12 @@ sign_csr() {
   fi
 
   local idx=0
-  local -a challenge_uris challenge_tokens keyauths deploy_args
+  if [[ -n "${ZSH_VERSION:-}" ]]; then
+    local -A challenge_uris challenge_tokens keyauths deploy_args
+  else
+    local -a challenge_uris challenge_tokens keyauths deploy_args
+  fi
+
   # Request challenges
   for altname in ${altnames}; do
     # Ask the acme-server for new challenge token and extract them from the resulting json block
@@ -368,11 +382,11 @@ sign_csr() {
         ;;
     esac
 
-    challenge_uris[$idx]="${challenge_uri}"
-    keyauths[$idx]="${keyauth}"
-    challenge_tokens[$idx]="${challenge_token}"
+    challenge_uris[${idx}]="${challenge_uri}"
+    keyauths[${idx}]="${keyauth}"
+    challenge_tokens[${idx}]="${challenge_token}"
     # Note: assumes args will never have spaces!
-    deploy_args[$idx]="${altname} ${challenge_token} ${keyauth_hook}"
+    deploy_args[${idx}]="${altname} ${challenge_token} ${keyauth_hook}"
     idx=$((idx+1))
   done
 
@@ -382,33 +396,33 @@ sign_csr() {
   # Respond to challenges
   idx=0
   for altname in ${altnames}; do
-    challenge_token="${challenge_tokens[$idx]}"
-    keyauth="${keyauths[$idx]}"
+    challenge_token="${challenge_tokens[${idx}]}"
+    keyauth="${keyauths[${idx}]}"
 
     # Wait for hook script to deploy the challenge if used
-    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && ${HOOK} "deploy_challenge" ${deploy_args[$idx]} <&4 >&5 2>&6
+    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && ${HOOK} "deploy_challenge" ${deploy_args[${idx}]} <&4 >&5 2>&6
 
     # Ask the acme-server to verify our challenge and wait until it is no longer pending
     echo " + Responding to challenge for ${altname}..."
-    result="$(signed_request "${challenge_uris[$idx]}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}')"
+    result="$(signed_request "${challenge_uris[${idx}]}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}')"
 
-    status="$(printf '%s\n' "${result}" | get_json_string_value status)"
+    reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
 
-    while [[ "${status}" = "pending" ]]; do
+    while [[ "${reqstatus}" = "pending" ]]; do
       sleep 1
-      result="$(http_request get "${challenge_uris[$idx]}")"
-      status="$(printf '%s\n' "${result}" | get_json_string_value status)"
+      result="$(http_request get "${challenge_uris[${idx}]}")"
+      reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
     done
 
     [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
 
     # Wait for hook script to clean the challenge if used
     if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token}" ]]; then
-      ${HOOK} "clean_challenge" ${deploy_args[$idx]} <&4 >&5 2>&6
+      ${HOOK} "clean_challenge" ${deploy_args[${idx}]} <&4 >&5 2>&6
     fi
     idx=$((idx+1))
 
-    if [[ "${status}" = "valid" ]]; then
+    if [[ "${reqstatus}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
       break
@@ -418,16 +432,16 @@ sign_csr() {
   # Wait for hook script to clean the challenges if used
   [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && ${HOOK} "clean_challenge" ${deploy_args[@]}
 
-  if [[ "${status}" != "valid" ]]; then
+  if [[ "${reqstatus}" != "valid" ]]; then
     # Clean up any remaining challenge_tokens if we stopped early
     if [[ "${CHALLENGETYPE}" = "http-01" ]]; then
-      while [ $idx -lt ${#challenge_tokens[@]} ]; do
-        rm -f "${WELLKNOWN}/${challenge_tokens[$idx]}"
+      while [ ${idx} -lt ${#challenge_tokens[@]} ]; do
+        rm -f "${WELLKNOWN}/${challenge_tokens[${idx}]}"
         idx=$((idx+1))
       done
     fi
 
-    _exiterr "Challenge is invalid! (returned: ${status}) (result: ${result})"
+    _exiterr "Challenge is invalid! (returned: ${reqstatus}) (result: ${result})"
   fi
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
@@ -689,7 +703,7 @@ main() {
 
   [[ -z "${@}" ]] && eval set -- "--help"
 
-  while (( "${#}" )); do
+  while (( ${#} )); do
     case "${1}" in
       --help|-h)
         command_help
