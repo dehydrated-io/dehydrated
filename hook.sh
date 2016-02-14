@@ -22,6 +22,7 @@ function deploy_challenge {
 
     cd tools/
     python route53_txt_record.py -a create -d $DOMAIN -t $TOKEN_VALUE
+    sleep 10
 }
 
 function clean_challenge {
