@@ -666,6 +666,8 @@ command_revoke() {
 # Usage: --cleanup (-gc)
 # Description: Move unused certificate files to archive directory
 command_cleanup() {
+  load_config
+
   # Create global archive directory if not existant
   if [[ ! -e "${BASEDIR}/archive" ]]; then
     mkdir "${BASEDIR}/archive"
