@@ -14,6 +14,8 @@ Current features:
 
 If you want to import existing keys from the official letsencrypt client have a look at [Import from official letsencrypt client](https://github.com/lukas2511/letsencrypt.sh/wiki/Import-from-official-letsencrypt-client).
 
+**Please note that you should use the staging URL when testing so as not to hit rate limits.** See the [Staging](#staging) section, below.
+
 Please keep in mind that this software and even the acme-protocol are relatively young and may still have some unresolved issues.
 Feel free to report any issues you find with this script or contribute by submitting a pullrequest.
 
@@ -80,6 +82,14 @@ WELLKNOWN="/var/www/letsencrypt"
 
 An alternative to setting the WELLKNOWN variable would be to create a symlink to the default location next to the script (or BASEDIR):
 `ln -s /var/www/letsencrypt .acme-challenges`
+
+### Staging
+
+Let’s Encrypt has stringent rate limits in place during the public beta period. If you start testing using the production endpoint (which is the default), you will quickly hit these limits and find yourself locked out. To avoid this, please set the CA property to the Let’s Encrypt staging server URL in your `config.sh` file:
+
+```bash
+CA="https://acme-staging.api.letsencrypt.org/directory"
+```
 
 ### dns-01 challenge
 
