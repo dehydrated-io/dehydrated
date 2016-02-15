@@ -2,4 +2,5 @@ private_key.pem
 domains.txt
 config.sh
 certs/*
+archive/*
 .acme-challenges/*

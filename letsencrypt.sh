@@ -663,6 +663,52 @@ command_revoke() {
   mv -f "${cert}" "${cert}-revoked"
 }
 
+# Usage: --cleanup (-gc)
+# Description: Move unused certificate files to archive directory
+command_cleanup() {
+  # Create global archive directory if not existant
+  if [[ ! -e "${BASEDIR}/archive" ]]; then
+    mkdir "${BASEDIR}/archive"
+  fi
+
+  # Loop over all certificate directories
+  for certdir in "${BASEDIR}/certs/"*; do
+    # Get certificate name
+    certname="$(basename "${certdir}")"
+
+    # Create certitifaces archive directory if not existant
+    archivedir="${BASEDIR}/archive/${certname}"
+    if [[ ! -e "${archivedir}" ]]; then
+      mkdir "${archivedir}"
+    fi
+
+    # Loop over file-types (certificates, keys, signing-requests, ...)
+    for filetype in cert.csr cert.pem chain.pem fullchain.pem privkey.pem; do
+      # Skip if symlink is broken
+      [[ -r "${certdir}/${filetype}" ]] || continue
+
+      # Look up current file in use
+      current="$(basename $(readlink "${certdir}/${filetype}"))"
+
+      # Split filetype into name and extension
+      filebase="$(echo "${filetype}" | cut -d. -f1)"
+      fileext="$(echo "${filetype}" | cut -d. -f2)"
+
+      # Loop over all files of this type
+      for file in "${certdir}/${filebase}-"*".${fileext}"; do
+        # Check if current file is in use, if unused move to archive directory
+        filename="$(basename "${file}")"
+        if [[ ! "${filename}" = "${current}" ]]; then
+          echo "Moving unused file to archive directory: ${certname}/$filename"
+          mv "${certdir}/${filename}" "${archivedir}/${filename}"
+        fi
+      done
+    done
+  done
+
+  exit 0
+}
+
 # Usage: --help (-h)
 # Description: Show help text
 command_help() {
@@ -742,6 +788,10 @@ main() {
         PARAM_REVOKECERT="${1}"
         ;;
 
+      --cleanup|-gc)
+        set_command cleanup
+        ;;
+
       # PARAM_Usage: --domain (-d) domain.tld
       # PARAM_Description: Use specified domain name(s) instead of domains.txt entry (one certificate!)
       --domain|-d)
@@ -817,6 +867,7 @@ main() {
     sign_domains) command_sign_domains;;
     sign_csr) command_sign_csr "${PARAM_CSR}";;
     revoke) command_revoke "${PARAM_REVOKECERT}";;
+    cleanup) command_cleanup;;
     *) command_help; exit 1;;
   esac
 }
