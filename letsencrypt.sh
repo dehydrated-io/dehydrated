@@ -39,6 +39,22 @@ check_dependencies() {
   if [[ ! "${retcode}" = "0" ]] && [[ ! "${retcode}" = "2" ]]; then
     _exiterr "This script requires curl."
   fi
+
+  # is curl be able to reach letsencrypt.org via http and https (maybe firewall, dns or proxy problem)
+  set +e
+  curl -k https://letsencrypt.org > /dev/null 2>&1
+  retcode="$?"
+  set -e
+  if [[ ! "${retcode}" = "0" ]] && [[ ! "${retcode}" = "2" ]]; then
+    _exiterr "curl requires a https_proxy."
+  fi
+  set +e
+  curl http://letsencrypt.org > /dev/null 2>&1
+  retcode="$?"
+  set -e
+  if [[ ! "${retcode}" = "0" ]] && [[ ! "${retcode}" = "2" ]]; then
+    _exiterr "curl requires a http_proxy."
+  fi
 }
 
 # Setup default config values, search for and load configuration files
