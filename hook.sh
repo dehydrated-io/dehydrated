@@ -21,6 +21,7 @@ function deploy_challenge {
     #   be found in the $TOKEN_FILENAME file.
 
     cd tools/
+    python create_domain_file.py -d $DOMAIN -f /usr/local/bin/letsencrypt/domains.txt 
     python route53_txt_record.py -a create -d $DOMAIN -t $TOKEN_VALUE
     sleep 10
 }
