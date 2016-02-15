@@ -30,6 +30,7 @@ Commands:
  --cron (-c)                      Sign/renew non-existant/changed/expiring certificates.
  --signcsr (-s) path/to/csr.pem   Sign a given CSR, output CRT on stdout (advanced usage)
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
+ --cleanup (-gc)                  Move unused certificate files to archive directory
  --help (-h)                      Show help text
  --env (-e)                       Output configuration variables for use in other scripts
 
@@ -40,6 +41,7 @@ Parameters:
  --config (-f) path/to/config.sh  Use specified config file
  --hook (-k) path/to/hook.sh      Use specified script for hooks
  --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported
+ --algo (-a) rsa|prime256v1|secp384r1 Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
 ```
 
 ### domains.txt
