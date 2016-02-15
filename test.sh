@@ -209,5 +209,13 @@ _CHECK_LOG "Done."
 _CHECK_FILE "certs/${TMP_URL}/${REAL_CERT}-revoked"
 _CHECK_ERRORLOG
 
+# Test cleanup command
+_TEST "Cleaning up certificates"
+./letsencrypt.sh --cleanup > tmplog 2> errorlog || _FAIL "Script execution failed"
+_CHECK_LOG "Moving unused file to archive directory: ${TMP_URL}/cert-"
+_CHECK_LOG "Moving unused file to archive directory: ${TMP_URL}/chain-"
+_CHECK_LOG "Moving unused file to archive directory: ${TMP_URL}/fullchain-"
+_CHECK_ERRORLOG
+
 # All done
 exit 0
