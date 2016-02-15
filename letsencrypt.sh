@@ -238,14 +238,24 @@ _openssl() {
 http_request() {
   tempcont="$(mktemp -t XXXXXX)"
 
+  set +e
   if [[ "${1}" = "head" ]]; then
     statuscode="$(curl -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
+    curlret="${?}"
   elif [[ "${1}" = "get" ]]; then
     statuscode="$(curl -s -w "%{http_code}" -o "${tempcont}" "${2}")"
+    curlret="${?}"
   elif [[ "${1}" = "post" ]]; then
     statuscode="$(curl -s -w "%{http_code}" -o "${tempcont}" "${2}" -d "${3}")"
+    curlret="${?}"
   else
+    set -e
     _exiterr "Unknown request method: ${1}"
+  fi
+  set -e
+
+  if [[ ! "${curlret}" = "0" ]]; then
+    _exiterr "Problem connecting to server (curl returned with ${curlret})"
   fi
 
   if [[ ! "${statuscode:0:1}" = "2" ]]; then
