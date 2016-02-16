@@ -69,9 +69,8 @@ def create_domain_textfile(domain, filename):
     tld = domain_parts[-2] + '.' + domain_parts[-1]
 
     textfile_string = create_domain_string(tld, subdomain, treeish) 
-    print(textfile_string)
-#    with open(filename, "w") as text_file:
-#        text_file.write("{}".format(textfile_string))
+    with open(filename, "w") as text_file:
+        text_file.write("{}".format(textfile_string))
 
 
 def parse_and_run(argv):

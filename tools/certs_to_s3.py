@@ -17,7 +17,7 @@ def copy_file_to_s3(localfile, filename):
 
     s3_key = Key(s3_bucket)
     s3_key.key = filename 
-    s3_key.set_contents_from_filename(fp=localfile, encrypt_key=True)
+    s3_key.set_contents_from_filename(localfile, encrypt_key=True)
 
 def get_filename_flavor(domain):
     domain_parts = domain.split('.')
@@ -26,7 +26,7 @@ def get_filename_flavor(domain):
     else:
         flavor = 'test'
 
-    return "presence{flavor}".format(flavor=flavor), flavor
+    return "presence_{flavor}".format(flavor=flavor), flavor
 
 def parse_and_run(argv):
     try:
