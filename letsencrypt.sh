@@ -701,6 +701,9 @@ command_cleanup() {
 
       # Loop over all files of this type
       for file in "${certdir}/${filebase}-"*".${fileext}"; do
+        # Handle case where no files match the wildcard
+        [[ -f "${file}" ]] || break
+
         # Check if current file is in use, if unused move to archive directory
         filename="$(basename "${file}")"
         if [[ ! "${filename}" = "${current}" ]]; then
