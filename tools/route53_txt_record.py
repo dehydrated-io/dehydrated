@@ -26,12 +26,9 @@ def create_txt_record(fqd, token):
     zone = conn.get_zone(zone_name)
     status = zone.add_record("TXT", "_acme-challenge." + fqd, '"{token}"'.format(token=token), ttl=60)
 
-    while status == "PENDING":
+    while status == "INSYNC":
         status.update()
         sleep(0.5)
-
-    sleep(10)
-
 
 def delete_txt_record(fqd, token):
     zone_name = get_zone_name(fqd)
