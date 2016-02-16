@@ -26,24 +26,7 @@ def get_filename_flavor(domain):
     else:
         flavor = 'test'
 
-    if domain_parts[-3] == 'room': 
-        repo = 'lightyear'
-    elif domain_parts[-3] == 'store':
-        repo = 'toychest'
-    elif domain_parts[-3] == 'apps':
-        repo = 'toys'
-    elif domain_parts[-3] == 'setup':
-        repo = 'techcheck'
-    elif domain_parts[-3] == 'login':
-        repo = 'auth'
-    elif domain_parts[-3] == 'test' or domain_parts[-3] == 'live':
-        repo = 'learning'
-
-    if len(domain_parts) < 4:
-        return "presence_{flavor}_{repo}".format(flavor=flavor, repo=repo), flavor
-    else:
-        return "presence_{flavor}_{repo}_{sha}".format(flavor=flavor, repo=repo, sha=domain_parts[-4]), flavor
-
+    return "presence{flavor}".format(flavor=flavor), flavor
 
 def parse_and_run(argv):
     try:
