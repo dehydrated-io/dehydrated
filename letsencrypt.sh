@@ -675,6 +675,9 @@ command_cleanup() {
 
   # Loop over all certificate directories
   for certdir in "${BASEDIR}/certs/"*; do
+    # Skip if entry is not a folder
+    [[ -d "${certdir}" ]] || continue
+
     # Get certificate name
     certname="$(basename "${certdir}")"
 
