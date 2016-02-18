@@ -26,7 +26,6 @@ BASEDIR="${SCRIPTDIR}"
 # Check for script dependencies
 check_dependencies() {
   # just execute some dummy and/or version commands to see if required tools exist and are actually usable
-  openssl version > /dev/null 2>&1 || _exiterr "This script requires an openssl binary."
   _sed "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requires sed with support for extended (modern) regular expressions."
   grep -V > /dev/null 2>&1 || _exiterr "This script requires grep."
   mktemp -u -t XXXXXX > /dev/null 2>&1 || _exiterr "This script requires mktemp."
@@ -67,9 +66,10 @@ load_config() {
   WELLKNOWN=
   PRIVATE_KEY_RENEW="no"
   KEY_ALGO=rsa
-  OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
+  OPENSSL_CNF=
   CONTACT_EMAIL=
   LOCKFILE=
+  OPENSSL="openssl"
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -121,6 +121,8 @@ load_config() {
    _exiterr "Challenge type dns-01 needs a hook script for deployment... can not continue."
   fi
   [[ "${KEY_ALGO}" =~ ^(rsa|prime256v1|secp384r1)$ ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... can not continue."
+  "${OPENSSL}" version > /dev/null 2>&1 || _exiterr "This script requires an openssl binary."
+  [[ -z "${OPENSSL_CNF}" ]] && OPENSSL_CNF="$("${OPENSSL}" version -d | cut -d\" -f2)/openssl.cnf"
 }
 
 # Initialize system
@@ -160,13 +162,13 @@ init_system() {
       register_new_key="yes"
     fi
   fi
-  openssl rsa -in "${PRIVATE_KEY}" -check 2>/dev/null > /dev/null || _exiterr "Private key is not valid, can not continue."
+  "${OPENSSL}" rsa -in "${PRIVATE_KEY}" -check 2>/dev/null > /dev/null || _exiterr "Private key is not valid, can not continue."
 
   # Get public components from private key and calculate thumbprint
-  pubExponent64="$(openssl rsa -in "${PRIVATE_KEY}" -noout -text | grep publicExponent | grep -oE "0x[a-f0-9]+" | cut -d'x' -f2 | hex2bin | urlbase64)"
-  pubMod64="$(openssl rsa -in "${PRIVATE_KEY}" -noout -modulus | cut -d'=' -f2 | hex2bin | urlbase64)"
+  pubExponent64="$("${OPENSSL}" rsa -in "${PRIVATE_KEY}" -noout -text | grep publicExponent | grep -oE "0x[a-f0-9]+" | cut -d'x' -f2 | hex2bin | urlbase64)"
+  pubMod64="$("${OPENSSL}" rsa -in "${PRIVATE_KEY}" -noout -modulus | cut -d'=' -f2 | hex2bin | urlbase64)"
 
-  thumbprint="$(printf '{"e":"%s","kty":"RSA","n":"%s"}' "${pubExponent64}" "${pubMod64}" | openssl dgst -sha256 -binary | urlbase64)"
+  thumbprint="$(printf '{"e":"%s","kty":"RSA","n":"%s"}' "${pubExponent64}" "${pubMod64}" | "${OPENSSL}" dgst -sha256 -binary | urlbase64)"
 
   # If we generated a new private key in the step above we have to register it with the acme-server
   if [[ "${register_new_key}" = "yes" ]]; then
@@ -203,7 +205,7 @@ _exiterr() {
 # Encode data as url-safe formatted base64
 urlbase64() {
   # urlbase64: base64 encoded string with '+' replaced with '-' and '/' replaced with '_'
-  openssl base64 -e | tr -d '\n\r' | _sed -e 's:=*$::g' -e 'y:+/:-_:'
+  "${OPENSSL}" base64 -e | tr -d '\n\r' | _sed -e 's:=*$::g' -e 'y:+/:-_:'
 }
 
 # Convert hex string to binary data
@@ -221,7 +223,7 @@ get_json_string_value() {
 # display the output if the exit code was != 0 to simplify debugging.
 _openssl() {
   set +e
-  out="$(openssl "${@}" 2>&1)"
+  out="$("${OPENSSL}" "${@}" 2>&1)"
   res=$?
   set -e
   if [[ ${res} -ne 0 ]]; then
@@ -295,7 +297,7 @@ signed_request() {
   protected64="$(printf '%s' "${protected}" | urlbase64)"
 
   # Sign header with nonce and our payload with our private key and encode signature as urlbase64
-  signed64="$(printf '%s' "${protected64}.${payload64}" | openssl dgst -sha256 -sign "${PRIVATE_KEY}" | urlbase64)"
+  signed64="$(printf '%s' "${protected64}.${payload64}" | "${OPENSSL}" dgst -sha256 -sign "${PRIVATE_KEY}" | urlbase64)"
 
   # Send header + extended header + payload + signature to the acme-server
   data='{"header": '"${header}"', "protected": "'"${protected64}"'", "payload": "'"${payload64}"'", "signature": "'"${signed64}"'"}'
@@ -308,11 +310,11 @@ signed_request() {
 extract_altnames() {
   csr="${1}" # the CSR itself (not a file)
 
-  if ! <<<"${csr}" openssl req -verify -noout 2>/dev/null; then
+  if ! <<<"${csr}" "${OPENSSL}" req -verify -noout 2>/dev/null; then
     _exiterr "Certificate signing request isn't valid"
   fi
 
-  reqtext="$( <<<"${csr}" openssl req -noout -text )"
+  reqtext="$( <<<"${csr}" "${OPENSSL}" req -noout -text )"
   if <<<"${reqtext}" grep -q '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$'; then
     # SANs used, extract these
     altnames="$( <<<"${reqtext}" grep -A1 '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$' | tail -n1 )"
@@ -388,7 +390,7 @@ sign_csr() {
         ;;
       "dns-01")
         # Generate DNS entry content for dns-01 validation
-        keyauth_hook="$(printf '%s' "${keyauth}" | openssl dgst -sha256 -binary | urlbase64)"
+        keyauth_hook="$(printf '%s' "${keyauth}" | "${OPENSSL}" dgst -sha256 -binary | urlbase64)"
         ;;
     esac
 
@@ -456,8 +458,8 @@ sign_csr() {
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
   echo " + Requesting certificate..."
-  csr64="$( <<<"${csr}" openssl req -outform DER | urlbase64)"
-  crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | openssl base64 -e)"
+  csr64="$( <<<"${csr}" "${OPENSSL}" req -outform DER | urlbase64)"
+  crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | "${OPENSSL}" base64 -e)"
   crt="$( printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" )"
 
   # Try to load the certificate to detect corruption
@@ -509,7 +511,7 @@ sign_domain() {
   tmp_openssl_cnf="$(mktemp -t XXXXXX)"
   cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
   printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
-  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
+  "${OPENSSL}" req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
   rm -f "${tmp_openssl_cnf}"
 
   crt_path="${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
@@ -518,9 +520,9 @@ sign_domain() {
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
   cat "${crt_path}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
-  http_request get "$(openssl x509 -in "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem"
+  http_request get "$("${OPENSSL}" x509 -in "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem"
   if ! grep -q "BEGIN CERTIFICATE" "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem"; then
-    openssl x509 -in "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" -inform DER -out "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" -outform PEM
+    "${OPENSSL}" x509 -in "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" -inform DER -out "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" -outform PEM
   fi
   cat "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
 
@@ -570,7 +572,7 @@ command_sign_domains() {
     if [[ -e "${cert}" ]]; then
       printf " + Checking domain name(s) of existing cert..."
 
-      certnames="$(openssl x509 -in "${cert}" -text -noout | grep DNS: | _sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//')"
+      certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep DNS: | _sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//')"
       givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | _sed 's/^ //')"
 
       if [[ "${certnames}" = "${givennames}" ]]; then
@@ -587,10 +589,10 @@ command_sign_domains() {
 
     if [[ -e "${cert}" ]]; then
       echo " + Checking expire date of existing cert..."
-      valid="$(openssl x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
+      valid="$("${OPENSSL}" x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
 
       printf " + Valid till %s " "${valid}"
-      if openssl x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; then
+      if "${OPENSSL}" x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; then
         printf "(Longer than %d days). " "${RENEW_DAYS}"
         if [[ "${force_renew}" = "yes" ]]; then
           echo "Ignoring because renew was forced!"
@@ -654,7 +656,7 @@ command_revoke() {
 
   echo "Revoking ${cert}"
 
-  cert64="$(openssl x509 -in "${cert}" -inform PEM -outform DER | urlbase64)"
+  cert64="$("${OPENSSL}" x509 -in "${cert}" -inform PEM -outform DER | urlbase64)"
   response="$(signed_request "${CA_REVOKE_CERT}" '{"resource": "revoke-cert", "certificate": "'"${cert64}"'"}')"
   # if there is a problem with our revoke request _request (via signed_request) will report this and "exit 1" out
   # so if we are here, it is safe to assume the request was successful
