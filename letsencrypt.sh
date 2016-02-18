@@ -553,6 +553,8 @@ command_sign_domains() {
     _exiterr "domains.txt not found and --domain not given"
   fi
 
+  SIGNED_DOMAINS=$(mktemp -t XXXXXX)
+
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
   <"${DOMAINS_TXT}" _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true) | while read -r line; do
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
@@ -605,7 +607,13 @@ command_sign_domains() {
 
     # shellcheck disable=SC2086
     sign_domain ${line}
+
+    echo "${line% *} ${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem" "${BASEDIR}/certs/${domain}/chain.pem" >> ${SIGNED_DOMAINS}
   done
+
+  # Call HOOK if any certificate was generated
+  [[ -n "${HOOK}" ]] && [[ -s "${SIGNED_DOMAINS}" ]] && "${HOOK}" "deploy_certs" "${SIGNED_DOMAINS}" <&4 >&5 2>&6
+  rm "${SIGNED_DOMAINS}"
 
   # remove temporary domains.txt file if used
   [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"

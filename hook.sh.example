@@ -52,4 +52,27 @@ function deploy_cert {
     #   The path of the file containing the intermediate certificate(s).
 }
 
+function deploy_certs {
+    local DOMAIN_FILE="${1}"
+
+    # This hook is called after all certificates has been
+    # produced. Here you might, for instance, copy your new certificates
+    # to service-specific locations and reload the service.
+    #
+    # Parameters:
+    # - DOMAIN_FILE, with one domain per line with this format:
+    #
+    # - DOMAIN
+    #   The primary domain name, i.e. the certificate common
+    #   name (CN).
+    # - KEYFILE
+    #   The path of the file containing the private key.
+    # - CERTFILE
+    #   The path of the file containing the signed certificate.
+    # - FULLCHAINFILE
+    #   The path of the file containing the full certificate chain.
+    # - CHAINFILE
+    #   The path of the file containing the intermediate certificate(s).
+}
+
 HANDLER=$1; shift; $HANDLER $@
