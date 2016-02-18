@@ -35,13 +35,13 @@ def create_domain_string(domain, subdomain, new_treeish):
 
     s3_bucket_list = s3_bucket.list(prefix="deploy/" + flavor + "-app/deployed_hashes/")
 
-    deployed_list = [domain, 'kidinsight.' + domain, 'room.' + domain, 'store.' + domain, 'apps.' + domain, 'setup.' + domain, 'login.' + domain, 'test.' + domain, 'live.' + domain]
+    deployed_set = set({domain, 'kidinsight.' + domain, 'room.' + domain, 'store.' + domain, 'apps.' + domain, 'setup.' + domain, 'login.' + domain, 'test.' + domain, 'live.' + domain})
 
     if subdomain == 'test' or subdomain == 'live':
-        deployed_list.append("{treeish}.test.{domain}".format(treeish=new_treeish, domain=domain))
-        deployed_list.append("{treeish}.live.{domain}".format(treeish=new_treeish, domain=domain))
+        deployed_set.add("{treeish}.test.{domain}".format(treeish=new_treeish, domain=domain))
+        deployed_set.add("{treeish}.live.{domain}".format(treeish=new_treeish, domain=domain))
     else:
-        deployed_list.append('{treeish}.{subdomain}.{domain}'.format(treeish=new_treeish, subdomain=subdomain, domain=domain))
+        deployed_set.add('{treeish}.{subdomain}.{domain}'.format(treeish=new_treeish, subdomain=subdomain, domain=domain))
 
     for key in s3_bucket_list:
         key_list = key.name.split('/')
@@ -55,12 +55,12 @@ def create_domain_string(domain, subdomain, new_treeish):
                 continue
 
             if repo == 'learning':
-                deployed_list.append("{treeish}.test.{domain}".format(treeish=treeish, domain=domain))
-                deployed_list.append("{treeish}.live.{domain}".format(treeish=treeish, domain=domain))
+                deployed_set.add("{treeish}.test.{domain}".format(treeish=treeish, domain=domain))
+                deployed_set.add("{treeish}.live.{domain}".format(treeish=treeish, domain=domain))
             else:
-                deployed_list.append("{treeish}.{subdomain}.{domain}".format(treeish=treeish, subdomain=subdomain_from_repo(repo), domain=domain))
+                deployed_set.add("{treeish}.{subdomain}.{domain}".format(treeish=treeish, subdomain=subdomain_from_repo(repo), domain=domain))
 
-    return " ".join(deployed_list) 
+    return " ".join(deployed_set) 
 
 def create_domain_textfile(domain, filename):
     domain_parts = domain.split('.')
