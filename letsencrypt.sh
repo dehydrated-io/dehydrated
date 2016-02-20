@@ -267,7 +267,7 @@ http_request() {
 
     # Wait for hook script to clean the challenge if used
     if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token:+set}" ]]; then
-      "${HOOK}" "clean_challenge" '' "${challenge_token}" "${keyauth}" <&4 >&5 2>&6
+      "${HOOK}" "clean_challenge" '' "${challenge_token}" "${keyauth}"
     fi
 
     # remove temporary domains.txt file if used
@@ -401,7 +401,7 @@ sign_csr() {
   done
 
   # Wait for hook script to deploy the challenges if used
-  [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[@]} <&4 >&5 2>&6
+  [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[@]}
 
   # Respond to challenges
   idx=0
@@ -410,7 +410,7 @@ sign_csr() {
     keyauth="${keyauths[${idx}]}"
 
     # Wait for hook script to deploy the challenge if used
-    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]} <&4 >&5 2>&6
+    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]}
 
     # Ask the acme-server to verify our challenge and wait until it is no longer pending
     echo " + Responding to challenge for ${altname}..."
@@ -428,7 +428,7 @@ sign_csr() {
 
     # Wait for hook script to clean the challenge if used
     if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token}" ]]; then
-      "${HOOK}" "clean_challenge" ${deploy_args[${idx}]} <&4 >&5 2>&6
+      "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
     fi
     idx=$((idx+1))
 
@@ -533,7 +533,7 @@ sign_domain() {
   ln -sf "cert-${timestamp}.pem" "${BASEDIR}/certs/${domain}/cert.pem"
 
   # Wait for hook script to clean the challenge and to deploy cert if used
-  [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${domain}" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem" "${BASEDIR}/certs/${domain}/chain.pem" <&4 >&5 2>&6
+  [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${domain}" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem" "${BASEDIR}/certs/${domain}/chain.pem"
 
   unset challenge_token
   echo " + Done!"
@@ -554,7 +554,10 @@ command_sign_domains() {
   fi
 
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
-  <"${DOMAINS_TXT}" _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true) | while read -r line; do
+  ORIGIFS="${IFS}"
+  IFS=$'\n'
+  for line in $(cat "${DOMAINS_TXT}" | tr -d '\r' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true)); do
+    IFS="${ORIGIFS}"
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
     morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
     cert="${BASEDIR}/certs/${domain}/cert.pem"
