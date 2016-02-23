@@ -712,7 +712,12 @@ command_sign_domains() {
     fi
 
     # shellcheck disable=SC2086
-    sign_domain ${line}
+    if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
+      sign_domain ${line} &
+      wait $! || true
+    else
+      sign_domain ${line}
+    fi
   done
 
   # remove temporary domains.txt file if used
@@ -941,6 +946,12 @@ main() {
          fi
         ;;
 
+
+      # PARAM_Usage: --keep-going (-g)
+      # PARAM_Description: Keep going after encountering an error while creating/renewing multiple certificates in cron mode
+      --keep-going|-g)
+        PARAM_KEEP_GOING="yes"
+        ;;
 
       # PARAM_Usage: --force (-x)
       # PARAM_Description: Force renew of certificate even if it is longer valid than value in RENEW_DAYS
