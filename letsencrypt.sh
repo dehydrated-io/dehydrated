@@ -355,6 +355,8 @@ http_request() {
     echo >&2
     echo "Details:" >&2
     cat "${tempcont}" >&2
+    echo >&2
+    echo >&2
     rm -f "${tempcont}"
 
     # Wait for hook script to clean the challenge if used
