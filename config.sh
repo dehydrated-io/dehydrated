@@ -13,7 +13,7 @@
 ########################################################
 
 # Path to certificate authority (default: https://acme-v01.api.letsencrypt.org/directory)
-CA="https://acme-staging.api.letsencrypt.org/directory"
+#CA="https://acme-staging.api.letsencrypt.org/directory"
 
 # Path to license agreement (default: https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf)
 #LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
@@ -34,7 +34,7 @@ CHALLENGETYPE="dns-01"
 #WELLKNOWN="${BASEDIR}/.acme-challenges"
 
 # Location of private account key (default: $BASEDIR/private_key.pem)
-#PRIVATE_KEY="/usr/local/bin/letsencrypt/presence_learning_letsencrypt.key"
+PRIVATE_KEY="/usr/local/bin/letsencrypt/presence_learning_letsencrypt.key"
 
 # Default keysize for private keys (default: 4096)
 #KEYSIZE="4096"
