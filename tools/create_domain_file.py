@@ -61,7 +61,7 @@ def create_domain_string(domain, subdomain, new_treeish):
             else:
                 deployed_set.add("{treeish}.{subdomain}.{domain}".format(treeish=treeish, subdomain=subdomain_from_repo(repo), domain=domain))
 
-    return " ".join(deployed_list) + "" + " ".join(deployed_set) 
+    return " ".join(deployed_list) + " " + " ".join(deployed_set) 
 
 def create_domain_textfile(domain, filename):
     domain_parts = domain.split('.')
