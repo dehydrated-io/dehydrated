@@ -598,7 +598,9 @@ command_sign_domains() {
         if [[ "${force_renew}" = "yes" ]]; then
           echo "Ignoring because renew was forced!"
         else
-          echo "Skipping!"
+          # Certificate-Names unchanged and cert is still valid
+          echo "Skipping renew! Calling unchanged-hook."
+          [[ -n "${HOOK}" ]] && "${HOOK}" "unchanged_cert" "${domain}" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem" "${BASEDIR}/certs/${domain}/chain.pem"
           continue
         fi
       else
