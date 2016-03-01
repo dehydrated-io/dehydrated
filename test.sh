@@ -153,7 +153,7 @@ _TEST "Run in cron mode again, this time with domain in domains.txt, should find
 echo "${TMP_URL} ${TMP2_URL} ${TMP3_URL}" >> domains.txt
 ./letsencrypt.sh --cron > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Checking domain name(s) of existing cert... unchanged."
-_CHECK_LOG "Skipping!"
+_CHECK_LOG "Skipping renew"
 _CHECK_ERRORLOG
 
 # Run in cron mode one last time, with domain in domains.txt and force-resign (should find certificate, resign anyway, and not generate private key)
