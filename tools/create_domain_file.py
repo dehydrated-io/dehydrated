@@ -36,6 +36,8 @@ def create_domain_string(domain, subdomain, new_treeish):
     s3_bucket_list = s3_bucket.list(prefix="deploy/" + flavor + "-app/deployed_hashes/")
 
     deployed_list = [domain, 'kidinsight.' + domain, 'room.' + domain, 'store.' + domain, 'apps.' + domain, 'setup.' + domain, 'login.' + domain, 'test.' + domain, 'live.' + domain]
+    return " ".join(deployed_list)
+
     deployed_set = set({})
 
     if subdomain == 'test' or subdomain == 'live':
