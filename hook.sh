@@ -11,6 +11,7 @@ function deploy_challenge {
         j=i+2
         python route53_txt_record.py -a create -d ${domains[$i]} -t ${domains[$j]}
     done
+    sleep 15
 
 }
 
