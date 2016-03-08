@@ -9,9 +9,6 @@ set -o pipefail
 [[ -n "${ZSH_VERSION:-}" ]] && set -o SH_WORD_SPLIT && set +o FUNCTION_ARGZERO
 umask 077 # paranoid umask, we're creating private keys
 
-# duplicate scripts IO handles
-exec 4<&0 5>&1 6>&2
-
 # Find directory in which this script is stored by traversing all symbolic links
 SOURCE="${0}"
 while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
