@@ -86,13 +86,13 @@ load_config() {
       _exiterr "The path ${CONFIG_D} specified for CONFIG_D does not point to a directory." >&2
     fi
 
-    for check_config_d in ${CONFIG_D}/*.sh; do
+    for check_config_d in "${CONFIG_D}"/*.sh; do
       if [[ ! -e "${check_config_d}" ]]; then
         echo "# !! WARNING !! Extra configuration directory ${CONFIG_D} exists, but no configuration found in it." >&2
         break
       elif [[ -f "${check_config_d}" ]] && [[ -r "${check_config_d}" ]]; then
         echo "# INFO: Using additional config file ${check_config_d}"
-        . ${check_config_d}
+        . "${check_config_d}"
       else
         _exiterr "Specified additional config ${check_config_d} is not readable or not a file at all." >&2
       fi
