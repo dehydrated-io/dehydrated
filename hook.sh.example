@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 function deploy_challenge {
     local DOMAIN="${1}" TOKEN_FILENAME="${2}" TOKEN_VALUE="${3}"
@@ -32,7 +32,7 @@ function clean_challenge {
 }
 
 function deploy_cert {
-    local DOMAIN="${1}" KEYFILE="${2}" CERTFILE="${3}" CHAINFILE="${4}"
+    local DOMAIN="${1}" KEYFILE="${2}" CERTFILE="${3}" FULLCHAINFILE="${4}" CHAINFILE="${5}"
 
     # This hook is called once for each certificate that has been
     # produced. Here you might, for instance, copy your new certificates
@@ -46,8 +46,10 @@ function deploy_cert {
     #   The path of the file containing the private key.
     # - CERTFILE
     #   The path of the file containing the signed certificate.
-    # - CHAINFILE
+    # - FULLCHAINFILE
     #   The path of the file containing the full certificate chain.
+    # - CHAINFILE
+    #   The path of the file containing the intermediate certificate(s).
 }
 
 HANDLER=$1; shift; $HANDLER $@

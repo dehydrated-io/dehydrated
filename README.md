@@ -14,6 +14,8 @@ Current features:
 
 If you want to import existing keys from the official letsencrypt client have a look at [Import from official letsencrypt client](https://github.com/lukas2511/letsencrypt.sh/wiki/Import-from-official-letsencrypt-client).
 
+**Please note that you should use the staging URL when testing so as not to hit rate limits.** See the [Staging](#staging) section, below.
+
 Please keep in mind that this software and even the acme-protocol are relatively young and may still have some unresolved issues.
 Feel free to report any issues you find with this script or contribute by submitting a pullrequest.
 
@@ -28,6 +30,7 @@ Commands:
  --cron (-c)                      Sign/renew non-existant/changed/expiring certificates.
  --signcsr (-s) path/to/csr.pem   Sign a given CSR, output CRT on stdout (advanced usage)
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
+ --cleanup (-gc)                  Move unused certificate files to archive directory
  --help (-h)                      Show help text
  --env (-e)                       Output configuration variables for use in other scripts
 
@@ -38,6 +41,7 @@ Parameters:
  --config (-f) path/to/config.sh  Use specified config file
  --hook (-k) path/to/hook.sh      Use specified script for hooks
  --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported
+ --algo (-a) rsa|prime256v1|secp384r1 Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
 ```
 
 ### domains.txt
@@ -56,7 +60,7 @@ with the other domains in the corresponding line being their alternative names.
 
 Boulder (acme-server) is looking for challenge responses under your domain in the `.well-known/acme-challenge` directory
 
-This script uses `http-01`-type verification (for now) so you need to have that directory available over normal http (no ssl).
+This script uses `http-01`-type verification (for now) so you need to have that directory available over normal http (redirect to https will be acceptable).
 
 A full URL would look like `http://example.org/.well-known/acme-challenge/c3VjaC1jaGFsbGVuZ2UtbXVjaA-aW52YWxpZC13b3c`.
 
@@ -80,6 +84,14 @@ WELLKNOWN="/var/www/letsencrypt"
 
 An alternative to setting the WELLKNOWN variable would be to create a symlink to the default location next to the script (or BASEDIR):
 `ln -s /var/www/letsencrypt .acme-challenges`
+
+### Staging
+
+Let’s Encrypt has stringent rate limits in place during the public beta period. If you start testing using the production endpoint (which is the default), you will quickly hit these limits and find yourself locked out. To avoid this, please set the CA property to the Let’s Encrypt staging server URL in your `config.sh` file:
+
+```bash
+CA="https://acme-staging.api.letsencrypt.org/directory"
+```
 
 ### dns-01 challenge
 
