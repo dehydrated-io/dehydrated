@@ -103,6 +103,11 @@ The hook script (indicated in the config.sh file or the --hook/-k command line a
 
 Typically, you will need to split the subdomain name in two, the subdomain name and the domain name separately. For example, for "my.example.com", you'll need "my" and "example.com" separately. You then have to prefix "_acme-challenge." before the subdomain name, as in "_acme-challenge.my" and set a TXT record for that on the domain (e.g. "example.com") which has the value supplied in $4
 
+```
+_acme-challenge    IN    TXT    $4
+_acme-challenge.my IN    TXT    $4
+```
+
 That could be done manually (as most providers don't have a DNS API), by having your hook script echo $1, $2 and $4 and then wait (read -s -r -e < /dev/tty) - give it a little time to get into their DNS system. Usually providers give you a boxes to put "_acme-challenge.my" and the token value in, and a dropdown to choose the record type, TXT. 
 
 Or when you do have a DNS API, pass the details accordingly to achieve the same thing.
