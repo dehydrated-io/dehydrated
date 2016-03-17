@@ -30,7 +30,7 @@ def get_filename_flavor(domain):
 
 def parse_and_run(argv):
     try:
-        opts, args = getopt.getopt(argv,"hd:k:c:")
+        opts, args = getopt.getopt(argv,"hd:k:c:f:")
     except getopt.GetoptError:
         print help_text
         sys.exit(2)
@@ -45,6 +45,8 @@ def parse_and_run(argv):
             keyfile = arg
         elif opt in ("-c"):
             certfile = arg
+        elif opt in ("-f"):
+            fullchainfile = arg
 
     if not domain or not keyfile or not certfile:
         print help_text
@@ -54,7 +56,7 @@ def parse_and_run(argv):
     filename, flavor = get_filename_flavor(domain)
     copy_file_to_s3('.' + certfile, "letsencrypt/{flavor}-app/certs/{filename}.crt".format(flavor=flavor, filename=filename))
     copy_file_to_s3('.' + keyfile, "letsencrypt/{flavor}-app/keys/{filename}.key".format(flavor=flavor, filename=filename))
-    copy_file_to_s3('.fullchain.pem', "letsencrypt/{flavor}-app/keys/fullchain.pem")
+    copy_file_to_s3('.' + fullchainfile, "letsencrypt/{flavor}-app/keys/fullchain.pem".format(flavor=flavor))
 
 
 if __name__ == '__main__':

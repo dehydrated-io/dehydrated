@@ -29,7 +29,7 @@ function clean_challenge {
 }
 
 function deploy_cert {
-    local DOMAIN="${1}" KEYFILE="${2}" CERTFILE="${3}" CHAINFILE="${4}"
+    local DOMAIN="${1}" KEYFILE="${2}" CERTFILE="${3}" FULLCHAINFILE="${4}" CHAINFILE="${5}"
 
     # This hook is called once for each certificate that has been
     # produced. Here you might, for instance, copy your new certificates
@@ -47,7 +47,7 @@ function deploy_cert {
     #   The path of the file containing the full certificate chain.
 
     cd tools/
-    python certs_to_s3.py -d $DOMAIN -k $KEYFILE -c $CERTFILE
+    python certs_to_s3.py -d $DOMAIN -k $KEYFILE -c $CERTFILE -f $FULLCHAINFILE
 }
 
 HANDLER=$1; shift; $HANDLER $@
