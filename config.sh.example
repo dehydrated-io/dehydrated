@@ -36,6 +36,9 @@
 # Location of private account key (default: $BASEDIR/private_key.pem)
 #PRIVATE_KEY="${BASEDIR}/private_key.pem"
 
+# Location of private account registration information (default: $BASEDIR/private_key.json)
+#PRIVATE_KEY_JSON="${BASEDIR}/private_key.json"
+
 # Default keysize for private keys (default: 4096)
 #KEYSIZE="4096"
 
