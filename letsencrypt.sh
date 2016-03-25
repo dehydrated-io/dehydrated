@@ -541,7 +541,7 @@ sign_domain() {
   ln -sf "cert-${timestamp}.pem" "${BASEDIR}/certs/${domain}/cert.pem"
 
   # Wait for hook script to clean the challenge and to deploy cert if used
-  [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${domain}" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem" "${BASEDIR}/certs/${domain}/chain.pem"
+  [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${domain}" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem" "${BASEDIR}/certs/${domain}/chain.pem" "${timestamp}" "${KEY_ALGO}"
 
   unset challenge_token
   echo " + Done!"

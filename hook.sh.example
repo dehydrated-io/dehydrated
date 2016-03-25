@@ -32,7 +32,7 @@ function clean_challenge {
 }
 
 function deploy_cert {
-    local DOMAIN="${1}" KEYFILE="${2}" CERTFILE="${3}" FULLCHAINFILE="${4}" CHAINFILE="${5}"
+    local DOMAIN="${1}" KEYFILE="${2}" CERTFILE="${3}" FULLCHAINFILE="${4}" CHAINFILE="${5}"  TIMESTAMP="${6}" KEY_ALGO="${7}"
 
     # This hook is called once for each certificate that has been
     # produced. Here you might, for instance, copy your new certificates
