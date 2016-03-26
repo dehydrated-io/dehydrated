@@ -17,6 +17,10 @@ This is not an issue with letsencrypt.sh but an API limit with letsencrypt.
 
 At the time of writing this you can only create 5 certificates per domain in a sliding window of 7 days.
 
+## "Certificate request has 123 names, maximum is 100."
+
+This also is an API limit from letsencrypt, you are requesting to sign a certificate with way too many domains.
+
 ## Invalid challenges
 
 There are a few factors that could result in invalid challenges.
