@@ -11,6 +11,12 @@ the current workaround is to move `private_key.pem` (and, if you care, `private_
 
 This will hopefully be fixed in the future.
 
+## "Provided agreement URL [LICENSE1] does not match current agreement URL [LICENSE2]"
+
+Set LICENSE in your config to the value in place of "LICENSE2".
+
+LICENSE1 and LICENSE2 are just placeholders for the real values in this troubleshooting document!
+
 ## "Error creating new cert :: Too many certificates already issued for: [...]"
 
 This is not an issue with letsencrypt.sh but an API limit with letsencrypt.
