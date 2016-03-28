@@ -16,7 +16,7 @@ After configuration the WELLKNOWN directory you'll need to add an alias to your 
 server {
   [...]
   location /.well-known/acme-challenge {
-    root /var/www/letsencrypt;
+    alias /var/www/letsencrypt;
   }
   [...]
 }
