@@ -17,10 +17,12 @@ server {
   [...]
   location /.well-known/acme-challenge {
     root /var/www/letsencrypt;
+    # alias /var/www/letsencrypt; #use this if 'root' does not work
   }
   [...]
 }
 ```
+
 
 ## Apache example config
 
