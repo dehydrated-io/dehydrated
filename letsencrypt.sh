@@ -22,13 +22,18 @@ SCRIPTDIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 BASEDIR="${SCRIPTDIR}"
 
+# Create (identifiable) temporary files
+_mktemp() {
+  mktemp -t letsencrypt.sh-XXXXXX "${@}"
+}
+
 # Check for script dependencies
 check_dependencies() {
   # just execute some dummy and/or version commands to see if required tools exist and are actually usable
   openssl version > /dev/null 2>&1 || _exiterr "This script requires an openssl binary."
   _sed "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requires sed with support for extended (modern) regular expressions."
   command -v grep > /dev/null 2>&1 || _exiterr "This script requires grep."
-  mktemp -u -t XXXXXX > /dev/null 2>&1 || _exiterr "This script requires mktemp."
+  _mktemp -u > /dev/null 2>&1 || _exiterr "This script requires mktemp."
 
   # curl returns with an error code in some ancient versions so we have to catch that
   set +e
@@ -240,7 +245,7 @@ _openssl() {
 
 # Send http(s) request with specified method
 http_request() {
-  tempcont="$(mktemp -t XXXXXX)"
+  tempcont="$(_mktemp)"
 
   set +e
   if [[ "${1}" = "head" ]]; then
@@ -515,7 +520,7 @@ sign_domain() {
   done
   SAN="${SAN%%, }"
   local tmp_openssl_cnf
-  tmp_openssl_cnf="$(mktemp -t XXXXXX)"
+  tmp_openssl_cnf="$(_mktemp)"
   cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
   printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
   openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
@@ -556,7 +561,7 @@ command_sign_domains() {
   init_system
 
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
-    DOMAINS_TXT="$(mktemp -t XXXXXX)"
+    DOMAINS_TXT="$(_mktemp)"
     printf -- "${PARAM_DOMAIN}" > "${DOMAINS_TXT}"
   elif [[ -e "${BASEDIR}/domains.txt" ]]; then
     DOMAINS_TXT="${BASEDIR}/domains.txt"
