@@ -6,3 +6,8 @@ hook.sh
 certs/*
 archive/*
 .acme-challenges/*
+test
+debian/files
+debian/letsencryptsh.debhelper.log
+debian/letsencryptsh.substvars
+debian/letsencryptsh/
