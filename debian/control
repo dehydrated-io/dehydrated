@@ -1,0 +1,15 @@
+Source: letsencryptsh
+Section: web
+Priority: optional
+Maintainer: Igor Partola <igor@igorpartola.com>
+Build-Depends: debhelper (>= 9.0.0)
+Standards-Version: 3.9.5
+Homepage: https://github.com/lukas2511/letsencrypt.sh
+
+Package: letsencryptsh
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}, openssl
+Description: Simple Let's Encrypt client
+ This is a client for signing certificates with an ACME-server
+ (currently only provided by letsencrypt) implemented as a
+ relatively simple bash-script.
