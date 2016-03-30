@@ -148,9 +148,12 @@ _CHECK_LOG "Creating fullchain.pem"
 _CHECK_LOG "Done!"
 _CHECK_ERRORLOG
 
-# Add domain to domains.txt and run in cron mode again (should find a non-expiring certificate and do nothing)
+# Prepare domains.txt
+# Modify TMP3_URL to be uppercase to check for upper-lower-case mismatch bugs
+echo "${TMP_URL} ${TMP2_URL} $(tr 'a-z' 'A-Z' <<<"${TMP3_URL}")" >> domains.txt
+
+# Run in cron mode again (should find a non-expiring certificate and do nothing)
 _TEST "Run in cron mode again, this time with domain in domains.txt, should find non-expiring certificate"
-echo "${TMP_URL} ${TMP2_URL} ${TMP3_URL}" >> domains.txt
 ./letsencrypt.sh --cron > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Checking domain name(s) of existing cert... unchanged."
 _CHECK_LOG "Skipping renew"
