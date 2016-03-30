@@ -47,7 +47,7 @@ function deploy_cert {
     #   The path of the file containing the full certificate chain.
 
     cd tools/
-    python certs_to_s3.py -d $DOMAIN -k $KEYFILE -c $CERTFILE -f $FULLCHAINFILE
+    python certs_to_s3.py -d $DOMAIN -k $KEYFILE -c $FULLCHAINFILE -f $FULLCHAINFILE
 }
 
 HANDLER=$1; shift; $HANDLER $@
