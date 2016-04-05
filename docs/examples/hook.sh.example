@@ -50,6 +50,16 @@ function deploy_cert {
     #   The path of the file containing the full certificate chain.
     # - CHAINFILE
     #   The path of the file containing the intermediate certificate(s).
+
+    echo " + hook: creating java keystore: $(dirname ${CHAINFILE})/keystore.jks"
+    # convert certificate chain + private key to the PKCS#12 file format
+    openssl pkcs12 -export -out /tmp/jettytemp${DOMAIN}.pkcs12 -in ${FULLCHAINFILE} -inkey ${KEYFILE}  -passout pass:jetty6
+
+    # convert PKCS#12 file into Java keystore format
+    keytool -importkeystore -srckeystore /tmp/jettytemp${DOMAIN}.pkcs12 -srcstoretype PKCS12 -destkeystore $(dirname ${CHAINFILE})/keystore.jks -srcstorepass jetty6 -deststorepass jetty6
+
+    # don't need the PKCS#12 file anymore
+    rm /tmp/jettytemp${DOMAIN}.pkcs12
 }
 
 function unchanged_cert {
