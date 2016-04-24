@@ -67,8 +67,8 @@ load_config() {
   HOOK=
   HOOK_CHAIN="no"
   RENEW_DAYS="30"
-  PRIVATE_KEY=
-  PRIVATE_KEY_JSON=
+  ACCOUNT_KEY=
+  ACCOUNT_KEY_JSON=
   KEYSIZE="4096"
   WELLKNOWN=
   PRIVATE_KEY_RENEW="no"
@@ -115,8 +115,8 @@ load_config() {
   # Check BASEDIR and set default variables
   [[ -d "${BASEDIR}" ]] || _exiterr "BASEDIR does not exist: ${BASEDIR}"
 
-  [[ -z "${PRIVATE_KEY}" ]] && PRIVATE_KEY="${BASEDIR}/private_key.pem"
-  [[ -z "${PRIVATE_KEY_JSON}" ]] && PRIVATE_KEY_JSON="${BASEDIR}/private_key.json"
+  [[ -z "${ACCOUNT_KEY}" ]] && ACCOUNT_KEY="${BASEDIR}/private_key.pem"
+  [[ -z "${ACCOUNT_KEY_JSON}" ]] && ACCOUNT_KEY_JSON="${BASEDIR}/private_key.json"
   [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="${BASEDIR}/.acme-challenges"
   [[ -z "${LOCKFILE}" ]] && LOCKFILE="${BASEDIR}/lock"
 
@@ -156,23 +156,24 @@ init_system() {
 
   # Checking for private key ...
   register_new_key="no"
-  if [[ -n "${PARAM_PRIVATE_KEY:-}" ]]; then
+  if [[ -n "${PARAM_ACCOUNT_KEY:-}" ]]; then
     # a private key was specified from the command line so use it for this run
-    echo "Using private key ${PARAM_PRIVATE_KEY} instead of account key"
-    PRIVATE_KEY="${PARAM_PRIVATE_KEY}"
+    echo "Using private key ${PARAM_ACCOUNT_KEY} instead of account key"
+    ACCOUNT_KEY="${PARAM_ACCOUNT_KEY}"
+    ACCOUNT_KEY_JSON="${PARAM_ACCOUNT_KEY}.json"
   else
     # Check if private account key exists, if it doesn't exist yet generate a new one (rsa key)
-    if [[ ! -e "${PRIVATE_KEY}" ]]; then
+    if [[ ! -e "${ACCOUNT_KEY}" ]]; then
       echo "+ Generating account key..."
-      _openssl genrsa -out "${PRIVATE_KEY}" "${KEYSIZE}"
+      _openssl genrsa -out "${ACCOUNT_KEY}" "${KEYSIZE}"
       register_new_key="yes"
     fi
   fi
-  openssl rsa -in "${PRIVATE_KEY}" -check 2>/dev/null > /dev/null || _exiterr "Private key is not valid, can not continue."
+  openssl rsa -in "${ACCOUNT_KEY}" -check 2>/dev/null > /dev/null || _exiterr "Account key is not valid, can not continue."
 
   # Get public components from private key and calculate thumbprint
-  pubExponent64="$(printf '%x' "$(openssl rsa -in "${PRIVATE_KEY}" -noout -text | awk '/publicExponent/ {print $2}')" | hex2bin | urlbase64)"
-  pubMod64="$(openssl rsa -in "${PRIVATE_KEY}" -noout -modulus | cut -d'=' -f2 | hex2bin | urlbase64)"
+  pubExponent64="$(printf '%x' "$(openssl rsa -in "${ACCOUNT_KEY}" -noout -text | awk '/publicExponent/ {print $2}')" | hex2bin | urlbase64)"
+  pubMod64="$(openssl rsa -in "${ACCOUNT_KEY}" -noout -modulus | cut -d'=' -f2 | hex2bin | urlbase64)"
 
   thumbprint="$(printf '{"e":"%s","kty":"RSA","n":"%s"}' "${pubExponent64}" "${pubMod64}" | openssl dgst -sha256 -binary | urlbase64)"
 
@@ -182,9 +183,9 @@ init_system() {
     [[ ! -z "${CA_NEW_REG}" ]] || _exiterr "Certificate authority doesn't allow registrations."
     # If an email for the contact has been provided then adding it to the registration request
     if [[ -n "${CONTACT_EMAIL}" ]]; then
-      signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"$LICENSE"'"}' > "${PRIVATE_KEY_JSON}"
+      signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"$LICENSE"'"}' > "${ACCOUNT_KEY_JSON}"
     else
-      signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > "${PRIVATE_KEY_JSON}"
+      signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > "${ACCOUNT_KEY_JSON}"
     fi
   fi
 
@@ -305,7 +306,7 @@ signed_request() {
   protected64="$(printf '%s' "${protected}" | urlbase64)"
 
   # Sign header with nonce and our payload with our private key and encode signature as urlbase64
-  signed64="$(printf '%s' "${protected64}.${payload64}" | openssl dgst -sha256 -sign "${PRIVATE_KEY}" | urlbase64)"
+  signed64="$(printf '%s' "${protected64}.${payload64}" | openssl dgst -sha256 -sign "${ACCOUNT_KEY}" | urlbase64)"
 
   # Send header + extended header + payload + signature to the acme-server
   data='{"header": '"${header}"', "protected": "'"${protected64}"'", "payload": "'"${payload64}"'", "signature": "'"${signed64}"'"}'
@@ -765,7 +766,7 @@ command_help() {
 command_env() {
   echo "# letsencrypt.sh configuration"
   load_config
-  typeset -p CA LICENSE CHALLENGETYPE HOOK HOOK_CHAIN RENEW_DAYS PRIVATE_KEY KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
+  typeset -p CA LICENSE CHALLENGETYPE HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
 # Main method (parses script arguments and calls command_* methods)
@@ -846,7 +847,7 @@ main() {
       --privkey|-p)
         shift 1
         check_parameters "${1:-}"
-        PARAM_PRIVATE_KEY="${1}"
+        PARAM_ACCOUNT_KEY="${1}"
         ;;
 
       # PARAM_Usage: --config (-f) path/to/config.sh
