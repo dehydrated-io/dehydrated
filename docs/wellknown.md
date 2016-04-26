@@ -4,7 +4,7 @@ Let's Encrypt (or the ACME-protocol in general) is checking if you are in contro
 
 `http-01`-type verification (default in this script, there is also support for [dns based verification](dns-verification.md)) so you need to have that directory available over normal http (redirect to https will be acceptable, but you definitively have to be able to access the http url!).
 
-letsencrypt.sh has a config variable called `WELLKNOWN`, which corresponds to the directory which should be served under `/.well-known/acme-challenge` on your domain.
+letsencrypt.sh has a config variable called `WELLKNOWN`, which corresponds to the directory which should be served under `/.well-known/acme-challenge` on your domain. To be clear, your `WELLKNOWN` variable **must** include the "acme-challenge" subdirectory, and must not have a trailing slash (eg, `WELLKNOWN="/etc/wellknown/acme-challenge`, **not** `WELLKNOWN="/etc/wellknown`).
 
 An example config would be to create a directory `/var/www/letsencrypt`, set `WELLKNOWN=/var/www/letsencrypt`.
 
