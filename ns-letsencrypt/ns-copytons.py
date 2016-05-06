@@ -121,10 +121,10 @@ if whattodo == "save":
    sendFile(nitroNSIP,authToken,nscert,localcert,nscertpath)
    updateSSL(nitroNSIP,authToken, nscert, nspairname)
    SaveNSConfig(nitroNSIP,authToken)
-   logOut(nitroNSIP,authToken)
 elif whattodo == "challenge":
    print "Editing Challenge Policy"
    token_filename = sys.argv[2]
    token_value = sys.argv[3]
    respPol(nitroNSIP,authToken,nsresppol,token_filename)
    respAct(nitroNSIP,authToken,nsrespact,token_value)
+logOut(nitroNSIP,authToken)
