@@ -12,8 +12,8 @@ __license__ = "GPL"
 __version__ = "1.0.0"
 __maintainer__ = "Ryan Butler"
 
-#Gets cert path from letencrypt hook argumen
-localcert = sys.argv[1]
+#what to perform
+whattodo = sys.argv[1]
 
 def getAuthCookie(nitroNSIP,nitroUser,nitroPass):
    url = 'http://%s/nitro/v1/config/login' % nitroNSIP
@@ -66,6 +66,34 @@ def sendFile(nitroNSIP,authToken,nscert,localcert,nscertpath):
    response = requests.post(url, data=payload, headers=headers)
    print "CREATE CERT: %s" % response.reason
 
+def respPol(nitroNSIP,authToken,nsresppol,token_filename):
+   url = 'http://%s/nitro/v1/config/responderpolicy' % nitroNSIP
+   headers = {'Content-type': 'application/json','Cookie': authToken}
+   buildrule = 'HTTP.REQ.URL.CONTAINS(\"well-known/acme-challenge/%s\")' % token_filename
+   print buildrule
+   json_string = {
+   "responderpolicy": {
+       "name": nsresppol,
+       "rule": buildrule,}
+   }
+   payload = json.dumps(json_string)
+   response = requests.put(url, data=payload, headers=headers)
+   print "EDIT RESPONDER POLICY: %s" % response.reason
+
+def respAct(nitroNSIP,authToken,nsrespact,token_value):
+   url = 'http://%s/nitro/v1/config/responderaction' % nitroNSIP
+   headers = {'Content-type': 'application/json','Cookie': authToken}
+   buildtarget = "\"HTTP/1.0 200 OK\" +\"\\r\\n\\r\\n\" + \"%s\"" % token_value
+   print buildtarget
+   json_string = {
+   "responderaction": {
+       "name": nsrespact,
+       "target": buildtarget,}
+   }
+   payload = json.dumps(json_string)
+   response = requests.put(url, data=payload, headers=headers)
+   print "EDIT RESPONDER POLICY: %s" % response.reason
+
 def removeFile(nitroNSIP,authToken,nscert,nscertpath):
    url = 'http://%s/nitro/v1/config/systemfile/%s?args=filelocation:%%2Fnsconfig%%2Fssl' % (nitroNSIP, nscert)
    headers = {'Content-type': 'application/vnd.com.citrix.netscaler.systemfile+json','Cookie': authToken}
@@ -85,10 +113,18 @@ def updateSSL(nitroNSIP,authToken, nscert, nspairname):
    response = requests.post(url, data=payload, headers=headers)
    print "Update Netscaler CERT: %s" % response.reason
 
-print "Updating Netscaler Certificate"
 authToken = getAuthCookie(nitroNSIP,nitroUser,nitroPass)
-removeFile(nitroNSIP,authToken,nscert,nscertpath)
-sendFile(nitroNSIP,authToken,nscert,localcert,nscertpath)
-updateSSL(nitroNSIP,authToken, nscert, nspairname)
-SaveNSConfig(nitroNSIP,authToken)
-logOut(nitroNSIP,authToken)
+if whattodo == "save":
+   localcert = sys.argv[2]
+   print "Updating Netscaler Certificate"
+   removeFile(nitroNSIP,authToken,nscert,nscertpath)
+   sendFile(nitroNSIP,authToken,nscert,localcert,nscertpath)
+   updateSSL(nitroNSIP,authToken, nscert, nspairname)
+   SaveNSConfig(nitroNSIP,authToken)
+   logOut(nitroNSIP,authToken)
+elif whattodo == "challenge":
+   print "Editing Challenge Policy"
+   token_filename = sys.argv[2]
+   token_value = sys.argv[3]
+   respPol(nitroNSIP,authToken,nsresppol,token_filename)
+   respAct(nitroNSIP,authToken,nsrespact,token_value)
