@@ -73,15 +73,6 @@ def removeFile(nitroNSIP,authToken,nscert,nscertpath):
    print "DELETE NETSCALER CERTIFICATE: %s" % response.reason
    return response
 
-def getNSFileDate(nitroNSIP,authToken,nscert):
-   url = 'http://%s/nitro/v1/config/systemfile/%s?args=filelocation:%%2Fnsconfig%%2Fssl' % (nitroNSIP, nscert)
-   headers = {'Content-type': 'application/vnd.com.citrix.netscaler.systemfile+json','Cookie': authToken}
-   response = requests.get(url, headers=headers)
-   response = json.loads(response.text)
-   response = response['systemfile'][0]['filemodifiedtime']
-   print response
-   return response
-
 def updateSSL(nitroNSIP,authToken, nscert, nspairname):
    url = 'http://%s/nitro/v1/config/sslcertkey?action=update' % nitroNSIP
    headers = {'Content-type': 'application/json','Cookie': authToken}
