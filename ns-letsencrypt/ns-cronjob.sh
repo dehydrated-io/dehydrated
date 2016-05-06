@@ -1,6 +1,5 @@
 #!/bin/bash
 
-#UNCOMMENT to force renewal. USE WITH CAUTION /root/letsencrypt.sh/letsencrypt.sh -c -x
-/root/letsencrypt.sh/letsencrypt.sh -c -x
-/root/letsencrypt.sh/ns-letsencrypt/ns-copytons.py
+#use this line to force renewal. USE WITH CAUTION /root/letsencrypt.sh/letsencrypt.sh -c -x -k /root/letsencrypt.sh/ns-letsencrypt/ns-hook.sh
+/root/letsencrypt.sh/letsencrypt.sh -c -k /root/letsencrypt.sh/ns-letsencrypt/ns-hook.sh
 /root/letsencrypt.sh/letsencrypt.sh -gc

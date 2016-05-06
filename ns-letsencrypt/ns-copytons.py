@@ -3,7 +3,7 @@
 #USE AT OWN RISK
 
 #Imports
-import json, requests, base64, os, datetime
+import json, requests, base64, sys
 #imports variables used for script
 from mynsconfig import *
 
@@ -11,6 +11,9 @@ __author__ = "Ryan Butler (techdrabble.com)"
 __license__ = "GPL"
 __version__ = "1.0.0"
 __maintainer__ = "Ryan Butler"
+
+#Gets cert path from letencrypt hook argumen
+localcert = sys.argv[1]
 
 def getAuthCookie(nitroNSIP,nitroUser,nitroPass):
    url = 'http://%s/nitro/v1/config/login' % nitroNSIP
@@ -47,10 +50,9 @@ def SaveNSConfig(nitroNSIP,authToken):
    response = requests.post(url, data=payload, headers=headers)
    print "SAVE NS: %s" % response.reason
 
-def sendFile(nitroNSIP,authToken,lecert,nscert,localcertpath,nscertpath):
+def sendFile(nitroNSIP,authToken,nscert,localcert,nscertpath):
    url = 'http://%s/nitro/v1/config/systemfile' % nitroNSIP
    headers = {'Content-type': 'application/vnd.com.citrix.netscaler.systemfile+json','Cookie': authToken}
-   localcert = localcertpath + lecert
    f = open(localcert, 'r')
    filecontent = base64.b64encode(f.read())
    json_string = {
@@ -92,22 +94,10 @@ def updateSSL(nitroNSIP,authToken, nscert, nspairname):
    response = requests.post(url, data=payload, headers=headers)
    print "Update Netscaler CERT: %s" % response.reason
 
-def modification_date(filename):
-    t = os.path.getmtime(filename)
-    return datetime.datetime.fromtimestamp(t)
-
-
-#Verify cert has been updated by Letsencrypt.sh before run
-date =  datetime.datetime.now()
-localcert = localcertpath + lecert
-filedate = modification_date(localcert)
-tdelta = date - filedate
-
-if tdelta.days == 0:
-   print "Updating Netscaler Certificate"
-   authToken = getAuthCookie(nitroNSIP,nitroUser,nitroPass)
-   removeFile(nitroNSIP,authToken,nscert,nscertpath)
-   sendFile(nitroNSIP,authToken,lecert,nscert,localcertpath,nscertpath)
-   updateSSL(nitroNSIP,authToken, nscert, nspairname)
-   SaveNSConfig(nitroNSIP,authToken)
-   logOut(nitroNSIP,authToken)
+print "Updating Netscaler Certificate"
+authToken = getAuthCookie(nitroNSIP,nitroUser,nitroPass)
+removeFile(nitroNSIP,authToken,nscert,nscertpath)
+sendFile(nitroNSIP,authToken,nscert,localcert,nscertpath)
+updateSSL(nitroNSIP,authToken, nscert, nspairname)
+SaveNSConfig(nitroNSIP,authToken)
+logOut(nitroNSIP,authToken)

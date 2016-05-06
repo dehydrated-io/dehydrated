@@ -6,7 +6,3 @@ nitroPass = "nsroot"
 nspairname = "le-certificate";
 nscert = "le-cert.pem";
 nscertpath = "/nsconfig/ssl/";
-
-#Location of certs on server	
-localcertpath = "/root/letsencrypt.sh/certs/domain1.mydomain.com/";
-lecert = "cert.pem";
