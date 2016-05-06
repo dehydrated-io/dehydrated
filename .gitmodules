@@ -1,0 +1,4 @@
+[submodule "ns-letsencrypt"]
+	path = ns-letsencrypt
+	url = https://github.com/ryancbutler/ns-letsencrypt.git
+	branch = master

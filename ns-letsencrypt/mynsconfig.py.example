@@ -1,0 +1,12 @@
+nitroNSIP = "192.168.2.54"
+nitroUser = "nsroot"
+nitroPass = "nsroot"
+
+#Certificate and private key file names on Netscaler	
+nspairname = "le-certificate";
+nscert = "le-cert.pem";
+nscertpath = "/nsconfig/ssl/";
+
+#Location of certs on server	
+localcertpath = "/root/letsencrypt.sh/certs/domain1.mydomain.com/";
+lecert = "cert.pem";

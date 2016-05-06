@@ -1,0 +1,10 @@
+#!/bin/bash
+
+KEYSIZE="2048"
+PRIVATE_KEY_RENEW="no"
+
+#USE BELOW CA FOR TESTING OTHERWISE YOU MIGHT GET BANNED FROM LE https://community.letsencrypt.org/t/rate-limits-for-lets-encrypt/6769
+#CA="https://acme-staging.api.letsencrypt.org/directory"
+WELLKNOWN="/var/www/html/.well-known/acme-challenge"
+# E-mail to use during the registration (default: <unset>)
+CONTACT_EMAIL="admin@yourdomain.com"
