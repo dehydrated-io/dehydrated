@@ -6,6 +6,7 @@ This file contains a log of major changes in letsencrypt.sh
 - PRIVATE_KEY config parameter has been renamed to ACCOUNT_KEY to avoid confusion with certificate keys
 - deploy_cert hook now also has the certificates timestamp as standalone parameter
 - Temporary files are now identifiable (template: letsencrypt.sh-XXXXXX)
+- Private keys are no longer reused
 
 ### Added
 - Added documentation to repository
