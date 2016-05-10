@@ -71,6 +71,7 @@ load_config() {
   ACCOUNT_KEY_JSON=
   KEYSIZE="4096"
   WELLKNOWN=
+  PRIVATE_KEY_RENEW="no"
   KEY_ALGO=rsa
   OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
   CONTACT_EMAIL=
@@ -502,12 +503,16 @@ sign_domain() {
     mkdir -p "${BASEDIR}/certs/${domain}"
   fi
 
-  echo " + Generating private key..."
-  privkey="privkey-${timestamp}.pem"
-  case "${KEY_ALGO}" in
-    rsa) _openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}";;
-    prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem";;
-  esac
+  privkey="privkey.pem"
+  # generate a new private key if we need or want one
+  if [[ ! -r "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
+    echo " + Generating private key..."
+    privkey="privkey-${timestamp}.pem"
+    case "${KEY_ALGO}" in
+      rsa) _openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}";;
+      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem";;
+    esac
+  fi
 
   # Generate signing request config and the actual signing request
   echo " + Generating signing request..."
@@ -761,7 +766,7 @@ command_help() {
 command_env() {
   echo "# letsencrypt.sh configuration"
   load_config
-  typeset -p CA LICENSE CHALLENGETYPE HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN OPENSSL_CNF CONTACT_EMAIL LOCKFILE
+  typeset -p CA LICENSE CHALLENGETYPE HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
 # Main method (parses script arguments and calls command_* methods)
