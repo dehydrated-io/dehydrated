@@ -140,6 +140,7 @@ _TEST "Run in cron mode again, this time adding third domain, should force renew
 ./letsencrypt.sh --cron --domain "${TMP_URL}" --domain "${TMP2_URL}" --domain "${TMP3_URL}" > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Domain name(s) are not matching!"
 _CHECK_LOG "Forcing renew."
+_CHECK_LOG "Generating private key"
 _CHECK_LOG "Requesting challenge for ${TMP_URL}"
 _CHECK_LOG "Requesting challenge for ${TMP2_URL}"
 _CHECK_LOG "Requesting challenge for ${TMP3_URL}"
@@ -158,6 +159,9 @@ _TEST "Run in cron mode again, this time with domain in domains.txt, should find
 _CHECK_LOG "Checking domain name(s) of existing cert... unchanged."
 _CHECK_LOG "Skipping renew"
 _CHECK_ERRORLOG
+
+# Disable private key renew
+echo 'PRIVATE_KEY_RENEW="no"' >> config.sh
 
 # Run in cron mode one last time, with domain in domains.txt and force-resign (should find certificate, resign anyway, and not generate private key)
 _TEST "Run in cron mode one last time, with domain in domains.txt and force-resign"
