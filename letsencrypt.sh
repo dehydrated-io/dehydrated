@@ -71,7 +71,7 @@ load_config() {
   ACCOUNT_KEY_JSON=
   KEYSIZE="4096"
   WELLKNOWN=
-  PRIVATE_KEY_RENEW="no"
+  PRIVATE_KEY_RENEW="yes"
   KEY_ALGO=rsa
   OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
   CONTACT_EMAIL=
