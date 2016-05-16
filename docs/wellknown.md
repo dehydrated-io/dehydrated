@@ -30,7 +30,15 @@ Alias /.well-known/acme-challenge /var/www/letsencrypt
 <Directory /var/www/letsencrypt>
         Options None
         AllowOverride None
-        Order allow,deny
-        Allow from all
+
+        # Apache 2.x
+        <IfModule !mod_authz_core.c>
+                Order allow,deny
+                Allow from all
+        </IfModule>
+        # Apache 2.4
+        <IfModule mod_authz_core.c>
+                Require all granted
+        </IfModule>
 </Directory>
 ```
