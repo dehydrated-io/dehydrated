@@ -2,14 +2,9 @@
 
 Generally if the following information doesn't provide a solution to your problem please take a look at existing issues (search for keywords) before creating a new one.
 
-## "No registration exists matching provided key"
+## Avoid tests on production-CA
 
-You probably changed from staging-CA to production-CA (or the other way).
-
-Currently letsencrypt.sh doesn't detect a missing registration on the selected CA,
-the current workaround is to move `private_key.pem` (and, if you care, `private_key.json`) out of the way so the scripts generates and registers a new one.
-
-This will hopefully be fixed in the future.
+Use --testCA for generating dummy certs and checking your configuration is correct, before using production-CA
 
 ## "Provided agreement URL [LICENSE1] does not match current agreement URL [LICENSE2]"
 
@@ -36,3 +31,15 @@ If you are using http validation make sure that the path you have configured wit
 To test this create a file (e.g. `test.txt`) in that directory and try opening it with your browser: `http://example.org/.well-known/acme-challenge/test.txt`.
 
 If you get any error you'll have to fix your webserver configuration.
+
+## "No registration exists matching provided key"
+
+This should be soleved by using --testCA, but if used staging-CA with older version of `letsencrypt.sh`, this solves your problem.
+
+You probably changed from staging-CA to production-CA (or the other way).
+
+Currently letsencrypt.sh doesn't detect a missing registration on the selected CA,
+the current workaround is to move `private_key.pem` (and, if you care, `private_key.json`) out of the way so the scripts generates and registers a new one.
+
+This will hopefully be fixed in the future.
+

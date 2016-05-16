@@ -77,6 +77,11 @@ load_config() {
   CONTACT_EMAIL=
   LOCKFILE=
 
+  # Overrides for --testCA - default values
+  TEST_CA="https://acme-staging.api.letsencrypt.org/directory"
+  TEST_ACCOUNT_KEY_FILE="testCA_private_key.pem"
+  TEST_ACCOUNT_KEY_JSON_FILE="testCA_private_key.json"
+
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
     echo "# !! WARNING !! No main config file found, using default config!" >&2
@@ -129,6 +134,14 @@ load_config() {
    _exiterr "Challenge type dns-01 needs a hook script for deployment... can not continue."
   fi
   [[ "${KEY_ALGO}" =~ ^(rsa|prime256v1|secp384r1)$ ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... can not continue."
+
+  # force test variables in case of --testCA
+  if [[ -n "${PARAM_TEST_CA:-}" ]]
+  then
+    CA="${TEST_CA}"
+    ACCOUNT_KEY="$(dirname ${ACCOUNT_KEY})/${TEST_ACCOUNT_KEY_FILE}"
+    ACCOUNT_KEY_JSON="$(dirname ${ACCOUNT_KEY_JSON})/${TEST_ACCOUNT_KEY_JSON_FILE}"
+  fi
 }
 
 # Initialize system
@@ -880,6 +893,12 @@ main() {
         shift 1
         check_parameters "${1:-}"
         PARAM_KEY_ALGO="${1}"
+        ;;
+
+      # PARAM_Usage: --testCA
+      # PARAM_Description: Use testing CA - perfect for checking configuration or hooks
+      --testCA)
+        PARAM_TEST_CA="y"
         ;;
 
       *)
