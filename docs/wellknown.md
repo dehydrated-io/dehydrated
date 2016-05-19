@@ -1,16 +1,25 @@
 # WELLKNOWN
 
-Let's Encrypt (or the ACME-protocol in general) is checking if you are in control of a domain by accessing a file under a path similar to `http://example.org/.well-known/acme-challenge/c3VjaC1jaGFsbGVuZ2UtbXVjaA-aW52YWxpZC13b3c`.
+With `http-01`-type verification (default in this script, there is also support for [dns based verification](dns-verification.md)) Let's Encrypt (or the ACME-protocol in general) is checking if you are in control of a domain by accessing a verification file on an URL similar to `http://example.org/.well-known/acme-challenge/m4g1C-t0k3n`.  
+It will do that for any (sub-)domain you want to sign a certificate for.
 
-`http-01`-type verification (default in this script, there is also support for [dns based verification](dns-verification.md)) so you need to have that directory available over normal http (redirect to https will be acceptable, but you definitively have to be able to access the http url!).
+At the moment you'll need to have that location available over normal HTTP on port 80 (redirect to HTTPS will work, but starting point is always HTTP!).
 
-letsencrypt.sh has a config variable called `WELLKNOWN`, which corresponds to the directory which should be served under `/.well-known/acme-challenge` on your domain. To be clear, your `WELLKNOWN` variable **must** include the "acme-challenge" subdirectory, and should not have a trailing slash (eg, `WELLKNOWN="/etc/wellknown/acme-challenge"`, **not** `WELLKNOWN="/etc/wellknown"`).
+letsencrypt.sh has a config variable called `WELLKNOWN`, which corresponds to the directory which should be served under `/.well-known/acme-challenge` on your domain. So in the above example the token would have been saved as `$WELLKNOWN/m4g1C-t0k3n`.
 
-An example config would be to create a directory `/var/www/letsencrypt`, set `WELLKNOWN=/var/www/letsencrypt`.
+If you only have one docroot on your server you could easily do something like `WELLKNOWN=/var/www/.well-known/acme-challenge`, for anything else look at the example below.
 
-After configuration the WELLKNOWN directory you'll need to add an alias to your webserver configuration pointing to that path:
+## Example Usage
 
-## Nginx example config
+If you have more than one docroot (or you are using your server as a reverse proxy / load balancer) the simple configuration mentioned above wouldn't work, but with just a few lines of webserver configuration this can be solved.
+
+An example would be to create a directory `/var/www/letsencrypt` and set `WELLKNOWN=/var/www/letsencrypt` in the scripts config.
+
+You'll need to configure aliases on your Webserver:
+
+### Nginx example config
+
+With Nginx you'll need to add this to any of your `server`/VHost config blocks:
 
 ```nginx
 server {
@@ -22,7 +31,9 @@ server {
 }
 ```
 
-## Apache example config
+### Apache example config
+
+With Apache just add this to your config and it should work in any VHost:
 
 ```apache
 Alias /.well-known/acme-challenge /var/www/letsencrypt
@@ -30,7 +41,16 @@ Alias /.well-known/acme-challenge /var/www/letsencrypt
 <Directory /var/www/letsencrypt>
         Options None
         AllowOverride None
-        Order allow,deny
-        Allow from all
+
+        # Apache 2.x
+        <IfModule !mod_authz_core.c>
+                Order allow,deny
+                Allow from all
+        </IfModule>
+
+        # Apache 2.4
+        <IfModule mod_authz_core.c>
+                Require all granted
+        </IfModule>
 </Directory>
 ```

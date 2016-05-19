@@ -14,6 +14,7 @@ This file contains a log of major changes in letsencrypt.sh
 ### Fixed
 - Fixed bug with uppercase names in domains.txt (script now converts everything to lowercase)
 - mktemp no longer uses the deprecated `-t` parameter.
+- Compatibility with "pretty" json
 
 ## [0.1.0] - 2016-03-25
 ### Changed
