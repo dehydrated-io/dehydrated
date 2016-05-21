@@ -64,6 +64,7 @@ load_config() {
   LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
   CHALLENGETYPE="http-01"
   CONFIG_D=
+  DOMAINS_TXT=
   HOOK=
   HOOK_CHAIN="no"
   RENEW_DAYS="30"
@@ -117,6 +118,7 @@ load_config() {
 
   [[ -z "${ACCOUNT_KEY}" ]] && ACCOUNT_KEY="${BASEDIR}/private_key.pem"
   [[ -z "${ACCOUNT_KEY_JSON}" ]] && ACCOUNT_KEY_JSON="${BASEDIR}/private_key.json"
+  [[ -z "${DOMAINS_TXT}" ]] && DOMAINS_TXT="${BASEDIR}/domains.txt"
   [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="${BASEDIR}/.acme-challenges"
   [[ -z "${LOCKFILE}" ]] && LOCKFILE="${BASEDIR}/lock"
 
@@ -570,8 +572,10 @@ command_sign_domains() {
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
     DOMAINS_TXT="$(_mktemp)"
     printf -- "${PARAM_DOMAIN}" > "${DOMAINS_TXT}"
-  elif [[ -e "${BASEDIR}/domains.txt" ]]; then
-    DOMAINS_TXT="${BASEDIR}/domains.txt"
+  elif [[ -e "${DOMAINS_TXT}" ]]; then
+    if [[ ! -r "${DOMAINS_TXT}" ]]; then
+      _exiterr "domains.txt found but not readable"
+    fi
   else
     _exiterr "domains.txt not found and --domain not given"
   fi
@@ -771,7 +775,7 @@ command_help() {
 command_env() {
   echo "# letsencrypt.sh configuration"
   load_config
-  typeset -p CA LICENSE CHALLENGETYPE HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
+  typeset -p CA LICENSE CHALLENGETYPE DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
 # Main method (parses script arguments and calls command_* methods)
