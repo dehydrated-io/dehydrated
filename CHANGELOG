@@ -2,6 +2,8 @@
 This file contains a log of major changes in letsencrypt.sh
 
 ## [x.x.x] - xxxx-xx-xx
+## Changed
+- Location of domains.txt is now configurable via DOMAINS_TXT config variable
 
 ## [0.2.0] - 2016-05-22
 ### Changed
