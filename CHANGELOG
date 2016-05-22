@@ -2,6 +2,8 @@
 This file contains a log of major changes in letsencrypt.sh
 
 ## [x.x.x] - xxxx-xx-xx
+
+## [0.2.0] - 2016-05-22
 ### Changed
 - PRIVATE_KEY config parameter has been renamed to ACCOUNT_KEY to avoid confusion with certificate keys
 - deploy_cert hook now also has the certificates timestamp as standalone parameter
