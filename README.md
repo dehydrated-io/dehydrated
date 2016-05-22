@@ -44,7 +44,7 @@ Parameters:
  --domain (-d) domain.tld         Use specified domain name(s) instead of domains.txt entry (one certificate!)
  --force (-x)                     Force renew of certificate even if it is longer valid than value in RENEW_DAYS
  --privkey (-p) path/to/key.pem   Use specified private key instead of account key (useful for revocation)
- --config (-f) path/to/config.sh  Use specified config file
+ --config (-f) path/to/config     Use specified config file
  --hook (-k) path/to/hook.sh      Use specified script for hooks
  --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported
  --algo (-a) rsa|prime256v1|secp384r1 Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1

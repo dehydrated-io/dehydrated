@@ -96,10 +96,10 @@ mkdir -p .acme-challenges/.well-known/acme-challenge
 ) &
 
 # Generate config and create empty domains.txt
-echo 'CA="https://testca.kurz.pw/directory"' > config.sh
-echo 'LICENSE="https://testca.kurz.pw/terms/v1"' >> config.sh
-echo 'WELLKNOWN=".acme-challenges/.well-known/acme-challenge"' >> config.sh
-echo 'RENEW_DAYS="14"' >> config.sh
+echo 'CA="https://testca.kurz.pw/directory"' > config
+echo 'LICENSE="https://testca.kurz.pw/terms/v1"' >> config
+echo 'WELLKNOWN=".acme-challenges/.well-known/acme-challenge"' >> config
+echo 'RENEW_DAYS="14"' >> config
 touch domains.txt
 
 # Check if help command is working
@@ -119,8 +119,8 @@ _CHECK_ERRORLOG
 
 # Temporarily move config out of the way and try signing certificate by using temporary config location
 _TEST "Try signing using temporary config location and with domain as command line parameter"
-mv config.sh tmp_config.sh
-./letsencrypt.sh --cron --domain "${TMP_URL}" --domain "${TMP2_URL}" -f tmp_config.sh > tmplog 2> errorlog || _FAIL "Script execution failed"
+mv config tmp_config
+./letsencrypt.sh --cron --domain "${TMP_URL}" --domain "${TMP2_URL}" -f tmp_config > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_NOT_LOG "Checking domain name(s) of existing cert"
 _CHECK_LOG "Generating private key"
 _CHECK_LOG "Requesting challenge for ${TMP_URL}"
@@ -129,11 +129,11 @@ _CHECK_LOG "Challenge is valid!"
 _CHECK_LOG "Creating fullchain.pem"
 _CHECK_LOG "Done!"
 _CHECK_ERRORLOG
-mv tmp_config.sh config.sh
+mv tmp_config config
 
 # Move private key and add new location to config
 mv private_key.pem account_key.pem
-echo 'PRIVATE_KEY="./account_key.pem"' >> config.sh
+echo 'PRIVATE_KEY="./account_key.pem"' >> config
 
 # Add third domain to command-lime, should force renewal.
 _TEST "Run in cron mode again, this time adding third domain, should force renewal."
@@ -161,7 +161,7 @@ _CHECK_LOG "Skipping renew"
 _CHECK_ERRORLOG
 
 # Disable private key renew
-echo 'PRIVATE_KEY_RENEW="no"' >> config.sh
+echo 'PRIVATE_KEY_RENEW="no"' >> config
 
 # Run in cron mode one last time, with domain in domains.txt and force-resign (should find certificate, resign anyway, and not generate private key)
 _TEST "Run in cron mode one last time, with domain in domains.txt and force-resign"
@@ -189,7 +189,7 @@ rm account_key.pem
 
 # Check if renewal works
 _TEST "Run in cron mode again, to check if renewal works"
-echo 'RENEW_DAYS="300"' >> config.sh
+echo 'RENEW_DAYS="300"' >> config
 ./letsencrypt.sh --cron > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Checking domain name(s) of existing cert... unchanged."
 _CHECK_LOG "Renewing!"

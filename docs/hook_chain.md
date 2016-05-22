@@ -9,7 +9,7 @@ See below for an example on how the calls change:
 
 ### HOOK_CHAIN="no" (default behaviour)
 ```
-# INFO: Using main config file /etc/letsencrypt.sh/config.sh
+# INFO: Using main config file /etc/letsencrypt.sh/config
 Processing lukas.im with alternative names: www.lukas.im
  + Checking domain name(s) of existing cert... unchanged.
  + Checking expire date of existing cert...
@@ -37,7 +37,7 @@ HOOK: deploy_cert lukas.im /etc/letsencrypt.sh/certs/lukas.im/privkey.pem /etc/l
 
 ### HOOK_CHAIN="yes"
 ```
-# INFO: Using main config file /etc/letsencrypt.sh/config.sh
+# INFO: Using main config file /etc/letsencrypt.sh/config
 Processing lukas.im with alternative names: www.lukas.im
  + Checking domain name(s) of existing cert... unchanged.
  + Checking expire date of existing cert...

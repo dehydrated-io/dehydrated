@@ -2,10 +2,10 @@
 # This is the main config file for letsencrypt.sh      #
 #                                                      #
 # This file is looked for in the following locations:  #
-# $SCRIPTDIR/config.sh (next to this script)           #
-# /usr/local/etc/letsencrypt.sh/config.sh              #
-# /etc/letsencrypt.sh/config.sh                        #
-# ${PWD}/config.sh (in current working-directory)      #
+# $SCRIPTDIR/config (next to this script)              #
+# /usr/local/etc/letsencrypt.sh/config                 #
+# /etc/letsencrypt.sh/config                           #
+# ${PWD}/config (in current working-directory)         #
 #                                                      #
 # Default values of this config are in comments        #
 ########################################################

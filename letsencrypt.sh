@@ -51,9 +51,9 @@ load_config() {
   # Check for config in various locations
   if [[ -z "${CONFIG:-}" ]]; then
     for check_config in "/etc/letsencrypt.sh" "/usr/local/etc/letsencrypt.sh" "${PWD}" "${SCRIPTDIR}"; do
-      if [[ -e "${check_config}/config.sh" ]]; then
+      if [[ -e "${check_config}/config" ]]; then
         BASEDIR="${check_config}"
-        CONFIG="${check_config}/config.sh"
+        CONFIG="${check_config}/config"
         break
       fi
     done
@@ -859,7 +859,7 @@ main() {
         PARAM_ACCOUNT_KEY="${1}"
         ;;
 
-      # PARAM_Usage: --config (-f) path/to/config.sh
+      # PARAM_Usage: --config (-f) path/to/config
       # PARAM_Description: Use specified config file
       --config|-f)
         shift 1
