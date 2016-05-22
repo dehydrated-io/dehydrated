@@ -30,6 +30,9 @@
 # Base directory for account key, generated certificates and list of domains (default: $SCRIPTDIR -- uses config directory if undefined)
 #BASEDIR=$SCRIPTDIR
 
+# File containing the list of domains to request certificates for (default: $BASEDIR/domains.txt)
+#DOMAINS_TXT="${BASEDIR}/domains.txt"
+
 # Output directory for challenge-tokens to be served by webserver or deployed in HOOK (default: $BASEDIR/.acme-challenges)
 #WELLKNOWN="${BASEDIR}/.acme-challenges"
 
