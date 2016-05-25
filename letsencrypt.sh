@@ -51,7 +51,7 @@ load_config() {
   # Check for config in various locations
   if [[ -z "${CONFIG:-}" ]]; then
     for check_config in "/etc/letsencrypt.sh" "/usr/local/etc/letsencrypt.sh" "${PWD}" "${SCRIPTDIR}"; do
-      if [[ -e "${check_config}/config" ]]; then
+      if [[ -f "${check_config}/config" ]]; then
         BASEDIR="${check_config}"
         CONFIG="${check_config}/config"
         break
@@ -82,7 +82,7 @@ load_config() {
     echo "#" >&2
     echo "# !! WARNING !! No main config file found, using default config!" >&2
     echo "#" >&2
-  elif [[ -e "${CONFIG}" ]]; then
+  elif [[ -f "${CONFIG}" ]]; then
     echo "# INFO: Using main config file ${CONFIG}"
     BASEDIR="$(dirname "${CONFIG}")"
     # shellcheck disable=SC1090
