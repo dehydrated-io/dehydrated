@@ -10,6 +10,7 @@ This file contains a log of major changes in letsencrypt.sh
 
 ## Added
 - Added option to add CSR-flag indicating OCSP stapling to be mandatory
+- Initial support for configuration on per-certificate base
 
 ## [0.2.0] - 2016-05-22
 ### Changed

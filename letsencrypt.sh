@@ -35,6 +35,7 @@ check_dependencies() {
   _sed "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requires sed with support for extended (modern) regular expressions."
   command -v grep > /dev/null 2>&1 || _exiterr "This script requires grep."
   _mktemp -u > /dev/null 2>&1 || _exiterr "This script requires mktemp."
+  diff -v > /dev/null || _exiterr "This script requires diff."
 
   # curl returns with an error code in some ancient versions so we have to catch that
   set +e
@@ -44,6 +45,44 @@ check_dependencies() {
   if [[ ! "${retcode}" = "0" ]] && [[ ! "${retcode}" = "2" ]]; then
     _exiterr "This script requires curl."
   fi
+}
+
+store_configvars() {
+  __KEY_ALGO="${KEY_ALGO}"
+  __OCSP_MUST_STAPLE="${OCSP_MUST_STAPLE}"
+  __PRIVATE_KEY_RENEW="${PRIVATE_KEY_RENEW}"
+  __KEYSIZE="${KEYSIZE}"
+  __CHALLENGETYPE="${CHALLENGETYPE}"
+  __HOOK="${HOOK}"
+  __WELLKNOWN="${WELLKNOWN}"
+  __HOOK_CHAIN="${HOOK_CHAIN}"
+  __OPENSSL_CNF="${OPENSSL_CNF}"
+  __RENEW_DAYS="${RENEW_DAYS}"
+}
+
+reset_configvars() {
+  KEY_ALGO="${__KEY_ALGO}"
+  OCSP_MUST_STAPLE="${__OCSP_MUST_STAPLE}"
+  PRIVATE_KEY_RENEW="${__PRIVATE_KEY_RENEW}"
+  KEYSIZE="${__KEYSIZE}"
+  CHALLENGETYPE="${__CHALLENGETYPE}"
+  HOOK="${__HOOK}"
+  WELLKNOWN="${__WELLKNOWN}"
+  HOOK_CHAIN="${__HOOK_CHAIN}"
+  OPENSSL_CNF="${__OPENSSL_CNF}"
+  RENEW_DAYS="${__RENEW_DAYS}"
+}
+
+# verify configuration values
+verify_config() {
+  [[ "${CHALLENGETYPE}" =~ (http-01|dns-01) ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... can not continue."
+  if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
+    _exiterr "Challenge type dns-01 needs a hook script for deployment... can not continue."
+  fi
+  if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" ]]; then
+    _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
+  fi
+  [[ "${KEY_ALGO}" =~ ^(rsa|prime256v1|secp384r1)$ ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... can not continue."
 }
 
 # Setup default config values, search for and load configuration files
@@ -131,11 +170,8 @@ load_config() {
   [[ -n "${PARAM_KEY_ALGO:-}" ]] && KEY_ALGO="${PARAM_KEY_ALGO}"
   [[ -n "${PARAM_OCSP_MUST_STAPLE:-}" ]] && OCSP_MUST_STAPLE="${PARAM_OCSP_MUST_STAPLE}"
 
-  [[ "${CHALLENGETYPE}" =~ (http-01|dns-01) ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... can not continue."
-  if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
-   _exiterr "Challenge type dns-01 needs a hook script for deployment... can not continue."
-  fi
-  [[ "${KEY_ALGO}" =~ ^(rsa|prime256v1|secp384r1)$ ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... can not continue."
+  verify_config
+  store_configvars
 }
 
 # Initialize system
@@ -196,9 +232,6 @@ init_system() {
     fi
   fi
 
-  if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" ]]; then
-      _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
-  fi
 }
 
 # Different sed version for different os types...
@@ -592,6 +625,7 @@ command_sign_domains() {
   ORIGIFS="${IFS}"
   IFS=$'\n'
   for line in $(<"${DOMAINS_TXT}" tr -d '\r' | tr '[:upper:]' '[:lower:]' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true)); do
+    reset_configvars
     IFS="${ORIGIFS}"
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
     morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
@@ -604,6 +638,40 @@ command_sign_domains() {
     else
       echo "Processing ${domain} with alternative names: ${morenames}"
     fi
+
+    # read cert config
+    # for now this loads the certificate specific config in a subshell and parses a diff of set variables.
+    # we could just source the config file but i decided to go this way to protect people from accidentally overriding
+    # variables used internally by this script itself.
+    if [ -f "${CERTDIR}/${domain}/config" ]; then
+      echo " + Using certificate specific config file!"
+      ORIGIFS="${IFS}"
+      IFS=$'\n'
+      for cfgline in $(
+        beforevars="$(_mktemp)"
+        aftervars="$(_mktemp)"
+        set > "${beforevars}"
+        # shellcheck disable=SC1090
+        . "${CERTDIR}/${domain}/config"
+        set > "${aftervars}"
+        diff -u "${beforevars}" "${aftervars}" | grep -E '^\+[^+]'
+        rm "${beforevars}"
+        rm "${aftervars}"
+      ); do
+        config_var="$(echo "${cfgline:1}" | cut -d'=' -f1)"
+        config_value="$(echo "${cfgline:1}" | cut -d'=' -f2-)"
+        case "${config_var}" in
+          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
+            echo "   + ${config_var} = ${config_value}"
+            declare -- "${config_var}=${config_value}"
+            ;;
+          _) ;;
+          *) echo "   ! Setting ${config_var} on a per-certificate base is not (yet) supported"
+        esac
+      done
+      IFS="${ORIGIFS}"
+    fi
+    verify_config
 
     if [[ -e "${cert}" ]]; then
       printf " + Checking domain name(s) of existing cert..."
