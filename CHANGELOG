@@ -5,6 +5,7 @@ This file contains a log of major changes in letsencrypt.sh
 ## Changed
 - Config is now named `config` instead of `config.sh`!
 - Location of domains.txt is now configurable via DOMAINS_TXT config variable
+- Location of certs directory is now configurable via CERTDIR config variable
 
 ## Added
 - Added option to add CSR-flag indicating OCSP stapling to be mandatory
