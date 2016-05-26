@@ -667,7 +667,28 @@ command_sign_csr() {
     _exiterr "Could not read certificate signing request ${csrfile}"
   fi
 
-  sign_csr "$(< "${csrfile}" )"
+  # gen cert
+  certfile="$(_mktemp)"
+  sign_csr "$(< "${csrfile}" )" 3> "${certfile}"
+
+  # get and convert ca cert
+  chainfile="$(_mktemp)"
+  http_request get "$(openssl x509 -in "${certfile}" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${chainfile}"
+
+  if ! grep -q "BEGIN CERTIFICATE" "${chainfile}"; then
+    openssl x509 -inform DER -in "${chainfile}" -outform PEM -out "${chainfile}"
+  fi
+
+  # output full chain
+  echo "# CERT #" >&3
+  cat "${certfile}" >&3
+  echo >&3
+  echo "# CHAIN #" >&3
+  cat "${chainfile}" >&3
+
+  # cleanup
+  rm "${certfile}"
+  rm "${chainfile}"
 
   exit 0
 }
