@@ -78,6 +78,7 @@ load_config() {
   OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
   CONTACT_EMAIL=
   LOCKFILE=
+  OCSP_MUST_STAPLE="no"
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -128,6 +129,7 @@ load_config() {
   [[ -n "${PARAM_CERTDIR:-}" ]] && CERTDIR="${PARAM_CERTDIR}"
   [[ -n "${PARAM_CHALLENGETYPE:-}" ]] && CHALLENGETYPE="${PARAM_CHALLENGETYPE}"
   [[ -n "${PARAM_KEY_ALGO:-}" ]] && KEY_ALGO="${PARAM_KEY_ALGO}"
+  [[ -n "${PARAM_OCSP_MUST_STAPLE:-}" ]] && OCSP_MUST_STAPLE="${PARAM_OCSP_MUST_STAPLE}"
 
   [[ "${CHALLENGETYPE}" =~ (http-01|dns-01) ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... can not continue."
   if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
@@ -535,6 +537,9 @@ sign_domain() {
   tmp_openssl_cnf="$(_mktemp)"
   cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
   printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
+  if [ "${OCSP_MUST_STAPLE}" = "yes" ]; then
+    printf "\n1.3.6.1.5.5.7.1.24=DER:30:03:02:01:05" >> "${tmp_openssl_cnf}"
+  fi
   openssl req -new -sha256 -key "${CERTDIR}/${domain}/${privkey}" -out "${CERTDIR}/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
   rm -f "${tmp_openssl_cnf}"
 
@@ -852,6 +857,12 @@ main() {
       # PARAM_Description: Force renew of certificate even if it is longer valid than value in RENEW_DAYS
       --force|-x)
         PARAM_FORCE="yes"
+        ;;
+
+      # PARAM_Usage: --ocsp
+      # PARAM_Description: Sets option in CSR indicating OCSP stapling to be mandatory
+      --ocsp)
+        PARAM_OCSP_MUST_STAPLE="yes"
         ;;
 
       # PARAM_Usage: --privkey (-p) path/to/key.pem

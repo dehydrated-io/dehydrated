@@ -43,6 +43,7 @@ Commands:
 Parameters:
  --domain (-d) domain.tld         Use specified domain name(s) instead of domains.txt entry (one certificate!)
  --force (-x)                     Force renew of certificate even if it is longer valid than value in RENEW_DAYS
+ --ocsp                           Sets option in CSR indicating OCSP stapling to be mandatory
  --privkey (-p) path/to/key.pem   Use specified private key instead of account key (useful for revocation)
  --config (-f) path/to/config     Use specified config file
  --hook (-k) path/to/hook.sh      Use specified script for hooks

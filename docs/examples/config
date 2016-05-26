@@ -78,3 +78,6 @@
 
 # Lockfile location, to prevent concurrent access (default: $BASEDIR/lock)
 #LOCKFILE="${BASEDIR}/lock"
+
+# Option to add CSR-flag indicating OCSP stapling to be mandatory (default: no)
+#OCSP_MUST_STAPLE="no"

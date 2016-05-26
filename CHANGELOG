@@ -6,6 +6,9 @@ This file contains a log of major changes in letsencrypt.sh
 - Config is now named `config` instead of `config.sh`!
 - Location of domains.txt is now configurable via DOMAINS_TXT config variable
 
+## Added
+- Added option to add CSR-flag indicating OCSP stapling to be mandatory
+
 ## [0.2.0] - 2016-05-22
 ### Changed
 - PRIVATE_KEY config parameter has been renamed to ACCOUNT_KEY to avoid confusion with certificate keys
