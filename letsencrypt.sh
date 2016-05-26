@@ -62,6 +62,7 @@ load_config() {
   # Default values
   CA="https://acme-v01.api.letsencrypt.org/directory"
   LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
+  CERTDIR=
   CHALLENGETYPE="http-01"
   CONFIG_D=
   DOMAINS_TXT=
@@ -118,11 +119,13 @@ load_config() {
 
   [[ -z "${ACCOUNT_KEY}" ]] && ACCOUNT_KEY="${BASEDIR}/private_key.pem"
   [[ -z "${ACCOUNT_KEY_JSON}" ]] && ACCOUNT_KEY_JSON="${BASEDIR}/private_key.json"
+  [[ -z "${CERTDIR}" ]] && CERTDIR="${BASEDIR}/certs"
   [[ -z "${DOMAINS_TXT}" ]] && DOMAINS_TXT="${BASEDIR}/domains.txt"
   [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="${BASEDIR}/.acme-challenges"
   [[ -z "${LOCKFILE}" ]] && LOCKFILE="${BASEDIR}/lock"
 
   [[ -n "${PARAM_HOOK:-}" ]] && HOOK="${PARAM_HOOK}"
+  [[ -n "${PARAM_CERTDIR:-}" ]] && CERTDIR="${PARAM_CERTDIR}"
   [[ -n "${PARAM_CHALLENGETYPE:-}" ]] && CHALLENGETYPE="${PARAM_CHALLENGETYPE}"
   [[ -n "${PARAM_KEY_ALGO:-}" ]] && KEY_ALGO="${PARAM_KEY_ALGO}"
 
@@ -154,7 +157,7 @@ init_system() {
   _exiterr "Problem retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."
 
   # Export some environment variables to be used in hook script
-  export WELLKNOWN BASEDIR CONFIG
+  export WELLKNOWN BASEDIR CERTDIR CONFIG
 
   # Checking for private key ...
   register_new_key="no"
@@ -505,19 +508,19 @@ sign_domain() {
   fi
 
   # If there is no existing certificate directory => make it
-  if [[ ! -e "${BASEDIR}/certs/${domain}" ]]; then
-    echo " + Creating new directory ${BASEDIR}/certs/${domain} ..."
-    mkdir -p "${BASEDIR}/certs/${domain}"
+  if [[ ! -e "${CERTDIR}/${domain}" ]]; then
+    echo " + Creating new directory ${CERTDIR}/${domain} ..."
+    mkdir -p "${CERTDIR}/${domain}" || _exiterr "Unable to create directory ${CERTDIR}/${domain}"
   fi
 
   privkey="privkey.pem"
   # generate a new private key if we need or want one
-  if [[ ! -r "${BASEDIR}/certs/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
+  if [[ ! -r "${CERTDIR}/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
     echo " + Generating private key..."
     privkey="privkey-${timestamp}.pem"
     case "${KEY_ALGO}" in
-      rsa) _openssl genrsa -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}";;
-      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${BASEDIR}/certs/${domain}/privkey-${timestamp}.pem";;
+      rsa) _openssl genrsa -out "${CERTDIR}/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}";;
+      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${CERTDIR}/${domain}/privkey-${timestamp}.pem";;
     esac
   fi
 
@@ -532,33 +535,33 @@ sign_domain() {
   tmp_openssl_cnf="$(_mktemp)"
   cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
   printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
-  openssl req -new -sha256 -key "${BASEDIR}/certs/${domain}/${privkey}" -out "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
+  openssl req -new -sha256 -key "${CERTDIR}/${domain}/${privkey}" -out "${CERTDIR}/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
   rm -f "${tmp_openssl_cnf}"
 
-  crt_path="${BASEDIR}/certs/${domain}/cert-${timestamp}.pem"
+  crt_path="${CERTDIR}/${domain}/cert-${timestamp}.pem"
   # shellcheck disable=SC2086
-  sign_csr "$(< "${BASEDIR}/certs/${domain}/cert-${timestamp}.csr" )" ${altnames} 3>"${crt_path}"
+  sign_csr "$(< "${CERTDIR}/${domain}/cert-${timestamp}.csr" )" ${altnames} 3>"${crt_path}"
 
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
-  cat "${crt_path}" > "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
-  http_request get "$(openssl x509 -in "${BASEDIR}/certs/${domain}/cert-${timestamp}.pem" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem"
-  if ! grep -q "BEGIN CERTIFICATE" "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem"; then
-    openssl x509 -in "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" -inform DER -out "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" -outform PEM
+  cat "${crt_path}" > "${CERTDIR}/${domain}/fullchain-${timestamp}.pem"
+  http_request get "$(openssl x509 -in "${CERTDIR}/${domain}/cert-${timestamp}.pem" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${CERTDIR}/${domain}/chain-${timestamp}.pem"
+  if ! grep -q "BEGIN CERTIFICATE" "${CERTDIR}/${domain}/chain-${timestamp}.pem"; then
+    openssl x509 -in "${CERTDIR}/${domain}/chain-${timestamp}.pem" -inform DER -out "${CERTDIR}/${domain}/chain-${timestamp}.pem" -outform PEM
   fi
-  cat "${BASEDIR}/certs/${domain}/chain-${timestamp}.pem" >> "${BASEDIR}/certs/${domain}/fullchain-${timestamp}.pem"
+  cat "${CERTDIR}/${domain}/chain-${timestamp}.pem" >> "${CERTDIR}/${domain}/fullchain-${timestamp}.pem"
 
   # Update symlinks
-  [[ "${privkey}" = "privkey.pem" ]] || ln -sf "privkey-${timestamp}.pem" "${BASEDIR}/certs/${domain}/privkey.pem"
+  [[ "${privkey}" = "privkey.pem" ]] || ln -sf "privkey-${timestamp}.pem" "${CERTDIR}/${domain}/privkey.pem"
 
-  ln -sf "chain-${timestamp}.pem" "${BASEDIR}/certs/${domain}/chain.pem"
-  ln -sf "fullchain-${timestamp}.pem" "${BASEDIR}/certs/${domain}/fullchain.pem"
-  ln -sf "cert-${timestamp}.csr" "${BASEDIR}/certs/${domain}/cert.csr"
-  ln -sf "cert-${timestamp}.pem" "${BASEDIR}/certs/${domain}/cert.pem"
+  ln -sf "chain-${timestamp}.pem" "${CERTDIR}/${domain}/chain.pem"
+  ln -sf "fullchain-${timestamp}.pem" "${CERTDIR}/${domain}/fullchain.pem"
+  ln -sf "cert-${timestamp}.csr" "${CERTDIR}/${domain}/cert.csr"
+  ln -sf "cert-${timestamp}.pem" "${CERTDIR}/${domain}/cert.pem"
 
   # Wait for hook script to clean the challenge and to deploy cert if used
   export KEY_ALGO
-  [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${domain}" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem" "${BASEDIR}/certs/${domain}/chain.pem" "${timestamp}"
+  [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${domain}" "${CERTDIR}/${domain}/privkey.pem" "${CERTDIR}/${domain}/cert.pem" "${CERTDIR}/${domain}/fullchain.pem" "${CERTDIR}/${domain}/chain.pem" "${timestamp}"
 
   unset challenge_token
   echo " + Done!"
@@ -587,7 +590,7 @@ command_sign_domains() {
     IFS="${ORIGIFS}"
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
     morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
-    cert="${BASEDIR}/certs/${domain}/cert.pem"
+    cert="${CERTDIR}/${domain}/cert.pem"
 
     force_renew="${PARAM_FORCE:-no}"
 
@@ -627,7 +630,7 @@ command_sign_domains() {
         else
           # Certificate-Names unchanged and cert is still valid
           echo "Skipping renew!"
-          [[ -n "${HOOK}" ]] && "${HOOK}" "unchanged_cert" "${domain}" "${BASEDIR}/certs/${domain}/privkey.pem" "${BASEDIR}/certs/${domain}/cert.pem" "${BASEDIR}/certs/${domain}/fullchain.pem" "${BASEDIR}/certs/${domain}/chain.pem"
+          [[ -n "${HOOK}" ]] && "${HOOK}" "unchanged_cert" "${domain}" "${CERTDIR}/${domain}/privkey.pem" "${CERTDIR}/${domain}/cert.pem" "${CERTDIR}/${domain}/fullchain.pem" "${CERTDIR}/${domain}/chain.pem"
           continue
         fi
       else
@@ -706,7 +709,7 @@ command_cleanup() {
   fi
 
   # Loop over all certificate directories
-  for certdir in "${BASEDIR}/certs/"*; do
+  for certdir in "${CERTDIR}/"*; do
     # Skip if entry is not a folder
     [[ -d "${certdir}" ]] || continue
 
@@ -775,7 +778,7 @@ command_help() {
 command_env() {
   echo "# letsencrypt.sh configuration"
   load_config
-  typeset -p CA LICENSE CHALLENGETYPE DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
+  typeset -p CA LICENSE CERTDIR CHALLENGETYPE DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
 # Main method (parses script arguments and calls command_* methods)
@@ -873,6 +876,14 @@ main() {
         shift 1
         check_parameters "${1:-}"
         PARAM_HOOK="${1}"
+        ;;
+
+      # PARAM_Usage: --out (-o) certs/directory
+      # PARAM_Description: Output certificates into the specified directory
+      --out|-o)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_CERTDIR="${1}"
         ;;
 
       # PARAM_Usage: --challenge (-t) http-01|dns-01
