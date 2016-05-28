@@ -311,7 +311,7 @@ http_request() {
   set -e
 
   if [[ ! "${curlret}" = "0" ]]; then
-    _exiterr "Problem connecting to server (curl returned with ${curlret})"
+    _exiterr "Problem connecting to server (${1} for ${2}; curl returned with ${curlret})"
   fi
 
   if [[ ! "${statuscode:0:1}" = "2" ]]; then
