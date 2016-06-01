@@ -35,7 +35,7 @@ check_dependencies() {
   _sed "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requires sed with support for extended (modern) regular expressions."
   command -v grep > /dev/null 2>&1 || _exiterr "This script requires grep."
   _mktemp -u > /dev/null 2>&1 || _exiterr "This script requires mktemp."
-  diff -v > /dev/null || _exiterr "This script requires diff."
+  diff -u ${SOURCE} ${SOURCE} > /dev/null || _exiterr "This script requires diff."
 
   # curl returns with an error code in some ancient versions so we have to catch that
   set +e
