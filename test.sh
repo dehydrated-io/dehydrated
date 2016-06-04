@@ -114,7 +114,7 @@ _CHECK_ERRORLOG
 _TEST "First run in cron mode, checking if private key is generated and registered"
 ./letsencrypt.sh --cron > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Registering account key"
-_CHECK_FILE "private_key.pem"
+_CHECK_FILE accounts/*/account_key.pem
 _CHECK_ERRORLOG
 
 # Temporarily move config out of the way and try signing certificate by using temporary config location
@@ -130,10 +130,6 @@ _CHECK_LOG "Creating fullchain.pem"
 _CHECK_LOG "Done!"
 _CHECK_ERRORLOG
 mv tmp_config config
-
-# Move private key and add new location to config
-mv private_key.pem account_key.pem
-echo 'PRIVATE_KEY="./account_key.pem"' >> config
 
 # Add third domain to command-lime, should force renewal.
 _TEST "Run in cron mode again, this time adding third domain, should force renewal."
@@ -183,9 +179,6 @@ _TEST "Running signcsr command"
 _CHECK_LOG "BEGIN CERTIFICATE"
 _CHECK_LOG "END CERTIFICATE"
 _CHECK_NOT_LOG "ERROR"
-
-# Delete account key (not needed anymore)
-rm account_key.pem
 
 # Check if renewal works
 _TEST "Run in cron mode again, to check if renewal works"

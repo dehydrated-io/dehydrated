@@ -102,14 +102,13 @@ load_config() {
   CA="https://acme-v01.api.letsencrypt.org/directory"
   LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
   CERTDIR=
+  ACCOUNTDIR=
   CHALLENGETYPE="http-01"
   CONFIG_D=
   DOMAINS_TXT=
   HOOK=
   HOOK_CHAIN="no"
   RENEW_DAYS="30"
-  ACCOUNT_KEY=
-  ACCOUNT_KEY_JSON=
   KEYSIZE="4096"
   WELLKNOWN=
   PRIVATE_KEY_RENEW="yes"
@@ -157,8 +156,22 @@ load_config() {
   # Check BASEDIR and set default variables
   [[ -d "${BASEDIR}" ]] || _exiterr "BASEDIR does not exist: ${BASEDIR}"
 
-  [[ -z "${ACCOUNT_KEY}" ]] && ACCOUNT_KEY="${BASEDIR}/private_key.pem"
-  [[ -z "${ACCOUNT_KEY_JSON}" ]] && ACCOUNT_KEY_JSON="${BASEDIR}/private_key.json"
+  CAHASH="$(echo "${CA}" | urlbase64)"
+  [[ -z "${ACCOUNTDIR}" ]] && ACCOUNTDIR="${BASEDIR}/accounts"
+  mkdir -p "${ACCOUNTDIR}/${CAHASH}"
+  [[ -f "${ACCOUNTDIR}/${CAHASH}/config" ]] && . "${ACCOUNTDIR}/${CAHASH}/config"
+  ACCOUNT_KEY="${ACCOUNTDIR}/${CAHASH}/account_key.pem"
+  ACCOUNT_KEY_JSON="${ACCOUNTDIR}/${CAHASH}/registration_info.json"
+
+  if [[ -f "${BASEDIR}/private_key.pem" ]] && [[ ! -f "${ACCOUNT_KEY}" ]]; then
+    echo "! Moving private_key.pem to ${ACCOUNT_KEY}"
+    mv "${BASEDIR}/private_key.pem" "${ACCOUNT_KEY}"
+  fi
+  if [[ -f "${BASEDIR}/private_key.json" ]] && [[ ! -f "${ACCOUNT_KEY_JSON}" ]]; then
+    echo "! Moving private_key.json to ${ACCOUNT_KEY_JSON}"
+    mv "${BASEDIR}/private_key.json" "${ACCOUNT_KEY_JSON}"
+  fi
+
   [[ -z "${CERTDIR}" ]] && CERTDIR="${BASEDIR}/certs"
   [[ -z "${DOMAINS_TXT}" ]] && DOMAINS_TXT="${BASEDIR}/domains.txt"
   [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="${BASEDIR}/.acme-challenges"
@@ -225,10 +238,18 @@ init_system() {
     echo "+ Registering account key with letsencrypt..."
     [[ ! -z "${CA_NEW_REG}" ]] || _exiterr "Certificate authority doesn't allow registrations."
     # If an email for the contact has been provided then adding it to the registration request
+    FAILED=false
     if [[ -n "${CONTACT_EMAIL}" ]]; then
-      signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"$LICENSE"'"}' > "${ACCOUNT_KEY_JSON}"
+      (signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"$LICENSE"'"}' > "${ACCOUNT_KEY_JSON}") || FAILED=true
     else
-      signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > "${ACCOUNT_KEY_JSON}"
+      (signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > "${ACCOUNT_KEY_JSON}") || FAILED=true
+    fi
+    if [[ "${FAILED}" = "true" ]]; then
+      echo
+      echo
+      echo "Error registering account key. See message above for more information."
+      rm "${ACCOUNT_KEY}" "${ACCOUNT_KEY_JSON}"
+      exit 1
     fi
   fi
 

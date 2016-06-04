@@ -34,6 +34,9 @@
 # Output directory for generated certificates
 #CERTDIR="${BASEDIR}/certs"
 
+# Directory for account keys
+#ACCOUNTDIR="${BASEDIR}/accounts"
+
 # Output directory for challenge-tokens to be served by webserver or deployed in HOOK (default: $BASEDIR/.acme-challenges)
 #WELLKNOWN="${BASEDIR}/.acme-challenges"
 

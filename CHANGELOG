@@ -7,10 +7,15 @@ This file contains a log of major changes in letsencrypt.sh
 - Location of domains.txt is now configurable via DOMAINS_TXT config variable
 - Location of certs directory is now configurable via CERTDIR config variable
 - signcsr command now also outputs chain certificate
+- Location of account-key(s) changed
 
 ## Added
 - Added option to add CSR-flag indicating OCSP stapling to be mandatory
 - Initial support for configuration on per-certificate base
+- Support for per-CA account keys and custom config for output cert directory, license, etc.
+
+## Fixed
+- letsencrypt.sh no longer stores account keys from invalid registrations
 
 ## [0.2.0] - 2016-05-22
 ### Changed
