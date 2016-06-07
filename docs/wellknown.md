@@ -54,3 +54,15 @@ Alias /.well-known/acme-challenge /var/www/letsencrypt
         </IfModule>
 </Directory>
 ```
+
+### Lighttpd example config
+
+With Lighttpd just add this to your config and it should work in any VHost:
+
+```lighttpd
+modules += "alias"
+
+alias.url += (
+ "/.well-known/acme-challenge/" => "/var/www/letsencrypt/.acme-challenges/"
+)
+```
