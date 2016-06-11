@@ -25,7 +25,7 @@ BASEDIR="${SCRIPTDIR}"
 # Create (identifiable) temporary files
 _mktemp() {
   # shellcheck disable=SC2068
-  mktemp ${@:-} "${TMPDIR:-/tmp}/letsencrypt.sh-XXXXXX"
+  mktemp ${1:+"$@"} "${TMPDIR:-/tmp}/letsencrypt.sh-XXXXXX"
 }
 
 # Check for script dependencies
