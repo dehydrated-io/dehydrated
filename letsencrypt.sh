@@ -697,7 +697,7 @@ command_sign_domains() {
     if [[ -e "${cert}" ]]; then
       printf " + Checking domain name(s) of existing cert..."
 
-      certnames="$(openssl x509 -in "${cert}" -text -noout | grep DNS: | _sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//')"
+      certnames="$(openssl x509 -in "${cert}" -text -noout | grep Subject: | sed -r 's/CN=//g' | tr -d ' ' | cut -f2 -d':' | cut -f1 -d'/')"
       givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | _sed 's/^ //')"
 
       if [[ "${certnames}" = "${givennames}" ]]; then
