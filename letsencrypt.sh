@@ -110,7 +110,7 @@ load_config() {
   HOOK_CHAIN="no"
   RENEW_DAYS="30"
   KEYSIZE="4096"
-  WELLKNOWN=
+  WELLKNOWN="${WELLKNOWN:=}"
   PRIVATE_KEY_RENEW="yes"
   KEY_ALGO=rsa
   OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
