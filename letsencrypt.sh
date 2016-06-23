@@ -116,6 +116,7 @@ load_config() {
   OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
   CONTACT_EMAIL=
   LOCKFILE=
+  LOCK_WAIT_TIME="5"
   OCSP_MUST_STAPLE="no"
 
   if [[ -z "${CONFIG:-}" ]]; then
@@ -194,7 +195,7 @@ init_system() {
   # Lockfile handling (prevents concurrent access)
   LOCKDIR="$(dirname "${LOCKFILE}")"
   [[ -w "${LOCKDIR}" ]] || _exiterr "Directory ${LOCKDIR} for LOCKFILE ${LOCKFILE} is not writable, aborting."
-  ( set -C; date > "${LOCKFILE}" ) 2>/dev/null || _exiterr "Lock file '${LOCKFILE}' present, aborting."
+  _wait_for_lock
   remove_lock() { rm -f "${LOCKFILE}"; }
   trap 'remove_lock' EXIT
 
@@ -262,6 +263,20 @@ _sed() {
   else
     sed -E "${@}"
   fi
+}
+
+_wait_for_lock() {
+  local COUNT="${LOCK_WAIT_TIME}"
+
+  while [[ "${COUNT}" > 0 ]]; do
+    set +e
+    ( set -C; date > "${LOCKFILE}" ) 2>/dev/null
+    if [[ $? = 0 ]]; then return; fi
+    set -e
+    sleep 1
+    ((COUNT--))
+  done
+  _exiterr "Lock file '${LOCKFILE}' present, aborting."
 }
 
 # Print error message and exit with error

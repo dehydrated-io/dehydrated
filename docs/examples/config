@@ -76,5 +76,8 @@
 # Lockfile location, to prevent concurrent access (default: $BASEDIR/lock)
 #LOCKFILE="${BASEDIR}/lock"
 
+# Wait time for lock checking, will check x times over x seconds if the lock is present (default: 5)
+#LOCK_WAIT_TIME="5"
+
 # Option to add CSR-flag indicating OCSP stapling to be mandatory (default: no)
 #OCSP_MUST_STAPLE="no"
