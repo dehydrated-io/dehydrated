@@ -41,6 +41,8 @@ Commands:
  --env (-e)                       Output configuration variables for use in other scripts
 
 Parameters:
+ --ipv4 (-4)                      Resolve names to IPv4 addresses only
+ --ipv6 (-6)                      Resolve names to IPv6 addresses only
  --domain (-d) domain.tld         Use specified domain name(s) instead of domains.txt entry (one certificate!)
  --force (-x)                     Force renew of certificate even if it is longer valid than value in RENEW_DAYS
  --ocsp                           Sets option in CSR indicating OCSP stapling to be mandatory
