@@ -105,6 +105,7 @@ load_config() {
   ACCOUNTDIR=
   CHALLENGETYPE="http-01"
   CONFIG_D=
+  DOMAINS_D=
   DOMAINS_TXT=
   HOOK=
   HOOK_CHAIN="no"
@@ -664,7 +665,13 @@ command_sign_domains() {
     # for now this loads the certificate specific config in a subshell and parses a diff of set variables.
     # we could just source the config file but i decided to go this way to protect people from accidentally overriding
     # variables used internally by this script itself.
-    if [ -f "${CERTDIR}/${domain}/config" ]; then
+    if [[ -n "${DOMAINS_D}" ]]; then
+      certconfig="${DOMAINS_D}/${domain}"
+    else
+      certconfig="${CERTDIR}/${domain}/config"
+    fi
+
+    if [ -f "${certconfig}" ]; then
       echo " + Using certificate specific config file!"
       ORIGIFS="${IFS}"
       IFS=$'\n'
@@ -673,7 +680,7 @@ command_sign_domains() {
         aftervars="$(_mktemp)"
         set > "${beforevars}"
         # shellcheck disable=SC1090
-        . "${CERTDIR}/${domain}/config"
+        . "${certconfig}"
         set > "${aftervars}"
         diff -u "${beforevars}" "${aftervars}" | grep -E '^\+[^+]'
         rm "${beforevars}"
@@ -893,7 +900,7 @@ command_help() {
 command_env() {
   echo "# letsencrypt.sh configuration"
   load_config
-  typeset -p CA LICENSE CERTDIR CHALLENGETYPE DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
+  typeset -p CA LICENSE CERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
 # Main method (parses script arguments and calls command_* methods)
