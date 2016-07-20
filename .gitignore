@@ -6,4 +6,3 @@ hook.sh
 certs/*
 archive/*
 accounts/*
-.acme-challenges/*
