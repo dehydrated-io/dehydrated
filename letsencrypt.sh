@@ -9,7 +9,7 @@ set -e
 set -u
 set -o pipefail
 [[ -n "${ZSH_VERSION:-}" ]] && set -o SH_WORD_SPLIT && set +o FUNCTION_ARGZERO
-umask 077 # paranoid umask, we're creating private keys
+umask 027 # paranoid umask, we're creating private keys
 
 # Find directory in which this script is stored by traversing all symbolic links
 SOURCE="${0}"
