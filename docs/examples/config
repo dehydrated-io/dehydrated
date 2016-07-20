@@ -10,6 +10,11 @@
 # Default values of this config are in comments        #
 ########################################################
 
+# Resolve names to addresses of IP version only. (curl)
+# supported values: 4, 6
+# default: <unset>
+#IP_VERSION=
+
 # Path to certificate authority (default: https://acme-v01.api.letsencrypt.org/directory)
 #CA="https://acme-v01.api.letsencrypt.org/directory"
 

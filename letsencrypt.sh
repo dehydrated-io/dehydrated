@@ -58,6 +58,7 @@ store_configvars() {
   __HOOK_CHAIN="${HOOK_CHAIN}"
   __OPENSSL_CNF="${OPENSSL_CNF}"
   __RENEW_DAYS="${RENEW_DAYS}"
+  __IP_VERSION="${IP_VERSION}"
 }
 
 reset_configvars() {
@@ -71,6 +72,7 @@ reset_configvars() {
   HOOK_CHAIN="${__HOOK_CHAIN}"
   OPENSSL_CNF="${__OPENSSL_CNF}"
   RENEW_DAYS="${__RENEW_DAYS}"
+  IP_VERSION="${__IP_VERSION}"
 }
 
 # verify configuration values
@@ -83,6 +85,9 @@ verify_config() {
     _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
   fi
   [[ "${KEY_ALGO}" =~ ^(rsa|prime256v1|secp384r1)$ ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... can not continue."
+  if [[ -n "${IP_VERSION}" ]]; then
+    [[ "${IP_VERSION}" = "4" || "${IP_VERSION}" = "6" ]] || _exiterr "Unknown IP version ${IP_VERSION}... can not continue."
+  fi
 }
 
 # Setup default config values, search for and load configuration files
@@ -118,6 +123,7 @@ load_config() {
   CONTACT_EMAIL=
   LOCKFILE=
   OCSP_MUST_STAPLE="no"
+  IP_VERSION=
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -183,6 +189,7 @@ load_config() {
   [[ -n "${PARAM_CHALLENGETYPE:-}" ]] && CHALLENGETYPE="${PARAM_CHALLENGETYPE}"
   [[ -n "${PARAM_KEY_ALGO:-}" ]] && KEY_ALGO="${PARAM_KEY_ALGO}"
   [[ -n "${PARAM_OCSP_MUST_STAPLE:-}" ]] && OCSP_MUST_STAPLE="${PARAM_OCSP_MUST_STAPLE}"
+  [[ -n "${PARAM_IP_VERSION:-}" ]] && IP_VERSION="${PARAM_IP_VERSION}"
 
   verify_config
   store_configvars
@@ -316,15 +323,19 @@ _openssl() {
 http_request() {
   tempcont="$(_mktemp)"
 
+  if [[ -n "${IP_VERSION:-}" ]]; then
+      ip_version="-${IP_VERSION}"
+  fi
+
   set +e
   if [[ "${1}" = "head" ]]; then
-    statuscode="$(curl -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
+    statuscode="$(curl ${ip_version:-} -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
     curlret="${?}"
   elif [[ "${1}" = "get" ]]; then
-    statuscode="$(curl -s -w "%{http_code}" -o "${tempcont}" "${2}")"
+    statuscode="$(curl ${ip_version:-} -s -w "%{http_code}" -o "${tempcont}" "${2}")"
     curlret="${?}"
   elif [[ "${1}" = "post" ]]; then
-    statuscode="$(curl -s -w "%{http_code}" -o "${tempcont}" "${2}" -d "${3}")"
+    statuscode="$(curl ${ip_version:-} -s -w "%{http_code}" -o "${tempcont}" "${2}" -d "${3}")"
     curlret="${?}"
   else
     set -e
@@ -955,6 +966,18 @@ main() {
 
       --cleanup|-gc)
         set_command cleanup
+        ;;
+
+      # PARAM_Usage: --ipv4 (-4)
+      # PARAM_Description: Resolve names to IPv4 addresses only
+      --ipv4|-4)
+        PARAM_IP_VERSION="4"
+        ;;
+
+      # PARAM_Usage: --ipv6 (-6)
+      # PARAM_Description: Resolve names to IPv6 addresses only
+      --ipv6|-6)
+        PARAM_IP_VERSION="6"
         ;;
 
       # PARAM_Usage: --domain (-d) domain.tld
