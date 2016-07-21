@@ -15,6 +15,7 @@ This file contains a log of major changes in letsencrypt.sh
 - Initial support for configuration on per-certificate base
 - Support for per-CA account keys and custom config for output cert directory, license, etc.
 - Added option to select IP version of name to address resolution
+- Added option to run letsencrypt.sh without locks
 
 ## Fixed
 - letsencrypt.sh no longer stores account keys from invalid registrations

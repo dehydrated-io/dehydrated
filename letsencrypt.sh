@@ -183,6 +183,7 @@ load_config() {
   [[ -z "${DOMAINS_TXT}" ]] && DOMAINS_TXT="${BASEDIR}/domains.txt"
   [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="/var/www/letsencrypt"
   [[ -z "${LOCKFILE}" ]] && LOCKFILE="${BASEDIR}/lock"
+  [[ -n "${PARAM_NO_LOCK:-}" ]] && LOCKFILE=""
 
   [[ -n "${PARAM_HOOK:-}" ]] && HOOK="${PARAM_HOOK}"
   [[ -n "${PARAM_CERTDIR:-}" ]] && CERTDIR="${PARAM_CERTDIR}"
@@ -200,11 +201,13 @@ init_system() {
   load_config
 
   # Lockfile handling (prevents concurrent access)
-  LOCKDIR="$(dirname "${LOCKFILE}")"
-  [[ -w "${LOCKDIR}" ]] || _exiterr "Directory ${LOCKDIR} for LOCKFILE ${LOCKFILE} is not writable, aborting."
-  ( set -C; date > "${LOCKFILE}" ) 2>/dev/null || _exiterr "Lock file '${LOCKFILE}' present, aborting."
-  remove_lock() { rm -f "${LOCKFILE}"; }
-  trap 'remove_lock' EXIT
+  if [[ -n "${LOCKFILE}" ]]; then
+    LOCKDIR="$(dirname "${LOCKFILE}")"
+    [[ -w "${LOCKDIR}" ]] || _exiterr "Directory ${LOCKDIR} for LOCKFILE ${LOCKFILE} is not writable, aborting."
+    ( set -C; date > "${LOCKFILE}" ) 2>/dev/null || _exiterr "Lock file '${LOCKFILE}' present, aborting."
+    remove_lock() { rm -f "${LOCKFILE}"; }
+    trap 'remove_lock' EXIT
+  fi
 
   # Get CA URLs
   CA_DIRECTORY="$(http_request get "${CA}")"
@@ -992,11 +995,16 @@ main() {
          fi
         ;;
 
-
       # PARAM_Usage: --force (-x)
       # PARAM_Description: Force renew of certificate even if it is longer valid than value in RENEW_DAYS
       --force|-x)
         PARAM_FORCE="yes"
+        ;;
+
+      # PARAM_Usage: --no-lock (-n)
+      # PARAM_Description: Don't use lockfile (potentially dangerous!)
+      --no-lock|-n)
+        PARAM_NO_LOCK="yes"
         ;;
 
       # PARAM_Usage: --ocsp
