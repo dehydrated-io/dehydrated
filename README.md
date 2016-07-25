@@ -43,11 +43,16 @@ Commands:
  --env (-e)                       Output configuration variables for use in other scripts
 
 Parameters:
+ --ipv4 (-4)                      Resolve names to IPv4 addresses only
+ --ipv6 (-6)                      Resolve names to IPv6 addresses only
  --domain (-d) domain.tld         Use specified domain name(s) instead of domains.txt entry (one certificate!)
  --force (-x)                     Force renew of certificate even if it is longer valid than value in RENEW_DAYS
+ --no-lock (-n)                   Don't use lockfile (potentially dangerous!)
+ --ocsp                           Sets option in CSR indicating OCSP stapling to be mandatory
  --privkey (-p) path/to/key.pem   Use specified private key instead of account key (useful for revocation)
- --config (-f) path/to/config.sh  Use specified config file
+ --config (-f) path/to/config     Use specified config file
  --hook (-k) path/to/hook.sh      Use specified script for hooks
+ --out (-o) certs/directory       Output certificates into the specified directory
  --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported
  --algo (-a) rsa|prime256v1|secp384r1 Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
 ```
