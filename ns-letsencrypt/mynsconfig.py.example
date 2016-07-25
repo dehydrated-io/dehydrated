@@ -6,3 +6,7 @@ nitroPass = "nsroot"
 nspairname = "le-certificate";
 nscert = "le-cert.pem";
 nscertpath = "/nsconfig/ssl/";
+
+#Responder Policy information
+nsrespact = "le-responder-act"
+nsresppol = "le-responder-pol"
