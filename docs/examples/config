@@ -1,16 +1,19 @@
-#!/usr/bin/env bash
-
 ########################################################
 # This is the main config file for letsencrypt.sh      #
 #                                                      #
 # This file is looked for in the following locations:  #
-# $SCRIPTDIR/config.sh (next to this script)           #
-# /usr/local/etc/letsencrypt.sh/config.sh              #
-# /etc/letsencrypt.sh/config.sh                        #
-# ${PWD}/config.sh (in current working-directory)      #
+# $SCRIPTDIR/config (next to this script)              #
+# /usr/local/etc/letsencrypt.sh/config                 #
+# /etc/letsencrypt.sh/config                           #
+# ${PWD}/config (in current working-directory)         #
 #                                                      #
 # Default values of this config are in comments        #
 ########################################################
+
+# Resolve names to addresses of IP version only. (curl)
+# supported values: 4, 6
+# default: <unset>
+#IP_VERSION=
 
 # Path to certificate authority (default: https://acme-v01.api.letsencrypt.org/directory)
 #CA="https://acme-v01.api.letsencrypt.org/directory"
@@ -30,11 +33,17 @@
 # Base directory for account key, generated certificates and list of domains (default: $SCRIPTDIR -- uses config directory if undefined)
 #BASEDIR=$SCRIPTDIR
 
-# Output directory for challenge-tokens to be served by webserver or deployed in HOOK (default: $BASEDIR/.acme-challenges)
-#WELLKNOWN="${BASEDIR}/.acme-challenges"
+# File containing the list of domains to request certificates for (default: $BASEDIR/domains.txt)
+#DOMAINS_TXT="${BASEDIR}/domains.txt"
 
-# Location of private account key (default: $BASEDIR/private_key.pem)
-#PRIVATE_KEY="${BASEDIR}/private_key.pem"
+# Output directory for generated certificates
+#CERTDIR="${BASEDIR}/certs"
+
+# Directory for account keys and registration information
+#ACCOUNTDIR="${BASEDIR}/accounts"
+
+# Output directory for challenge-tokens to be served by webserver or deployed in HOOK (default: /var/www/letsencrypt)
+#WELLKNOWN="/var/www/letsencrypt"
 
 # Default keysize for private keys (default: 4096)
 #KEYSIZE="4096"
@@ -60,8 +69,8 @@
 # Minimum days before expiration to automatically renew certificate (default: 30)
 #RENEW_DAYS="30"
 
-# Regenerate private keys instead of just signing new certificates on renewal (default: no)
-#PRIVATE_KEY_RENEW="no"
+# Regenerate private keys instead of just signing new certificates on renewal (default: yes)
+#PRIVATE_KEY_RENEW="yes"
 
 # Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
 #KEY_ALGO=rsa
@@ -71,3 +80,6 @@
 
 # Lockfile location, to prevent concurrent access (default: $BASEDIR/lock)
 #LOCKFILE="${BASEDIR}/lock"
+
+# Option to add CSR-flag indicating OCSP stapling to be mandatory (default: no)
+#OCSP_MUST_STAPLE="no"

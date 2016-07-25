@@ -1,7 +1,8 @@
 private_key.pem
+private_key.json
 domains.txt
-config.sh
+config
 hook.sh
 certs/*
 archive/*
-.acme-challenges/*
+accounts/*
