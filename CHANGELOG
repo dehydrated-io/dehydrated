@@ -9,6 +9,7 @@ This file contains a log of major changes in letsencrypt.sh
 - signcsr command now also outputs chain certificate
 - Location of account-key(s) changed
 - Default WELLKNOWN location is now `/var/www/letsencrypt`
+- New version of Let's Encrypt Subscriber Agreement
 
 ## Added
 - Added option to add CSR-flag indicating OCSP stapling to be mandatory
