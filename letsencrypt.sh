@@ -126,7 +126,7 @@ load_config() {
   IP_VERSION=
 
   if [[ -z "${CONFIG:-}" ]]; then
-    echo "WARNNG: No main config file found, using defaults" >&2
+    echo "WARNING: No main config file found, using defaults" >&2
   elif [[ -f "${CONFIG}" ]]; then
     echo "# INFO: Using main config file ${CONFIG}"
     BASEDIR="$(dirname "${CONFIG}")"
