@@ -41,9 +41,11 @@ Commands:
  --env (-e)                       Output configuration variables for use in other scripts
 
 Parameters:
+ --full-chain (-fc)               Print full chain when using --signcsr
  --ipv4 (-4)                      Resolve names to IPv4 addresses only
  --ipv6 (-6)                      Resolve names to IPv6 addresses only
  --domain (-d) domain.tld         Use specified domain name(s) instead of domains.txt entry (one certificate!)
+ --keep-going (-g)                Keep going after encountering an error while creating/renewing multiple certificates in cron mode
  --force (-x)                     Force renew of certificate even if it is longer valid than value in RENEW_DAYS
  --no-lock (-n)                   Don't use lockfile (potentially dangerous!)
  --ocsp                           Sets option in CSR indicating OCSP stapling to be mandatory
