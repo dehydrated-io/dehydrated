@@ -6,7 +6,7 @@ This file contains a log of major changes in letsencrypt.sh
 - Config is now named `config` instead of `config.sh`!
 - Location of domains.txt is now configurable via DOMAINS_TXT config variable
 - Location of certs directory is now configurable via CERTDIR config variable
-- signcsr command now also outputs chain certificate
+- signcsr command now also outputs chain certificate if --full-chain/-fc is set
 - Location of account-key(s) changed
 - Default WELLKNOWN location is now `/var/www/letsencrypt`
 - New version of Let's Encrypt Subscriber Agreement

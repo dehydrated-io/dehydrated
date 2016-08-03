@@ -788,24 +788,29 @@ command_sign_csr() {
   certfile="$(_mktemp)"
   sign_csr "$(< "${csrfile}" )" 3> "${certfile}"
 
-  # get and convert ca cert
-  chainfile="$(_mktemp)"
-  http_request get "$(openssl x509 -in "${certfile}" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${chainfile}"
-
-  if ! grep -q "BEGIN CERTIFICATE" "${chainfile}"; then
-    openssl x509 -inform DER -in "${chainfile}" -outform PEM -out "${chainfile}"
-  fi
-
-  # output full chain
+  # print cert
   echo "# CERT #" >&3
   cat "${certfile}" >&3
   echo >&3
-  echo "# CHAIN #" >&3
-  cat "${chainfile}" >&3
+
+  # print chain
+  if [ -n "${PARAM_FULL_CHAIN:-}" ]; then
+    # get and convert ca cert
+    chainfile="$(_mktemp)"
+    http_request get "$(openssl x509 -in "${certfile}" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${chainfile}"
+
+    if ! grep -q "BEGIN CERTIFICATE" "${chainfile}"; then
+      openssl x509 -inform DER -in "${chainfile}" -outform PEM -out "${chainfile}"
+    fi
+
+    echo "# CHAIN #" >&3
+    cat "${chainfile}" >&3
+
+    rm "${chainfile}"
+  fi
 
   # cleanup
   rm "${certfile}"
-  rm "${chainfile}"
 
   exit 0
 }
@@ -976,6 +981,12 @@ main() {
 
       --cleanup|-gc)
         set_command cleanup
+        ;;
+
+      # PARAM_Usage: --full-chain (-fc)
+      # PARAM_Description: Print full chain when using --signcsr
+      --full-chain|-fc)
+        PARAM_FULL_CHAIN="1"
         ;;
 
       # PARAM_Usage: --ipv4 (-4)
