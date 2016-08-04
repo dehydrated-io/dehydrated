@@ -16,7 +16,7 @@ def subdomain_from_repo(repo):
         'auth': "login",
         'learning': "live",
         'toys': "apps",
-        'toychest': "store",
+        'toychest': "library",
         'lightyear': "room",
         'techcheck': "setup",
         'pl-docs': "patterns",
@@ -38,7 +38,7 @@ def create_domain_string(domain, subdomain, new_treeish):
 
     s3_bucket_list = s3_bucket.list(prefix="deploy/" + flavor + "-app/deployed_hashes/")
 
-    deployed_list = [domain, 'kidinsight.' + domain, 'room.' + domain, 'store.' + domain, 'apps.' + domain, 'setup.' + domain, 'login.' + domain, 'test.' + domain, 'live.' + domain, 'kibana.' + domain, 'patterns.' + domain, 'schedule.' + domain, 'workplace.' + domain, 'user.' + domain, 'client.' + domain, 'billing.' + domain, 'ci.' + domain, 'princeton.' + domain]
+    deployed_list = [domain, 'kidinsight.' + domain, 'room.' + domain, 'library.' + domain, 'store.' + domain, 'apps.' + domain, 'setup.' + domain, 'login.' + domain, 'test.' + domain, 'live.' + domain, 'kibana.' + domain, 'patterns.' + domain, 'schedule.' + domain, 'workplace.' + domain, 'user.' + domain, 'client.' + domain, 'billing.' + domain, 'ci.' + domain, 'princeton.' + domain]
     return " ".join(deployed_list)
 
     deployed_set = set({})
