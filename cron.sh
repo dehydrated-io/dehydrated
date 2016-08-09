@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-DIR=$(dirname $(cd $(dirname $0) && pwd));
+DIR=$(cd $(dirname $0) && pwd);
 
 $DIR/letsencrypt.sh \
     --cron \
