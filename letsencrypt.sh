@@ -509,17 +509,93 @@ sign_csr() {
     # shellcheck disable=SC2086
     [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]}
 
-    # Ask the acme-server to verify our challenge and wait until it is no longer pending
-    echo " + Responding to challenge for ${altname}..."
-    result="$(signed_request "${challenge_uris[${idx}]}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}' | clean_json)"
+    # eXtremeSHOK.com :: BEGIN
+    xres="1"
+    xl=0
+    while [ "$xres" == "1" ]; do
+      xl=$((xl+1))
+      # Ask the acme-server to verify our challenge and wait until it is no longer pending
+      if [[ -n "${PARAM_RETRIES:-}" ]]; then
+        echo " + Responding to challenge for ${altname}...attempt: $xl"
+      else
+        echo " + Responding to challenge for ${altname}..."
+      fi
 
-    reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
+      result="$(signed_request "${challenge_uris[${idx}]}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}' | clean_json)"
 
-    while [[ "${reqstatus}" = "pending" ]]; do
-      sleep 1
-      result="$(http_request get "${challenge_uris[${idx}]}")"
       reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
+
+      while [[ "${reqstatus}" = "pending" ]]; do
+        sleep 1
+        result="$(http_request get "${challenge_uris[${idx}]}")"
+        reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
+      done
+
+      if [[ "${reqstatus}" = "valid" ]]; then
+        echo " + Challenge is valid!"
+        xres="0"
+      else
+        echo " + Invalid"
+        if [[ -n "${PARAM_RETRIES:-}" ]]; then
+
+          [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
+
+          # Wait for hook script to clean the challenge if used
+          if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token}" ]]; then
+            # shellcheck disable=SC2086
+            "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
+          fi
+    
+          # Sleep for a random time between retries
+          sleep $(((RANDOM % 5) + 1))
+
+          echo " + Requesting challenge for ${altname}..."
+          response="$(signed_request "${CA_NEW_AUTHZ}" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}' | clean_json)"
+
+          challenges="$(printf '%s\n' "${response}" | sed -n 's/.*\("challenges":[^\[]*\[[^]]*]\).*/\1/p')"
+          repl=$'\n''{' # fix syntax highlighting in Vim
+          challenge="$(printf "%s" "${challenges//\{/${repl}}" | grep \""${CHALLENGETYPE}"\")"
+          challenge_token="$(printf '%s' "${challenge}" | get_json_string_value token | _sed 's/[^A-Za-z0-9_\-]/_/g')"
+          challenge_uri="$(printf '%s' "${challenge}" | get_json_string_value uri)"
+
+          if [[ -z "${challenge_token}" ]] || [[ -z "${challenge_uri}" ]]; then
+            _exiterr "Can't retrieve challenges (${response})"
+          fi
+
+          # Challenge response consists of the challenge token and the thumbprint of our public certificate
+          keyauth="${challenge_token}.${thumbprint}"
+
+          case "${CHALLENGETYPE}" in
+            "http-01")
+              # Store challenge response in well-known location and make world-readable (so that a webserver can access it)
+              printf '%s' "${keyauth}" > "${WELLKNOWN}/${challenge_token}"
+              chmod a+r "${WELLKNOWN}/${challenge_token}"
+              keyauth_hook="${keyauth}"
+              ;;
+            "dns-01")
+              # Generate DNS entry content for dns-01 validation
+              keyauth_hook="$(printf '%s' "${keyauth}" | openssl dgst -sha256 -binary | urlbase64)"
+              ;;
+          esac
+
+          challenge_uris[${idx}]="${challenge_uri}"
+          keyauths[${idx}]="${keyauth}"
+          challenge_tokens[${idx}]="${challenge_token}"
+          # Note: assumes args will never have spaces!
+          deploy_args[${idx}]="${altname} ${challenge_token} ${keyauth_hook}"
+        else
+          xres=0
+          break
+        fi
+      fi
+      if [[ -n "${PARAM_RETRIES:-}" ]]; then
+        if [ $xl -ge "${PARAM_RETRIES}" ]; then
+          echo "+ Retry limit reached"
+          break
+        fi
+      fi
     done
+
 
     [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
 
@@ -530,12 +606,12 @@ sign_csr() {
     fi
     idx=$((idx+1))
 
-    if [[ "${reqstatus}" = "valid" ]]; then
-      echo " + Challenge is valid!"
-    else
+    if [[ "${reqstatus}" != "valid" ]]; then
       break
     fi
   done
+
+# eXtremeSHOK.com :: END
 
   # Wait for hook script to clean the challenges if used
   # shellcheck disable=SC2068
@@ -1011,6 +1087,14 @@ main() {
         else
           PARAM_DOMAIN="${PARAM_DOMAIN} ${1}"
          fi
+        ;;
+
+      # PARAM_Usage: --retries (-r) NUMBER
+      # PARAM_Description: Retry invalid challenge responses,  set number of retries to NUMBER
+      --retries|-r)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_RETRIES="${1}"
         ;;
 
       # PARAM_Usage: --keep-going (-g)
