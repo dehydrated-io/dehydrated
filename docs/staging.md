@@ -1,6 +1,6 @@
 # Staging
 
-Let’s Encrypt has stringent rate limits in place during the public beta period.
+Let’s Encrypt has stringent rate limits in place.
 
 If you start testing using the production endpoint (which is the default),
 you will quickly hit these limits and find yourself locked out.
