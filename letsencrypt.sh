@@ -515,7 +515,7 @@ sign_csr() {
     while [ "$xres" == "1" ]; do
       xl=$((xl+1))
       # Ask the acme-server to verify our challenge and wait until it is no longer pending
-      if [[ -n "${PARAM_RETRIES:-}" ]]; then
+      if [[ "${PARAM_RETRY:-}" = "yes" ]]; then
         echo " + Responding to challenge for ${altname}...attempt: $xl"
       else
         echo " + Responding to challenge for ${altname}..."
@@ -536,7 +536,7 @@ sign_csr() {
         xres="0"
       else
         echo " + Invalid"
-        if [[ -n "${PARAM_RETRIES:-}" ]]; then
+        if [[ "${PARAM_RETRY:-}" = "yes" ]]; then
 
           [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
 
@@ -547,7 +547,7 @@ sign_csr() {
           fi
     
           # Sleep for a random time between retries
-          sleep $(((RANDOM % 5) + 1))
+          sleep $(((RANDOM % 10) + 1))
 
           echo " + Requesting challenge for ${altname}..."
           response="$(signed_request "${CA_NEW_AUTHZ}" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}' | clean_json)"
@@ -588,8 +588,8 @@ sign_csr() {
           break
         fi
       fi
-      if [[ -n "${PARAM_RETRIES:-}" ]]; then
-        if [ $xl -ge "${PARAM_RETRIES}" ]; then
+      if [[ "${PARAM_RETRY:-}" = "yes" ]]; then
+        if [ $xl -ge 5 ]; then
           echo "+ Retry limit reached"
           break
         fi
@@ -1089,12 +1089,10 @@ main() {
          fi
         ;;
 
-      # PARAM_Usage: --retries (-r) NUMBER
-      # PARAM_Description: Retry invalid challenge responses,  set number of retries to NUMBER
-      --retries|-r)
-        shift 1
-        check_parameters "${1:-}"
-        PARAM_RETRIES="${1}"
+      # PARAM_Usage: --retry (-r) NUMBER
+      # PARAM_Description: Retry invalid challenge responses a maximum of 5 times
+      --retry|-r)
+        PARAM_RETRY="yes"
         ;;
 
       # PARAM_Usage: --keep-going (-g)
