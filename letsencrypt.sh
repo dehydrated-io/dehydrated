@@ -105,7 +105,7 @@ load_config() {
 
   # Default values
   CA="https://acme-v01.api.letsencrypt.org/directory"
-  LICENSE="https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf"
+  LICENSE="https://letsencrypt.org/documents/LE-SA-v1.1.1-August-1-2016.pdf"
   CERTDIR=
   ACCOUNTDIR=
   CHALLENGETYPE="http-01"
@@ -355,6 +355,8 @@ http_request() {
     echo >&2
     echo "Details:" >&2
     cat "${tempcont}" >&2
+    echo >&2
+    echo >&2
     rm -f "${tempcont}"
 
     # Wait for hook script to clean the challenge if used
@@ -754,7 +756,12 @@ command_sign_domains() {
     fi
 
     # shellcheck disable=SC2086
-    sign_domain ${line}
+    if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
+      sign_domain ${line} &
+      wait $! || true
+    else
+      sign_domain ${line}
+    fi
   done
 
   # remove temporary domains.txt file if used
@@ -781,24 +788,29 @@ command_sign_csr() {
   certfile="$(_mktemp)"
   sign_csr "$(< "${csrfile}" )" 3> "${certfile}"
 
-  # get and convert ca cert
-  chainfile="$(_mktemp)"
-  http_request get "$(openssl x509 -in "${certfile}" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${chainfile}"
-
-  if ! grep -q "BEGIN CERTIFICATE" "${chainfile}"; then
-    openssl x509 -inform DER -in "${chainfile}" -outform PEM -out "${chainfile}"
-  fi
-
-  # output full chain
+  # print cert
   echo "# CERT #" >&3
   cat "${certfile}" >&3
   echo >&3
-  echo "# CHAIN #" >&3
-  cat "${chainfile}" >&3
+
+  # print chain
+  if [ -n "${PARAM_FULL_CHAIN:-}" ]; then
+    # get and convert ca cert
+    chainfile="$(_mktemp)"
+    http_request get "$(openssl x509 -in "${certfile}" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${chainfile}"
+
+    if ! grep -q "BEGIN CERTIFICATE" "${chainfile}"; then
+      openssl x509 -inform DER -in "${chainfile}" -outform PEM -out "${chainfile}"
+    fi
+
+    echo "# CHAIN #" >&3
+    cat "${chainfile}" >&3
+
+    rm "${chainfile}"
+  fi
 
   # cleanup
   rm "${certfile}"
-  rm "${chainfile}"
 
   exit 0
 }
@@ -971,6 +983,12 @@ main() {
         set_command cleanup
         ;;
 
+      # PARAM_Usage: --full-chain (-fc)
+      # PARAM_Description: Print full chain when using --signcsr
+      --full-chain|-fc)
+        PARAM_FULL_CHAIN="1"
+        ;;
+
       # PARAM_Usage: --ipv4 (-4)
       # PARAM_Description: Resolve names to IPv4 addresses only
       --ipv4|-4)
@@ -993,6 +1011,12 @@ main() {
         else
           PARAM_DOMAIN="${PARAM_DOMAIN} ${1}"
          fi
+        ;;
+
+      # PARAM_Usage: --keep-going (-g)
+      # PARAM_Description: Keep going after encountering an error while creating/renewing multiple certificates in cron mode
+      --keep-going|-g)
+        PARAM_KEEP_GOING="yes"
         ;;
 
       # PARAM_Usage: --force (-x)
