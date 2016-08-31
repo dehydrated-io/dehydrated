@@ -1,8 +1,10 @@
 private_key.pem
 private_key.json
 domains.txt
-config
+config.sh
 hook.sh
 certs/*
 archive/*
-accounts/*
+.acme-challenges/*
+ns-letsencrypt/mynsconfig.py
+*.pyc

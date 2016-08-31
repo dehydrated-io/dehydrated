@@ -1,0 +1,12 @@
+nitroNSIP = "192.168.2.54"
+nitroUser = "nsroot"
+nitroPass = "nsroot"
+
+#Certificate and private key file names on Netscaler	
+nspairname = "le-certificate";
+nscert = "le-cert.pem";
+nscertpath = "/nsconfig/ssl/";
+
+#Responder Policy information
+nsrespact = "le-responder-act"
+nsresppol = "le-responder-pol"
