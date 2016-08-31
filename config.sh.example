@@ -7,6 +7,6 @@ PRIVATE_KEY_RENEW="no"
 #CA="https://acme-staging.api.letsencrypt.org/directory"
 
 HOOK_CHAIN="yes"
-WELLKNOWN="/var/www/html/.well-known/acme-challenge"
+WELLKNOWN="/root/letsencrypt.sh/www-temp"
 # E-mail to use during the registration (default: <unset>)
 CONTACT_EMAIL="admin@yourdomain.com"
