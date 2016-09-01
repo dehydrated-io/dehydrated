@@ -77,6 +77,9 @@ reset_configvars() {
 
 # verify configuration values
 verify_config() {
+  if [[ "${COMMAND}" = "revoke" ]]; then
+    return
+  fi
   [[ "${CHALLENGETYPE}" =~ (http-01|dns-01) ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... can not continue."
   if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
     _exiterr "Challenge type dns-01 needs a hook script for deployment... can not continue."
