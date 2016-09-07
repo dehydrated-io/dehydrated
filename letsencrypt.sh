@@ -606,7 +606,7 @@ sign_domain() {
   SAN="${SAN%%, }"
   local tmp_openssl_cnf
   tmp_openssl_cnf="$(_mktemp)"
-  cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
+  cat "${OPENSSL_CNF}" | grep -v commonName > "${tmp_openssl_cnf}"
   printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
   if [ "${OCSP_MUST_STAPLE}" = "yes" ]; then
     printf "\n1.3.6.1.5.5.7.1.24=DER:30:03:02:01:05" >> "${tmp_openssl_cnf}"
