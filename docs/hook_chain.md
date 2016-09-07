@@ -60,20 +60,3 @@ HOOK: clean_challenge lukas.im blablabla blablabla.supersecure www.lukas.im blub
 HOOK: deploy_cert lukas.im /etc/letsencrypt.sh/certs/lukas.im/privkey.pem /etc/letsencrypt.sh/certs/lukas.im/cert.pem /etc/letsencrypt.sh/certs/lukas.im/fullchain.pem /etc/letsencrypt.sh/certs/lukas.im/chain.pem 1460152408
  + Done!
 ```
-
-### HOOK_CHAIN="yes"
-```
-# INFO: Using main config file /etc/letsencrypt.sh/config and challenge failing
-Processing lukas.im with alternative names: www.lukas.im
- + Checking domain name(s) of existing cert... unchanged.
- + Checking expire date of existing cert...
- + Valid till Jul  7 20:52:00 2016 GMT (Longer than 30 days). Ignoring because renew was forced!
- + Signing domains...
- + Generating private key...
- + Generating signing request...
- + Requesting challenge for www.lukas.im...
-HOOK: deploy_challenge www.lukas.im blablabla blablabla.supersecure www.lukas.im blublublu blublublu.supersecure
- + Responding to challenge for www.lukas.im...
- + Challenge is invalid!
-HOOK: invalid_challenge lukas.im the_reason
-```
