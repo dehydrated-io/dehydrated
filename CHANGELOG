@@ -3,6 +3,10 @@ This file contains a log of major changes in letsencrypt.sh
 
 ## [x.x.x] - xxxx-xx-xx
 ## Changed
+- ...
+
+## [0.3.0] - 2016-09-07
+## Changed
 - Config is now named `config` instead of `config.sh`!
 - Location of domains.txt is now configurable via DOMAINS_TXT config variable
 - Location of certs directory is now configurable via CERTDIR config variable
