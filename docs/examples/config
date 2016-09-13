@@ -1,5 +1,5 @@
 ########################################################
-# This is the main config file for dehydrated.sh       #
+# This is the main config file for dehydrated          #
 #                                                      #
 # This file is looked for in the following locations:  #
 # $SCRIPTDIR/config (next to this script)              #

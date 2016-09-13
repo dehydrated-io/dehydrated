@@ -5,7 +5,7 @@ It will do that for any (sub-)domain you want to sign a certificate for.
 
 At the moment you'll need to have that location available over normal HTTP on port 80 (redirect to HTTPS will work, but starting point is always HTTP!).
 
-dehydrated.sh has a config variable called `WELLKNOWN`, which corresponds to the directory which should be served under `/.well-known/acme-challenge` on your domain. So in the above example the token would have been saved as `$WELLKNOWN/m4g1C-t0k3n`.
+dehydrated has a config variable called `WELLKNOWN`, which corresponds to the directory which should be served under `/.well-known/acme-challenge` on your domain. So in the above example the token would have been saved as `$WELLKNOWN/m4g1C-t0k3n`.
 
 If you only have one docroot on your server you could easily do something like `WELLKNOWN=/var/www/.well-known/acme-challenge`, for anything else look at the example below.
 

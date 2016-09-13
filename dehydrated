@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# dehydrated.sh by lukas2511
+# dehydrated by lukas2511
 # Source: https://github.com/lukas2511/dehydrated
 #
 # This script is licensed under The MIT License (see LICENSE for more information).
@@ -25,7 +25,7 @@ BASEDIR="${SCRIPTDIR}"
 # Create (identifiable) temporary files
 _mktemp() {
   # shellcheck disable=SC2068
-  mktemp ${@:-} "${TMPDIR:-/tmp}/dehydrated.sh-XXXXXX"
+  mktemp ${@:-} "${TMPDIR:-/tmp}/dehydrated-XXXXXX"
 }
 
 # Check for script dependencies
@@ -94,7 +94,7 @@ verify_config() {
 load_config() {
   # Check for config in various locations
   if [[ -z "${CONFIG:-}" ]]; then
-    for check_config in "/etc/dehydrated.sh" "/usr/local/etc/dehydrated.sh" "${PWD}" "${SCRIPTDIR}"; do
+    for check_config in "/etc/dehydrated" "/usr/local/etc/dehydrated" "${PWD}" "${SCRIPTDIR}"; do
       if [[ -f "${check_config}/config" ]]; then
         BASEDIR="${check_config}"
         CONFIG="${check_config}/config"
@@ -924,7 +924,7 @@ command_help() {
 # Usage: --env (-e)
 # Description: Output configuration variables for use in other scripts
 command_env() {
-  echo "# dehydrated.sh configuration"
+  echo "# dehydrated configuration"
   load_config
   typeset -p CA LICENSE CERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }

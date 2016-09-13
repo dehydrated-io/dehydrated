@@ -30,7 +30,7 @@ If you have any problems take a look at our [Troubleshooting](docs/troubleshooti
 ## Usage:
 
 ```text
-Usage: ./dehydrated.sh [-h] [command [argument]] [parameter [argument]] [parameter [argument]] ...
+Usage: ./dehydrated [-h] [command [argument]] [parameter [argument]] [parameter [argument]] ...
 
 Default command: help
 
