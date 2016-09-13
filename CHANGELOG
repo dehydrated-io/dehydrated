@@ -8,6 +8,8 @@ This file contains a log of major changes in dehydrated.sh
 ## [0.3.1] - 2016-09-13
 ## Changed
 - Renamed project to `dehydrated` and main script to `dehydrated.sh`.
+- Default WELLKNOWN location is now `/var/www/dehydrated`
+- Config location is renamed to `dehydrated` (e.g. `/etc/dehydrated`)
 
 ## [0.3.0] - 2016-09-07
 ## Changed
