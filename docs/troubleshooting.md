@@ -6,7 +6,7 @@ Generally if the following information doesn't provide a solution to your proble
 
 You probably changed from staging-CA to production-CA (or the other way).
 
-Currently letsencrypt.sh doesn't detect a missing registration on the selected CA,
+Currently dehydrated doesn't detect a missing registration on the selected CA,
 the current workaround is to move `private_key.pem` (and, if you care, `private_key.json`) out of the way so the scripts generates and registers a new one.
 
 This will hopefully be fixed in the future.
@@ -19,13 +19,13 @@ LICENSE1 and LICENSE2 are just placeholders for the real values in this troubles
 
 ## "Error creating new cert :: Too many certificates already issued for: [...]"
 
-This is not an issue with letsencrypt.sh but an API limit with letsencrypt.
+This is not an issue with dehydrated but an API limit with boulder (the ACME server).
 
 At the time of writing this you can only create 5 certificates per domain in a sliding window of 7 days.
 
 ## "Certificate request has 123 names, maximum is 100."
 
-This also is an API limit from letsencrypt, you are requesting to sign a certificate with way too many domains.
+This also is an API limit from boulder, you are requesting to sign a certificate with way too many domains.
 
 ## Invalid challenges
 

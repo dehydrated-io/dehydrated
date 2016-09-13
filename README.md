@@ -1,4 +1,8 @@
-# letsencrypt.sh [![Build Status](https://travis-ci.org/lukas2511/letsencrypt.sh.svg?branch=master)](https://travis-ci.org/lukas2511/letsencrypt.sh)
+# dehydrated [![Build Status](https://travis-ci.org/lukas2511/dehydrated.svg?branch=master)](https://travis-ci.org/lukas2511/dehydrated)
+
+![](docs/logo.jpg)
+
+*Note: This project was renamed from letsencrypt.sh because the original name was violating Let's Encrypts trademark policy. I know that this results in quite a lot of installations failing but I didn't have a choice...*
 
 This is a client for signing certificates with an ACME-server (currently only provided by letsencrypt) implemented as a relatively simple bash-script.
 
@@ -28,7 +32,7 @@ If you have any problems take a look at our [Troubleshooting](docs/troubleshooti
 ## Usage:
 
 ```text
-Usage: ./letsencrypt.sh [-h] [command [argument]] [parameter [argument]] [parameter [argument]] ...
+Usage: ./dehydrated [-h] [command [argument]] [parameter [argument]] [parameter [argument]] ...
 
 Default command: help
 
