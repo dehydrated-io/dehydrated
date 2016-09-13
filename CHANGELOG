@@ -1,9 +1,13 @@
 # Change Log
-This file contains a log of major changes in letsencrypt.sh
+This file contains a log of major changes in dehydrated.sh
 
 ## [x.x.x] - xxxx-xx-xx
 ## Changed
 - ...
+
+## [0.3.1] - 2016-09-13
+## Changed
+- Renamed project to `dehydrated` and main script to `dehydrated.sh`.
 
 ## [0.3.0] - 2016-09-07
 ## Changed

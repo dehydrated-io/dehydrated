@@ -1,4 +1,6 @@
-# letsencrypt.sh [![Build Status](https://travis-ci.org/lukas2511/letsencrypt.sh.svg?branch=master)](https://travis-ci.org/lukas2511/letsencrypt.sh)
+# dehydrated.sh [![Build Status](https://travis-ci.org/lukas2511/dehydrated.svg?branch=master)](https://travis-ci.org/lukas2511/dehydrated)
+
+![](docs/logo.jpg)
 
 This is a client for signing certificates with an ACME-server (currently only provided by letsencrypt) implemented as a relatively simple bash-script.
 
@@ -28,7 +30,7 @@ If you have any problems take a look at our [Troubleshooting](docs/troubleshooti
 ## Usage:
 
 ```text
-Usage: ./letsencrypt.sh [-h] [command [argument]] [parameter [argument]] [parameter [argument]] ...
+Usage: ./dehydrated.sh [-h] [command [argument]] [parameter [argument]] [parameter [argument]] ...
 
 Default command: help
 

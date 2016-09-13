@@ -9,7 +9,7 @@ See below for an example on how the calls change:
 
 ### HOOK_CHAIN="no" (default behaviour)
 ```
-# INFO: Using main config file /etc/letsencrypt.sh/config
+# INFO: Using main config file /etc/dehydrated/config
 Processing lukas.im with alternative names: www.lukas.im
  + Checking domain name(s) of existing cert... unchanged.
  + Checking expire date of existing cert...
@@ -31,13 +31,13 @@ HOOK: clean_challenge www.lukas.im blublublu blublublu.supersecure
  + Checking certificate...
  + Done!
  + Creating fullchain.pem...
-HOOK: deploy_cert lukas.im /etc/letsencrypt.sh/certs/lukas.im/privkey.pem /etc/letsencrypt.sh/certs/lukas.im/cert.pem /etc/letsencrypt.sh/certs/lukas.im/fullchain.pem /etc/letsencrypt.sh/certs/lukas.im/chain.pem 1460152442
+HOOK: deploy_cert lukas.im /etc/dehydrated/certs/lukas.im/privkey.pem /etc/dehydrated/certs/lukas.im/cert.pem /etc/dehydrated/certs/lukas.im/fullchain.pem /etc/dehydrated/certs/lukas.im/chain.pem 1460152442
  + Done!
 ```
 
 ### HOOK_CHAIN="yes"
 ```
-# INFO: Using main config file /etc/letsencrypt.sh/config
+# INFO: Using main config file /etc/dehydrated/config
 Processing lukas.im with alternative names: www.lukas.im
  + Checking domain name(s) of existing cert... unchanged.
  + Checking expire date of existing cert...
@@ -57,7 +57,7 @@ HOOK: clean_challenge lukas.im blablabla blablabla.supersecure www.lukas.im blub
  + Checking certificate...
  + Done!
  + Creating fullchain.pem...
-HOOK: deploy_cert lukas.im /etc/letsencrypt.sh/certs/lukas.im/privkey.pem /etc/letsencrypt.sh/certs/lukas.im/cert.pem /etc/letsencrypt.sh/certs/lukas.im/fullchain.pem /etc/letsencrypt.sh/certs/lukas.im/chain.pem 1460152408
+HOOK: deploy_cert lukas.im /etc/dehydrated/certs/lukas.im/privkey.pem /etc/dehydrated/certs/lukas.im/cert.pem /etc/dehydrated/certs/lukas.im/fullchain.pem /etc/dehydrated/certs/lukas.im/chain.pem 1460152408
  + Done!
 ```
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# letsencrypt.sh by lukas2511
-# Source: https://github.com/lukas2511/letsencrypt.sh
+# dehydrated.sh by lukas2511
+# Source: https://github.com/lukas2511/dehydrated
 #
 # This script is licensed under The MIT License (see LICENSE for more information).
 
@@ -25,7 +25,7 @@ BASEDIR="${SCRIPTDIR}"
 # Create (identifiable) temporary files
 _mktemp() {
   # shellcheck disable=SC2068
-  mktemp ${@:-} "${TMPDIR:-/tmp}/letsencrypt.sh-XXXXXX"
+  mktemp ${@:-} "${TMPDIR:-/tmp}/dehydrated.sh-XXXXXX"
 }
 
 # Check for script dependencies
@@ -94,7 +94,7 @@ verify_config() {
 load_config() {
   # Check for config in various locations
   if [[ -z "${CONFIG:-}" ]]; then
-    for check_config in "/etc/letsencrypt.sh" "/usr/local/etc/letsencrypt.sh" "${PWD}" "${SCRIPTDIR}"; do
+    for check_config in "/etc/dehydrated.sh" "/usr/local/etc/dehydrated.sh" "${PWD}" "${SCRIPTDIR}"; do
       if [[ -f "${check_config}/config" ]]; then
         BASEDIR="${check_config}"
         CONFIG="${check_config}/config"
@@ -181,7 +181,7 @@ load_config() {
 
   [[ -z "${CERTDIR}" ]] && CERTDIR="${BASEDIR}/certs"
   [[ -z "${DOMAINS_TXT}" ]] && DOMAINS_TXT="${BASEDIR}/domains.txt"
-  [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="/var/www/letsencrypt"
+  [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="/var/www/dehydrated"
   [[ -z "${LOCKFILE}" ]] && LOCKFILE="${BASEDIR}/lock"
   [[ -n "${PARAM_NO_LOCK:-}" ]] && LOCKFILE=""
 
@@ -246,7 +246,7 @@ init_system() {
 
   # If we generated a new private key in the step above we have to register it with the acme-server
   if [[ "${register_new_key}" = "yes" ]]; then
-    echo "+ Registering account key with letsencrypt..."
+    echo "+ Registering account key with ACME server..."
     [[ ! -z "${CA_NEW_REG}" ]] || _exiterr "Certificate authority doesn't allow registrations."
     # If an email for the contact has been provided then adding it to the registration request
     FAILED=false
@@ -924,7 +924,7 @@ command_help() {
 # Usage: --env (-e)
 # Description: Output configuration variables for use in other scripts
 command_env() {
-  echo "# letsencrypt.sh configuration"
+  echo "# dehydrated.sh configuration"
   load_config
   typeset -p CA LICENSE CERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }

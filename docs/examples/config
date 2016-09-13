@@ -1,10 +1,10 @@
 ########################################################
-# This is the main config file for letsencrypt.sh      #
+# This is the main config file for dehydrated.sh       #
 #                                                      #
 # This file is looked for in the following locations:  #
 # $SCRIPTDIR/config (next to this script)              #
-# /usr/local/etc/letsencrypt.sh/config                 #
-# /etc/letsencrypt.sh/config                           #
+# /usr/local/etc/dehydrated/config                     #
+# /etc/dehydrated/config                               #
 # ${PWD}/config (in current working-directory)         #
 #                                                      #
 # Default values of this config are in comments        #
@@ -42,8 +42,8 @@
 # Directory for account keys and registration information
 #ACCOUNTDIR="${BASEDIR}/accounts"
 
-# Output directory for challenge-tokens to be served by webserver or deployed in HOOK (default: /var/www/letsencrypt)
-#WELLKNOWN="/var/www/letsencrypt"
+# Output directory for challenge-tokens to be served by webserver or deployed in HOOK (default: /var/www/dehydrated)
+#WELLKNOWN="/var/www/dehydrated"
 
 # Default keysize for private keys (default: 4096)
 #KEYSIZE="4096"
