@@ -1,0 +1,13 @@
+Source: dehydrated
+Maintainer: Allard Hoeve <allard@byte.nl>
+Section: net
+Priority: extra
+Standards-Version: 3.9.2
+Build-Depends: debhelper (>= 9)
+
+Package: dehydrated
+Architecture: any
+Depends: ${misc:Depends}, openssl
+Description: letsencrypt client implmenented as a shell-script
+ This is a client for signing certificates with an ACME-server (currently only 
+ provided by letsencrypt) implemented as a relatively simple bash-script.

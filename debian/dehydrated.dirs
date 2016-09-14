@@ -1,0 +1,4 @@
+/etc/dehydrated/
+/var/lib/dehydrated/accounts/
+/var/lib/dehydrated/certs/
+/var/lib/dehydrated/well-known/
