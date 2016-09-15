@@ -357,12 +357,14 @@ http_request() {
     cat "${tempcont}" >&2
     echo >&2
     echo >&2
-    rm -f "${tempcont}"
 
     # An exclusive hook for the {1}-request error might be useful (e.g., for sending an e-mail to admins)
     if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]]; then
-      "${HOOK}" "request_failure" "${statuscode}" "${tempcont}" "${1}"
+      errtxt=`cat ${tempcont}`
+      "${HOOK}" "request_failure" "${statuscode}" "${errtxt}" "${1}"
     fi
+
+    rm -f "${tempcont}"
 
     # Wait for hook script to clean the challenge if used
     if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token:+set}" ]]; then
