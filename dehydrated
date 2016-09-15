@@ -533,7 +533,7 @@ sign_csr() {
     if [[ "${reqstatus}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
-      break
+      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "invalid_challenge" "${altname}" "${result}"
     fi
   done
 

@@ -74,4 +74,18 @@ function unchanged_cert {
     #   The path of the file containing the intermediate certificate(s).
 }
 
+function invalid_challenge {
+    local DOMAIN="${1}" RESPONSE="${2}"
+
+    # This hook is called if the challenge response has failed, so domain
+    # owners can be aware and act accordingly.
+    #
+    # Parameters:
+    # - DOMAIN
+    #   The primary domain name, i.e. the certificate common
+    #   name (CN).
+    # - RESPONSE
+    #   The response that the verification server returned
+}
+
 HANDLER=$1; shift; $HANDLER $@
