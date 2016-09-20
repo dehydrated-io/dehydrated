@@ -59,6 +59,7 @@ store_configvars() {
   __OPENSSL_CNF="${OPENSSL_CNF}"
   __RENEW_DAYS="${RENEW_DAYS}"
   __IP_VERSION="${IP_VERSION}"
+  __CREATE_DIRS="${CREATE_DIRS}"
 }
 
 reset_configvars() {
@@ -73,6 +74,7 @@ reset_configvars() {
   OPENSSL_CNF="${__OPENSSL_CNF}"
   RENEW_DAYS="${__RENEW_DAYS}"
   IP_VERSION="${__IP_VERSION}"
+  CREATE_DIRS="${__CREATE_DIRS}"
 }
 
 # verify configuration values
@@ -81,7 +83,7 @@ verify_config() {
   if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
     _exiterr "Challenge type dns-01 needs a hook script for deployment... can not continue."
   fi
-  if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" ]]; then
+  if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" ]] && [[ "${CREATE_DIRS}" != "yes" ]]; then
     _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
   fi
   [[ "${KEY_ALGO}" =~ ^(rsa|prime256v1|secp384r1)$ ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... can not continue."
@@ -124,6 +126,7 @@ load_config() {
   LOCKFILE=
   OCSP_MUST_STAPLE="no"
   IP_VERSION=
+  CREATE_DIRS=
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -191,6 +194,7 @@ load_config() {
   [[ -n "${PARAM_KEY_ALGO:-}" ]] && KEY_ALGO="${PARAM_KEY_ALGO}"
   [[ -n "${PARAM_OCSP_MUST_STAPLE:-}" ]] && OCSP_MUST_STAPLE="${PARAM_OCSP_MUST_STAPLE}"
   [[ -n "${PARAM_IP_VERSION:-}" ]] && IP_VERSION="${PARAM_IP_VERSION}"
+  [[ -n "${PARAM_CREATE_DIRS:-}" ]] && CREATE_DIRS="${PARAM_CREATE_DIRS}"
 
   verify_config
   store_configvars
@@ -476,6 +480,7 @@ sign_csr() {
 
     case "${CHALLENGETYPE}" in
       "http-01")
+        [[ "${CREATE_DIRS}" == "yes" ]] && mkdir -p "${WELLKNOWN}"
         # Store challenge response in well-known location and make world-readable (so that a webserver can access it)
         printf '%s' "${keyauth}" > "${WELLKNOWN}/${challenge_token}"
         chmod a+r "${WELLKNOWN}/${challenge_token}"
@@ -1023,6 +1028,12 @@ main() {
       # PARAM_Description: Force renew of certificate even if it is longer valid than value in RENEW_DAYS
       --force|-x)
         PARAM_FORCE="yes"
+        ;;
+
+      # PARAM_Usage: --create-dirs (-cd)
+      # PARAM_Description: Create necessary directories if they do not exist
+      --create-dirs|-cd)
+        PARAM_CREATE_DIRS="yes"
         ;;
 
       # PARAM_Usage: --no-lock (-n)
