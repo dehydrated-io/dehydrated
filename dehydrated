@@ -463,6 +463,8 @@ sign_csr() {
     if [[ $response == *"\"status\": \"valid\""* ]]; then
       already_valid[${idx}]=true
       continue
+    else
+      already_valid[${idx}]=false
     fi
 
     challenges="$(printf '%s\n' "${response}" | sed -n 's/.*\("challenges":[^\[]*\[.*}\s*]\).*/\1/p')"
