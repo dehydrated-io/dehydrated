@@ -289,7 +289,7 @@ clean_json() {
 # Encode data as url-safe formatted base64
 urlbase64() {
   # urlbase64: base64 encoded string with '+' replaced with '-' and '/' replaced with '_'
-  _sed 's/^\x0+//g' | openssl base64 -e | tr -d '\n\r' | _sed -e 's:=*$::g' -e 'y:+/:-_:'
+  openssl base64 -e | tr -d '\n\r' | _sed -e 's:=*$::g' -e 'y:+/:-_:'
 }
 
 # Convert hex string to binary data
