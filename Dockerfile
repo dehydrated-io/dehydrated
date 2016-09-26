@@ -5,5 +5,6 @@ RUN apk add --update --progress \
         curl \
         bash
 RUN cd / \
+    && mkdir -p /var/www/dehydrated \
     && git clone https://github.com/lukas2511/dehydrated.git
 ENTRYPOINT [ "/dehydrated/dehydrated" ]
