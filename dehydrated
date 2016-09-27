@@ -183,7 +183,7 @@ load_config() {
   [[ -z "${DOMAINS_TXT}" ]] && DOMAINS_TXT="${BASEDIR}/domains.txt"
   [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="/var/www/dehydrated"
   [[ -z "${LOCKFILE}" ]] && LOCKFILE="${BASEDIR}/lock"
-  [[ -n "${PARAM_LOCKFILE_SUFFIX}" ]] && LOCKFILE="${LOCKFILE}-${PARAM_LOCKFILE_SUFFIX}"
+  [[ -n "${PARAM_LOCKFILE_SUFFIX:-}" ]] && LOCKFILE="${LOCKFILE}-${PARAM_LOCKFILE_SUFFIX}"
   [[ -n "${PARAM_NO_LOCK:-}" ]] && LOCKFILE=""
 
   [[ -n "${PARAM_HOOK:-}" ]] && HOOK="${PARAM_HOOK}"
@@ -1039,7 +1039,7 @@ main() {
         PARAM_NO_LOCK="yes"
         ;;
 
-      # PARAM_Usage: --lock-suffix
+      # PARAM_Usage: --lock-suffix example.com
       # PARAM_Description: Suffix lockfile name with a string (useful for with -d)
       --lock-suffix)
       	shift 1
