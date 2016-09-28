@@ -1,0 +1,3 @@
+01 11 * * * dehydrated /etc/dehydrated/cron/dehydrated.cron > /dev/null
+#11 11 * * * root            /etc/dehydrated/hooks/deploy
+

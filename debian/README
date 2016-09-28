@@ -1,0 +1,6 @@
+To make a debian package:
+ apt-get install dpkg-dev file gcc g++ libc6-dev make patch perl dh-make \
+         fakeroot devscripts lintian
+
+ ./makedeb
+

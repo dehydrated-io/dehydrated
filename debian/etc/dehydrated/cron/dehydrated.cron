@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cd /etc/dehydrated
+/usr/sbin/dehydrated --cron
+

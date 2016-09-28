@@ -1,0 +1,10 @@
+Package: dehydrated
+Version: 0.3.1-2
+Section: net
+Priority: optional
+Architecture: all
+Depends: bash, curl, openssl, sed, grep, mktemp, diffutils
+Maintainer: Gabriele Vivinetto <gabriele.mailing@rvmgroup.it>
+Description: letsencrypt/acme client implemented as a shell-script
+ This is a client for signing certificates with an ACME-server (currently
+ only provided by letsencrypt) implemented as a relatively simple bash-script.
