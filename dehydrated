@@ -626,9 +626,13 @@ sign_domain() {
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
   cat "${crt_path}" > "${CERTDIR}/${domain}/fullchain-${timestamp}.pem"
-  http_request get "$(openssl x509 -in "${CERTDIR}/${domain}/cert-${timestamp}.pem" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${CERTDIR}/${domain}/chain-${timestamp}.pem"
-  if ! grep -q "BEGIN CERTIFICATE" "${CERTDIR}/${domain}/chain-${timestamp}.pem"; then
-    openssl x509 -in "${CERTDIR}/${domain}/chain-${timestamp}.pem" -inform DER -out "${CERTDIR}/${domain}/chain-${timestamp}.pem" -outform PEM
+  tmpchain="$(_mktemp)"
+  http_request get "$(openssl x509 -in "${CERTDIR}/${domain}/cert-${timestamp}.pem" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${tmpchain}"
+  if grep -q "BEGIN CERTIFICATE" "${tmpchain}"; then
+    mv "${tmpchain}" "${CERTDIR}/${domain}/chain-${timestamp}.pem"
+  else
+    openssl x509 -in "${tmpchain}" -inform DER -out "${CERTDIR}/${domain}/chain-${timestamp}.pem" -outform PEM
+    rm "${tmpchain}"
   fi
   cat "${CERTDIR}/${domain}/chain-${timestamp}.pem" >> "${CERTDIR}/${domain}/fullchain-${timestamp}.pem"
 
@@ -802,10 +806,13 @@ command_sign_csr() {
   if [ -n "${PARAM_FULL_CHAIN:-}" ]; then
     # get and convert ca cert
     chainfile="$(_mktemp)"
-    http_request get "$(openssl x509 -in "${certfile}" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${chainfile}"
-
-    if ! grep -q "BEGIN CERTIFICATE" "${chainfile}"; then
-      openssl x509 -inform DER -in "${chainfile}" -outform PEM -out "${chainfile}"
+    tmpchain="$(_mktemp)"
+    http_request get "$(openssl x509 -in "${certfile}" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${tmpchain}"
+    if grep -q "BEGIN CERTIFICATE" "${tmpchain}"; then
+      mv "${tmpchain}" "${chainfile}"
+    else
+      openssl x509 -in "${tmpchain}" -inform DER -out "${chainfile}" -outform PEM
+      rm "${tmpchain}"
     fi
 
     echo "# CHAIN #" >&3

@@ -2,7 +2,8 @@
 
 ![](docs/logo.jpg)
 
-*Note: This project was renamed from letsencrypt.sh because the original name was violating Let's Encrypts trademark policy. I know that this results in quite a lot of installations failing but I didn't have a choice...*
+*Note: This project was renamed from letsencrypt.sh because the original name was violating Let's Encrypts trademark policy. I know that this results in quite a lot of installations failing but I didn't have a choice...  
+For now there is a wrapper script for compatibility with old config locations and symlinks, but it will be removed in a few weeks.*
 
 This is a client for signing certificates with an ACME-server (currently only provided by letsencrypt) implemented as a relatively simple bash-script.
 
