@@ -631,6 +631,11 @@ sign_domain() {
   fi
   cat "${CERTDIR}/${domain}/chain-${timestamp}.pem" >> "${CERTDIR}/${domain}/fullchain-${timestamp}.pem"
 
+  # Create certificate.pfx
+  echo " + Creating certificate.pfx..."
+  openssl pkcs12 -export -out "${CERTDIR}/${domain}/certificate-${timestamp}.pfx" -inkey "${CERTDIR}/${domain}/${privkey}" -in "${crt_path}" -certfile ${CERTDIR}/${domain}/chain-${timestamp}.pem -passout pass:${PFX_PASSWORD}
+
+
   # Update symlinks
   [[ "${privkey}" = "privkey.pem" ]] || ln -sf "privkey-${timestamp}.pem" "${CERTDIR}/${domain}/privkey.pem"
 
@@ -638,6 +643,7 @@ sign_domain() {
   ln -sf "fullchain-${timestamp}.pem" "${CERTDIR}/${domain}/fullchain.pem"
   ln -sf "cert-${timestamp}.csr" "${CERTDIR}/${domain}/cert.csr"
   ln -sf "cert-${timestamp}.pem" "${CERTDIR}/${domain}/cert.pem"
+  ln -sf "certificate-${timestamp}.pfx" "${CERTDIR}/${domain}/certificate.pfx"
 
   # Wait for hook script to clean the challenge and to deploy cert if used
   export KEY_ALGO
