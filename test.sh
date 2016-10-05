@@ -127,6 +127,7 @@ _CHECK_LOG "Requesting challenge for ${TMP_URL}"
 _CHECK_LOG "Requesting challenge for ${TMP2_URL}"
 _CHECK_LOG "Challenge is valid!"
 _CHECK_LOG "Creating fullchain.pem"
+_CHECK_LOG "Creating certificate.pfx"
 _CHECK_LOG "Done!"
 _CHECK_ERRORLOG
 mv tmp_config config
@@ -142,6 +143,7 @@ _CHECK_LOG "Requesting challenge for ${TMP2_URL}"
 _CHECK_LOG "Requesting challenge for ${TMP3_URL}"
 _CHECK_LOG "Challenge is valid!"
 _CHECK_LOG "Creating fullchain.pem"
+_CHECK_LOG "Creating certificate.pfx"
 _CHECK_LOG "Done!"
 _CHECK_ERRORLOG
 
@@ -170,6 +172,7 @@ _CHECK_LOG "Requesting challenge for ${TMP2_URL}"
 _CHECK_LOG "Requesting challenge for ${TMP3_URL}"
 _CHECK_LOG "Challenge is valid!"
 _CHECK_LOG "Creating fullchain.pem"
+_CHECK_LOG "Creating certificate.pfx"
 _CHECK_LOG "Done!"
 _CHECK_ERRORLOG
 
