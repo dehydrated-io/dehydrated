@@ -1102,9 +1102,9 @@ main() {
         PARAM_KEY_ALGO="${1}"
         ;;
 
-      # PARAM_Usage: --algo (-a) rsa|prime256v1|secp384r1
-      # PARAM_Description: Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
-      --pfx_password|-po)
+      # PARAM_Usage: --pfx-password (-po) PFX Certficate Password
+      # PARAM_Description: Password for PFX Certificate
+      --pfx-password|-po)
         shift 1
         check_parameters "${1:-}"
         PARAM_PFX_PASSWORD="${1}"
