@@ -84,5 +84,8 @@
 # Option to add CSR-flag indicating OCSP stapling to be mandatory (default: no)
 #OCSP_MUST_STAPLE="no"
 
-# Set PFX Export Password
-#PFX_PASSWORD=""
+# Set PFX Output (default: no)
+#PFX_OUTPUT="no"
+
+# Set PFX Export Password. (default: <unset>)
+#PFX_PASSWORD=

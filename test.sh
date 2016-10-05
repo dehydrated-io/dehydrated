@@ -100,6 +100,7 @@ echo 'CA="https://testca.kurz.pw/directory"' > config
 echo 'LICENSE="https://testca.kurz.pw/terms/v1"' >> config
 echo 'WELLKNOWN=".acme-challenges/.well-known/acme-challenge"' >> config
 echo 'RENEW_DAYS="14"' >> config
+echo 'PFX_OUTPUT="yes"' >> config
 touch domains.txt
 
 # Check if help command is working

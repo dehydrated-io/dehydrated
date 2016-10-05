@@ -16,3 +16,5 @@ Currently supported options:
 - WELLKNOWN
 - OPENSSL_CNF
 - RENEW_DAYS
+- PFX_OUTPUT
+- PFX_PASSWORD

@@ -51,6 +51,7 @@ store_configvars() {
   __KEY_ALGO="${KEY_ALGO}"
   __OCSP_MUST_STAPLE="${OCSP_MUST_STAPLE}"
   __PFX_PASSWORD="${PFX_PASSWORD}"
+  __PFX_OUTPUT="${PFX_OUTPUT}"
   __PRIVATE_KEY_RENEW="${PRIVATE_KEY_RENEW}"
   __KEYSIZE="${KEYSIZE}"
   __CHALLENGETYPE="${CHALLENGETYPE}"
@@ -66,6 +67,7 @@ reset_configvars() {
   KEY_ALGO="${__KEY_ALGO}"
   OCSP_MUST_STAPLE="${__OCSP_MUST_STAPLE}"
   PFX_PASSWORD="${__PFX_PASSWORD}"
+  PFX_OUTPUT="${__PFX_OUTPUT}"
   PRIVATE_KEY_RENEW="${__PRIVATE_KEY_RENEW}"
   KEYSIZE="${__KEYSIZE}"
   CHALLENGETYPE="${__CHALLENGETYPE}"
@@ -119,6 +121,8 @@ load_config() {
   RENEW_DAYS="30"
   KEYSIZE="4096"
   WELLKNOWN=
+  PFX_PASSWORD=
+  PFX_OUTPUT="no"
   PRIVATE_KEY_RENEW="yes"
   KEY_ALGO=rsa
   OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
@@ -126,7 +130,6 @@ load_config() {
   LOCKFILE=
   OCSP_MUST_STAPLE="no"
   IP_VERSION=
-  PFX_PASSWORD=
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -195,6 +198,7 @@ load_config() {
   [[ -n "${PARAM_OCSP_MUST_STAPLE:-}" ]] && OCSP_MUST_STAPLE="${PARAM_OCSP_MUST_STAPLE}"
   [[ -n "${PARAM_IP_VERSION:-}" ]] && IP_VERSION="${PARAM_IP_VERSION}"
   [[ -n "${PARAM_PFX_PASSWORD:-}" ]] && PFX_PASSWORD="${PARAM_PFX_PASSWORD}"
+  [[ -n "${PARAM_PFX_OUTPUT:-}" ]] && PFX_OUTPUT="${PARAM_PFX_OUTPUT}"
 
   verify_config
   store_configvars
@@ -636,9 +640,10 @@ sign_domain() {
   cat "${CERTDIR}/${domain}/chain-${timestamp}.pem" >> "${CERTDIR}/${domain}/fullchain-${timestamp}.pem"
 
   # Create certificate.pfx
-  echo " + Creating certificate.pfx..."
-  openssl pkcs12 -export -out "${CERTDIR}/${domain}/certificate-${timestamp}.pfx" -inkey "${CERTDIR}/${domain}/${privkey}" -in "${crt_path}" -certfile ${CERTDIR}/${domain}/chain-${timestamp}.pem -passout pass:${PFX_PASSWORD}
-
+  if [ "${PFX_OUTPUT}" = "yes" ]; then
+    echo " + Creating certificate.pfx..."
+    openssl pkcs12 -export -out "${CERTDIR}/${domain}/certificate-${timestamp}.pfx" -inkey "${CERTDIR}/${domain}/${privkey}" -in "${crt_path}" -certfile ${CERTDIR}/${domain}/chain-${timestamp}.pem -passout pass:${PFX_PASSWORD}
+  fi
 
   # Update symlinks
   [[ "${privkey}" = "privkey.pem" ]] || ln -sf "privkey-${timestamp}.pem" "${CERTDIR}/${domain}/privkey.pem"
@@ -647,7 +652,9 @@ sign_domain() {
   ln -sf "fullchain-${timestamp}.pem" "${CERTDIR}/${domain}/fullchain.pem"
   ln -sf "cert-${timestamp}.csr" "${CERTDIR}/${domain}/cert.csr"
   ln -sf "cert-${timestamp}.pem" "${CERTDIR}/${domain}/cert.pem"
-  ln -sf "certificate-${timestamp}.pfx" "${CERTDIR}/${domain}/certificate.pfx"
+  if [ "${PFX_OUTPUT}" = "yes" ]; then
+    ln -sf "certificate-${timestamp}.pfx" "${CERTDIR}/${domain}/certificate.pfx"
+  fi
 
   # Wait for hook script to clean the challenge and to deploy cert if used
   export KEY_ALGO
@@ -719,7 +726,7 @@ command_sign_domains() {
         config_var="$(echo "${cfgline:1}" | cut -d'=' -f1)"
         config_value="$(echo "${cfgline:1}" | cut -d'=' -f2-)"
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|PFX_PASSWORD)
+          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|PFX_OUTPUT|PFX_PASSWORD)
             echo "   + ${config_var} = ${config_value}"
             declare -- "${config_var}=${config_value}"
             ;;
@@ -943,7 +950,7 @@ command_help() {
 command_env() {
   echo "# dehydrated configuration"
   load_config
-  typeset -p CA LICENSE CERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE PFX_PASSWORD
+  typeset -p CA LICENSE CERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE PFX_OUTPUT PFX_PASSWORD
 }
 
 # Main method (parses script arguments and calls command_* methods)
@@ -1102,9 +1109,15 @@ main() {
         PARAM_KEY_ALGO="${1}"
         ;;
 
-      # PARAM_Usage: --pfx-password (-po)
-      # PARAM_Description: Passsword Output for PFX Certificate
-      --pfx-password|-po)
+      # PARAM_Usage: --pfx (-po)
+      # PARAM_Description: Create PFX Certificate
+      --pfx|-po)
+        PARAM_PFX_OUTPUT="yes"
+        ;;
+
+      # PARAM_Usage: --pfx-password (-pw) password
+      # PARAM_Description: Passsword for PFX Certificate
+      --pfx-password|-pw)
         shift 1
         check_parameters "${1:-}"
         PARAM_PFX_PASSWORD="${1}"
