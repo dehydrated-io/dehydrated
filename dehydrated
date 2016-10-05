@@ -1105,7 +1105,7 @@ main() {
       # PARAM_Usage: --pfx-password (-po)
       # PARAM_Description: Passsword Output for PFX Certificate
       --pfx-password|-po)
-        shift 2
+        shift 1
         check_parameters "${1:-}"
         PARAM_PFX_PASSWORD="${1}"
         ;;
