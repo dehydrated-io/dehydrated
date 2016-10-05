@@ -1102,13 +1102,14 @@ main() {
         PARAM_KEY_ALGO="${1}"
         ;;
 
-      # PARAM_Usage: --pfx-password (-po) PFX Certficate Password
-      # PARAM_Description: Password for PFX Certificate
+      # PARAM_Usage: --pfx-password (-po)
+      # PARAM_Description: Passsword Output for PFX Certificate
       --pfx-password|-po)
-        shift 1
+        shift 2
         check_parameters "${1:-}"
         PARAM_PFX_PASSWORD="${1}"
         ;;
+
 
       *)
         echo "Unknown parameter detected: ${1}" >&2
