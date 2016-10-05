@@ -6,6 +6,7 @@ RUN apk add --update \
     openssl \
     && rm -rf /var/cache/apk/*
 
+WORKDIR dehydrated
 COPY . .
 
 ENTRYPOINT ["bash", "dehydrated"]
