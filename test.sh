@@ -100,6 +100,7 @@ echo 'CA="https://testca.kurz.pw/directory"' > config
 echo 'LICENSE="https://testca.kurz.pw/terms/v1"' >> config
 echo 'WELLKNOWN=".acme-challenges/.well-known/acme-challenge"' >> config
 echo 'RENEW_DAYS="14"' >> config
+echo 'PFX_OUTPUT="yes"' >> config
 touch domains.txt
 
 # Check if help command is working
@@ -127,6 +128,7 @@ _CHECK_LOG "Requesting challenge for ${TMP_URL}"
 _CHECK_LOG "Requesting challenge for ${TMP2_URL}"
 _CHECK_LOG "Challenge is valid!"
 _CHECK_LOG "Creating fullchain.pem"
+_CHECK_LOG "Creating certificate.pfx"
 _CHECK_LOG "Done!"
 _CHECK_ERRORLOG
 mv tmp_config config
@@ -142,6 +144,7 @@ _CHECK_LOG "Requesting challenge for ${TMP2_URL}"
 _CHECK_LOG "Requesting challenge for ${TMP3_URL}"
 _CHECK_LOG "Challenge is valid!"
 _CHECK_LOG "Creating fullchain.pem"
+_CHECK_LOG "Creating certificate.pfx"
 _CHECK_LOG "Done!"
 _CHECK_ERRORLOG
 
@@ -170,6 +173,7 @@ _CHECK_LOG "Requesting challenge for ${TMP2_URL}"
 _CHECK_LOG "Requesting challenge for ${TMP3_URL}"
 _CHECK_LOG "Challenge is valid!"
 _CHECK_LOG "Creating fullchain.pem"
+_CHECK_LOG "Creating certificate.pfx"
 _CHECK_LOG "Done!"
 _CHECK_ERRORLOG
 
@@ -199,6 +203,7 @@ openssl x509 -in "certs/${TMP_URL}/fullchain.pem" -noout -text > /dev/null 2>> e
 _SUBTEST "Verifying certificate against CA certificate..."
 (openssl verify -verbose -CAfile "certs/${TMP_URL}/fullchain.pem" -purpose sslserver "certs/${TMP_URL}/fullchain.pem" 2>&1 || true) | (grep -v ': OK$' || true) >> errorlog 2>> errorlog && _PASS || _FAIL
 _CHECK_ERRORLOG
+openssl pkcs12 -info -in "certs/${TMP_URL}/certificate.pfx" -noout -passin pass: > /dev/null 2>> errorlog && _PASS || _FAIL
 
 # Revoke certificate using certificate key
 _TEST "Revoking certificate..."
