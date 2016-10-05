@@ -50,6 +50,7 @@ check_dependencies() {
 store_configvars() {
   __KEY_ALGO="${KEY_ALGO}"
   __OCSP_MUST_STAPLE="${OCSP_MUST_STAPLE}"
+  __PFX_PASSWORD="${PFX_PASSWORD}"
   __PRIVATE_KEY_RENEW="${PRIVATE_KEY_RENEW}"
   __KEYSIZE="${KEYSIZE}"
   __CHALLENGETYPE="${CHALLENGETYPE}"
@@ -64,6 +65,7 @@ store_configvars() {
 reset_configvars() {
   KEY_ALGO="${__KEY_ALGO}"
   OCSP_MUST_STAPLE="${__OCSP_MUST_STAPLE}"
+  PFX_PASSWORD="${__PFX_PASSWORD}"
   PRIVATE_KEY_RENEW="${__PRIVATE_KEY_RENEW}"
   KEYSIZE="${__KEYSIZE}"
   CHALLENGETYPE="${__CHALLENGETYPE}"
@@ -124,6 +126,7 @@ load_config() {
   LOCKFILE=
   OCSP_MUST_STAPLE="no"
   IP_VERSION=
+  PFX_PASSWORD=
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -191,6 +194,7 @@ load_config() {
   [[ -n "${PARAM_KEY_ALGO:-}" ]] && KEY_ALGO="${PARAM_KEY_ALGO}"
   [[ -n "${PARAM_OCSP_MUST_STAPLE:-}" ]] && OCSP_MUST_STAPLE="${PARAM_OCSP_MUST_STAPLE}"
   [[ -n "${PARAM_IP_VERSION:-}" ]] && IP_VERSION="${PARAM_IP_VERSION}"
+  [[ -n "${PARAM_PFX_PASSWORD:-}" ]] && PFX_PASSWORD="${PARAM_PFX_PASSWORD}"
 
   verify_config
   store_configvars
@@ -715,7 +719,7 @@ command_sign_domains() {
         config_var="$(echo "${cfgline:1}" | cut -d'=' -f1)"
         config_value="$(echo "${cfgline:1}" | cut -d'=' -f2-)"
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
+          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|PFX_PASSWORD)
             echo "   + ${config_var} = ${config_value}"
             declare -- "${config_var}=${config_value}"
             ;;
@@ -939,7 +943,7 @@ command_help() {
 command_env() {
   echo "# dehydrated configuration"
   load_config
-  typeset -p CA LICENSE CERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
+  typeset -p CA LICENSE CERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE PFX_PASSWORD
 }
 
 # Main method (parses script arguments and calls command_* methods)
@@ -1096,6 +1100,14 @@ main() {
         shift 1
         check_parameters "${1:-}"
         PARAM_KEY_ALGO="${1}"
+        ;;
+
+      # PARAM_Usage: --algo (-a) rsa|prime256v1|secp384r1
+      # PARAM_Description: Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
+      --pfx_password|-po)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_PFX_PASSWORD="${1}"
         ;;
 
       *)
