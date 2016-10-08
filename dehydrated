@@ -305,6 +305,13 @@ get_json_string_value() {
   sed -n "${filter}"
 }
 
+rm_json_arrays() {
+  local filter
+  filter='s/\[[^][]*\]/null/g'
+  # remove three levels of nested arrays
+  sed -e "${filter}" -e "${filter}" -e "${filter}"
+}
+
 # OpenSSL writes to stderr/stdout even when there are no errors. So just
 # display the output if the exit code was != 0 to simplify debugging.
 _openssl() {
@@ -450,9 +457,9 @@ sign_csr() {
 
   local idx=0
   if [[ -n "${ZSH_VERSION:-}" ]]; then
-    local -A challenge_uris challenge_tokens keyauths deploy_args
+    local -A challenge_altnames challenge_uris challenge_tokens keyauths deploy_args
   else
-    local -a challenge_uris challenge_tokens keyauths deploy_args
+    local -a challenge_altnames challenge_uris challenge_tokens keyauths deploy_args
   fi
 
   # Request challenges
@@ -460,6 +467,12 @@ sign_csr() {
     # Ask the acme-server for new challenge token and extract them from the resulting json block
     echo " + Requesting challenge for ${altname}..."
     response="$(signed_request "${CA_NEW_AUTHZ}" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}' | clean_json)"
+
+    challenge_status="$(printf '%s' "${response}" | rm_json_arrays | get_json_string_value status)"
+    if [ "${challenge_status}" = "valid" ]; then
+       echo " + Already validated"
+       continue
+    fi
 
     challenges="$(printf '%s\n' "${response}" | sed -n 's/.*\("challenges":[^\[]*\[[^]]*]\).*/\1/p')"
     repl=$'\n''{' # fix syntax highlighting in Vim
@@ -487,6 +500,7 @@ sign_csr() {
         ;;
     esac
 
+    challenge_altnames[${idx}]="${altname}"
     challenge_uris[${idx}]="${challenge_uri}"
     keyauths[${idx}]="${keyauth}"
     challenge_tokens[${idx}]="${challenge_token}"
@@ -500,8 +514,9 @@ sign_csr() {
   [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[@]}
 
   # Respond to challenges
+  reqstatus="valid"
   idx=0
-  for altname in ${altnames}; do
+  for altname in "${challenge_altnames[@]:0}"; do
     challenge_token="${challenge_tokens[${idx}]}"
     keyauth="${keyauths[${idx}]}"
 
