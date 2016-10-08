@@ -601,15 +601,14 @@ sign_domain() {
   if [[  -r "${CERTDIR}/${domain}/privkey.roll.pem" && ! -r "${CERTDIR}/${domain}/privkey-${timestamp}.pem" ]]; then
     echo " + Moving Rolloverkey into position.... "
     privkey="privkey-${timestamp}.pem"
-    cp -L "${CERTDIR}/${domain}/privkey.roll.pem" "${CERTDIR}/${domain}/privkey-${timestamp}.pem"
-    rm -f "${CERTDIR}/${domain}/privkey.roll.pem"
+    mv "${CERTDIR}/${domain}/privkey.roll.pem" "${CERTDIR}/${domain}/privkey-${timestamp}.pem"
   fi
   # generate a new private rollover key if we need or want one
   if [[ ! -r "${CERTDIR}/${domain}/privkey.roll.pem" ]] && [[ "${PRIVATE_KEY_ROLLOVER}" = "yes" ]]; then
     echo " + Generating private rollover key..."
     case "${KEY_ALGO}" in
-      rsa) _openssl genrsa -out "${CERTDIR}/${domain}/privkey-${timestamp}.roll.pem" "${KEYSIZE}";;
-      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${CERTDIR}/${domain}/privkey-${timestamp}.roll.pem";;
+      rsa) _openssl genrsa -out "${CERTDIR}/${domain}/privkey.roll.pem" "${KEYSIZE}";;
+      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${CERTDIR}/${domain}/privkey.roll.pem";;
     esac
   fi
 
@@ -649,7 +648,6 @@ sign_domain() {
 
   # Update symlinks
   [[ "${privkey}" = "privkey.pem" ]] || ln -sf "privkey-${timestamp}.pem" "${CERTDIR}/${domain}/privkey.pem"
-  [[ "${PRIVATE_KEY_ROLLOVER}" = "yes" ]] && ln -sf "privkey-${timestamp}.roll.pem" "${CERTDIR}/${domain}/privkey.roll.pem"
 
   ln -sf "chain-${timestamp}.pem" "${CERTDIR}/${domain}/chain.pem"
   ln -sf "fullchain-${timestamp}.pem" "${CERTDIR}/${domain}/fullchain.pem"
