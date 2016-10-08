@@ -589,7 +589,7 @@ sign_domain() {
 
   privkey="privkey.pem"
   # generate a new private key if we need or want one
-  if [[ ! -r "${CERTDIR}/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]] ; then
+  if [[ ! -r "${CERTDIR}/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
     echo " + Generating private key..."
     privkey="privkey-${timestamp}.pem"
     case "${KEY_ALGO}" in
@@ -611,6 +611,11 @@ sign_domain() {
       rsa) _openssl genrsa -out "${CERTDIR}/${domain}/privkey.roll.pem" "${KEYSIZE}";;
       prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${CERTDIR}/${domain}/privkey.roll.pem";;
     esac
+  fi
+  # delete rolloverkeys if disabled
+  if [[ -r "${CERTDIR}/${domain}/privkey.roll.pem" && ! "${PRIVATE_KEY_ROLLOVER}" = "yes" ]]; then
+    echo " + Removing Rolloverkey (feature disabled)..."
+    rm -f "${CERTDIR}/${domain}/privkey.roll.pem"
   fi
 
   # Generate signing request config and the actual signing request
