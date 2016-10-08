@@ -510,8 +510,10 @@ sign_csr() {
   done
 
   # Wait for hook script to deploy the challenges if used
-  # shellcheck disable=SC2068
-  [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[@]}
+  if [ ${#deploy_args[@]} -ne 0 ]; then
+    # shellcheck disable=SC2068
+    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[@]}
+  fi
 
   # Respond to challenges
   reqstatus="valid"
