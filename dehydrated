@@ -589,7 +589,7 @@ sign_domain() {
 
   privkey="privkey.pem"
   # generate a new private key if we need or want one
-  if [[ ! -r "${CERTDIR}/${domain}/privkey.pem" -a ! -r "${CERTDIR}/${domain}/privkey.roll.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" -a "${CERTDIR}/${domain}/privkey.roll.pem" ]] ; then
+  if [[ ! -r "${CERTDIR}/${domain}/privkey.pem" && ! -r "${CERTDIR}/${domain}/privkey.roll.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" && ! -r "${CERTDIR}/${domain}/privkey.roll.pem" ]] ; then
     echo " + Generating private key..."
     privkey="privkey-${timestamp}.pem"
     case "${KEY_ALGO}" in
@@ -598,7 +598,7 @@ sign_domain() {
     esac
   fi
   # move rolloverkey into position (if any)
-  if [[  -r "${CERTDIR}/${domain}/privkey.roll.pem" -a ! -r "${CERTDIR}/${domain}/privkey-${timestamp}.pem" ]]; then
+  if [[  -r "${CERTDIR}/${domain}/privkey.roll.pem" && ! -r "${CERTDIR}/${domain}/privkey-${timestamp}.pem" ]]; then
     echo " + Moving Rolloverkey into position.... "
     privkey="privkey-${timestamp}.pem"
     cp -L "${CERTDIR}/${domain}/privkey.roll.pem" "${CERTDIR}/${domain}/privkey-${timestamp}.pem"
