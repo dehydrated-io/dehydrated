@@ -118,6 +118,7 @@ load_config() {
   KEYSIZE="4096"
   WELLKNOWN=
   PRIVATE_KEY_RENEW="yes"
+  PRIVATE_KEY_ROLLOVER="no"
   KEY_ALGO=rsa
   OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
   CONTACT_EMAIL=
@@ -588,12 +589,27 @@ sign_domain() {
 
   privkey="privkey.pem"
   # generate a new private key if we need or want one
-  if [[ ! -r "${CERTDIR}/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
+  if [[ ! -r "${CERTDIR}/${domain}/privkey.pem" -a ! -r "${CERTDIR}/${domain}/privkey.roll.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" -a "${CERTDIR}/${domain}/privkey.roll.pem" ]] ; then
     echo " + Generating private key..."
     privkey="privkey-${timestamp}.pem"
     case "${KEY_ALGO}" in
       rsa) _openssl genrsa -out "${CERTDIR}/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}";;
       prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${CERTDIR}/${domain}/privkey-${timestamp}.pem";;
+    esac
+  fi
+  # move rolloverkey into position (if any)
+  if [[  -r "${CERTDIR}/${domain}/privkey.roll.pem" -a ! -r "${CERTDIR}/${domain}/privkey-${timestamp}.pem" ]]; then
+    echo " + Moving Rolloverkey into position.... "
+    privkey="privkey-${timestamp}.pem"
+    cp -L "${CERTDIR}/${domain}/privkey.roll.pem" "${CERTDIR}/${domain}/privkey-${timestamp}.pem"
+    rm -f "${CERTDIR}/${domain}/privkey.roll.pem"
+  fi
+  # generate a new private rollover key if we need or want one
+  if [[ ! -r "${CERTDIR}/${domain}/privkey.roll.pem" ]] && [[ "${PRIVATE_KEY_ROLLOVER}" = "yes" ]]; then
+    echo " + Generating private rollover key..."
+    case "${KEY_ALGO}" in
+      rsa) _openssl genrsa -out "${CERTDIR}/${domain}/privkey-${timestamp}.roll.pem" "${KEYSIZE}";;
+      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${CERTDIR}/${domain}/privkey-${timestamp}.roll.pem";;
     esac
   fi
 
@@ -633,6 +649,7 @@ sign_domain() {
 
   # Update symlinks
   [[ "${privkey}" = "privkey.pem" ]] || ln -sf "privkey-${timestamp}.pem" "${CERTDIR}/${domain}/privkey.pem"
+  [[ "${PRIVATE_KEY_ROLLOVER}" = "yes" ]] && ln -sf "privkey-${timestamp}.roll.pem" "${CERTDIR}/${domain}/privkey.roll.pem"
 
   ln -sf "chain-${timestamp}.pem" "${CERTDIR}/${domain}/chain.pem"
   ln -sf "fullchain-${timestamp}.pem" "${CERTDIR}/${domain}/fullchain.pem"
@@ -709,7 +726,7 @@ command_sign_domains() {
         config_var="$(echo "${cfgline:1}" | cut -d'=' -f1)"
         config_value="$(echo "${cfgline:1}" | cut -d'=' -f2-)"
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
+          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
             echo "   + ${config_var} = ${config_value}"
             declare -- "${config_var}=${config_value}"
             ;;
