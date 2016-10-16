@@ -12,8 +12,11 @@ cache:
   directories:
     - ngrok
 
+env:
+  global:
+    - CI="true"
+
 script:
-  - export CI="true"
   - ./test.sh
   - shellcheck dehydrated letsencrypt.sh
 
