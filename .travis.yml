@@ -1,5 +1,12 @@
 sudo: false
-language: shell
+language: bash
+
+addons:
+  apt:
+    sources:
+    - debian-sid
+    packages:
+    - shellcheck
 
 cache:
   directories:
@@ -8,3 +15,7 @@ cache:
 script:
   - export CI="true"
   - ./test.sh
+  - shellcheck dehydrated letsencrypt.sh
+
+matrix:
+  fast_finish: true
