@@ -60,9 +60,8 @@ Alias /.well-known/acme-challenge /var/www/dehydrated
 With Lighttpd just add this to your config and it should work in any VHost:
 
 ```lighttpd
-modules += "alias"
-
+server.modules += ("alias")
 alias.url += (
- "/.well-known/acme-challenge/" => "/var/www/dehydrated/"
+ "/.well-known/acme-challenge/" => "/var/www/dehydrated/",
 )
 ```
