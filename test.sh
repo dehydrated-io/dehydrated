@@ -69,7 +69,7 @@ if [[ ! -e "ngrok/ngrok" ]]; then
   (
     mkdir -p ngrok
     cd ngrok
-    wget https://dl.ngrok.com/ngrok_2.0.19_linux_amd64.zip -O ngrok.zip
+    wget https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip -O ngrok.zip
     unzip ngrok.zip ngrok
     chmod +x ngrok
   )
