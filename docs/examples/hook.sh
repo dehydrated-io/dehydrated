@@ -1,6 +1,6 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
-function deploy_challenge {
+deploy_challenge() {
     local DOMAIN="${1}" TOKEN_FILENAME="${2}" TOKEN_VALUE="${3}"
 
     # This hook is called once for every domain that needs to be
@@ -21,7 +21,7 @@ function deploy_challenge {
     #   be found in the $TOKEN_FILENAME file.
 }
 
-function clean_challenge {
+clean_challenge() {
     local DOMAIN="${1}" TOKEN_FILENAME="${2}" TOKEN_VALUE="${3}"
 
     # This hook is called after attempting to validate each domain,
@@ -31,7 +31,7 @@ function clean_challenge {
     # The parameters are the same as for deploy_challenge.
 }
 
-function deploy_cert {
+deploy_cert() {
     local DOMAIN="${1}" KEYFILE="${2}" CERTFILE="${3}" FULLCHAINFILE="${4}" CHAINFILE="${5}" TIMESTAMP="${6}"
 
     # This hook is called once for each certificate that has been
@@ -54,7 +54,7 @@ function deploy_cert {
     #   Timestamp when the specified certificate was created.
 }
 
-function unchanged_cert {
+unchanged_cert() {
     local DOMAIN="${1}" KEYFILE="${2}" CERTFILE="${3}" FULLCHAINFILE="${4}" CHAINFILE="${5}"
 
     # This hook is called once for each certificate that is still
@@ -74,4 +74,5 @@ function unchanged_cert {
     #   The path of the file containing the intermediate certificate(s).
 }
 
-HANDLER=$1; shift; $HANDLER $@
+HANDLER="$1"; shift
+"$HANDLER" "$@"
