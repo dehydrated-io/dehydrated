@@ -209,6 +209,26 @@ _CHECK_LOG "Done."
 _CHECK_FILE "certs/${TMP_URL}/${REAL_CERT}-revoked"
 _CHECK_ERRORLOG
 
+# Enable private key renew
+echo 'PRIVATE_KEY_RENEW="yes"' >> config
+echo 'PRIVATE_KEY_ROLLOVER="yes"' >> config
+
+# Check if Rolloverkey creation works
+_TEST "Testing Rolloverkeys..."
+_SUBTEST "First Run: Creating rolloverkey"
+./dehydrated --cron --domain "${TMP2_URL}" > tmplog 2> errorlog || _FAIL "Script execution failed"
+CERT_ROLL_HASH=$(openssl rsa -in certs/${TMP2_URL}/privkey.roll.pem -outform DER -pubout 2>/dev/null | openssl sha256)
+_CHECK_LOG "Generating private key"
+_CHECK_LOG "Generating private rollover key"
+_SUBTEST "Second Run: Force Renew, Use rolloverkey"
+./dehydrated --cron --force --domain "${TMP2_URL}" > tmplog 2> errorlog || _FAIL "Script execution failed"
+CERT_NEW_HASH=$(openssl rsa -in certs/${TMP2_URL}/privkey.pem -outform DER -pubout 2>/dev/null | openssl sha256)
+_CHECK_LOG "Generating private key"
+_CHECK_LOG "Moving Rolloverkey into position"
+_SUBTEST "Verifying Hash Rolloverkey and private key second run"
+[[ "${CERT_ROLL_HASH}" = "${CERT_NEW_HASH}" ]] && _PASS || _FAIL
+_CHECK_ERRORLOG
+
 # Test cleanup command
 _TEST "Cleaning up certificates"
 ./dehydrated --cleanup > tmplog 2> errorlog || _FAIL "Script execution failed"
