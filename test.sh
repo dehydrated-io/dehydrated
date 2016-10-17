@@ -3,6 +3,8 @@
 # Fail early
 set -eu -o pipefail
 
+NGROK_URL="https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip"
+
 # Check if running in CI environment
 if [[ ! "${CI:-false}" == "true" ]]; then
   echo "ERROR: Not running in CI environment!"
@@ -69,7 +71,7 @@ if [[ ! -e "ngrok/ngrok" ]]; then
   (
     mkdir -p ngrok
     cd ngrok
-    wget https://dl.ngrok.com/ngrok_2.0.19_linux_amd64.zip -O ngrok.zip
+    wget -O ngrok.zip "$NGROK_URL"
     unzip ngrok.zip ngrok
     chmod +x ngrok
   )
