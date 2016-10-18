@@ -20,7 +20,7 @@ Current features:
 Please keep in mind that this software and even the acme-protocol are relatively young and may still have some unresolved issues.
 Feel free to report any issues you find with this script or contribute by submitting a pullrequest.
 
-### Getting started
+## Getting started
 
 For getting started I recommend taking a look at [docs/domains_txt.md](docs/domains_txt.md), [docs/wellknown.md](docs/wellknown.md) and the [Usage](#usage) section on this page (you'll probably only need the `-c` option).
 
@@ -61,3 +61,6 @@ Parameters:
  --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported
  --algo (-a) rsa|prime256v1|secp384r1 Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
 ```
+## Config
+
+To change the default configuration you can copy [docs/examples/config](docs/examples/config) to the base dir and edit the file.
