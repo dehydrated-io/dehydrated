@@ -74,5 +74,7 @@ unchanged_cert() {
     #   The path of the file containing the intermediate certificate(s).
 }
 
-HANDLER="$1"; shift
-"$HANDLER" "$@"
+if [ "$#" -gt 0 ]; then
+    HANDLER="$1"; shift
+    "$HANDLER" "$@"
+fi
