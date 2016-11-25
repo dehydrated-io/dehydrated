@@ -451,9 +451,9 @@ sign_csr() {
 
   local idx=0
   if [[ -n "${ZSH_VERSION:-}" ]]; then
-    local -A challenge_uris challenge_tokens keyauths deploy_args
+    local -A challenge_uris challenge_tokens keyauths deploy_args already_valid
   else
-    local -a challenge_uris challenge_tokens keyauths deploy_args
+    local -a challenge_uris challenge_tokens keyauths deploy_args already_valid
   fi
 
   # Request challenges
@@ -461,8 +461,14 @@ sign_csr() {
     # Ask the acme-server for new challenge token and extract them from the resulting json block
     echo " + Requesting challenge for ${altname}..."
     response="$(signed_request "${CA_NEW_AUTHZ}" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}' | clean_json)"
+    if [[ $response == *"\"status\": \"valid\""* ]]; then
+      already_valid[${idx}]=true
+      continue
+    else
+      already_valid[${idx}]=false
+    fi
 
-    challenges="$(printf '%s\n' "${response}" | sed -n 's/.*\("challenges":[^\[]*\[[^]]*]\).*/\1/p')"
+    challenges="$(printf '%s\n' "${response}" | sed -n 's/.*\("challenges":[^\[]*\[.*}\s*]\).*/\1/p')"
     repl=$'\n''{' # fix syntax highlighting in Vim
     challenge="$(printf "%s" "${challenges//\{/${repl}}" | grep \""${CHALLENGETYPE}"\")"
     challenge_token="$(printf '%s' "${challenge}" | get_json_string_value token | _sed 's/[^A-Za-z0-9_\-]/_/g')"
@@ -503,6 +509,11 @@ sign_csr() {
   # Respond to challenges
   idx=0
   for altname in ${altnames}; do
+    if [ "${already_valid[${idx}]}" = true ]; then
+      echo " + No challenge required for ${altname} (skipping)"
+      reqstatus="valid"
+      continue
+    fi
     challenge_token="${challenge_tokens[${idx}]}"
     keyauth="${keyauths[${idx}]}"
 
