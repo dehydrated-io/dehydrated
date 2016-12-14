@@ -18,7 +18,7 @@ Current features:
 - Certificate revocation
 
 Please keep in mind that this software and even the acme-protocol are relatively young and may still have some unresolved issues.
-Feel free to report any issues you find with this script or contribute by submitting a pullrequest.
+Feel free to report any issues you find with this script or contribute by submitting a pull request.
 
 ### Getting started
 
