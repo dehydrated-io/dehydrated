@@ -26,7 +26,7 @@ For getting started I recommend taking a look at [docs/domains_txt.md](docs/doma
 
 Generally you want to set up your WELLKNOWN path first, and then fill in domains.txt.
 
-**Please note that you should use the staging URL when experimenting with this script to not hit letsencrypts rate limits.** See [docs/staging.md](docs/staging.md).
+**Please note that you should use the staging URL when experimenting with this script to not hit Let's Encrypt's rate limits.** See [docs/staging.md](docs/staging.md).
 
 If you have any problems take a look at our [Troubleshooting](docs/troubleshooting.md) guide.
 
