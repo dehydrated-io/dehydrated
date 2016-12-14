@@ -620,21 +620,22 @@ sign_domain() {
 
   # Generate signing request config and the actual signing request
   echo " + Generating signing request..."
-  SAN=""
-  for altname in ${altnames}; do
-    SAN+="DNS:${altname}, "
-  done
-  SAN="${SAN%%, }"
-  local tmp_openssl_cnf
-  tmp_openssl_cnf="$(_mktemp)"
-  cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
-  printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
-  if [ "${OCSP_MUST_STAPLE}" = "yes" ]; then
-    printf "\n1.3.6.1.5.5.7.1.24=DER:30:03:02:01:05" >> "${tmp_openssl_cnf}"
-  fi
-  openssl req -new -sha256 -key "${CERTDIR}/${domain}/${privkey}" -out "${CERTDIR}/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
-  rm -f "${tmp_openssl_cnf}"
-
+  (
+    cat "${OPENSSL_CNF}"
+    
+    printf "[SAN]\nsubjectAltName="
+    while [ ${1+set} ]; do
+      printf "DNS:${1}${2+,}"
+      shift
+    done
+    echo
+  
+    if [ "${OCSP_MUST_STAPLE}" = "yes" ]; then
+      echo "1.3.6.1.5.5.7.1.24=DER:30:03:02:01:05"
+    fi
+  ) \
+  | openssl req -new -sha256 -key "${CERTDIR}/${domain}/${privkey}" -out "${CERTDIR}/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config /dev/stdin
+  
   crt_path="${CERTDIR}/${domain}/cert-${timestamp}.pem"
   # shellcheck disable=SC2086
   sign_csr "$(< "${CERTDIR}/${domain}/cert-${timestamp}.csr" )" ${altnames} 3>"${crt_path}"
