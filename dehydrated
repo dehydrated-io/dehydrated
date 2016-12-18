@@ -118,6 +118,7 @@ load_config() {
   KEYSIZE="4096"
   WELLKNOWN=
   PRIVATE_KEY_RENEW="yes"
+  PRIVATE_KEY_ROLLOVER="no"
   KEY_ALGO=rsa
   OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
   CONTACT_EMAIL=
@@ -183,6 +184,7 @@ load_config() {
   [[ -z "${DOMAINS_TXT}" ]] && DOMAINS_TXT="${BASEDIR}/domains.txt"
   [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="/var/www/dehydrated"
   [[ -z "${LOCKFILE}" ]] && LOCKFILE="${BASEDIR}/lock"
+  [[ -n "${PARAM_LOCKFILE_SUFFIX:-}" ]] && LOCKFILE="${LOCKFILE}-${PARAM_LOCKFILE_SUFFIX}"
   [[ -n "${PARAM_NO_LOCK:-}" ]] && LOCKFILE=""
 
   [[ -n "${PARAM_HOOK:-}" ]] && HOOK="${PARAM_HOOK}"
@@ -303,6 +305,13 @@ get_json_string_value() {
   local filter
   filter=$(printf 's/.*"%s": *"\([^"]*\)".*/\\1/p' "$1")
   sed -n "${filter}"
+}
+
+rm_json_arrays() {
+  local filter
+  filter='s/\[[^][]*\]/null/g'
+  # remove three levels of nested arrays
+  sed -e "${filter}" -e "${filter}" -e "${filter}"
 }
 
 # OpenSSL writes to stderr/stdout even when there are no errors. So just
@@ -450,9 +459,9 @@ sign_csr() {
 
   local idx=0
   if [[ -n "${ZSH_VERSION:-}" ]]; then
-    local -A challenge_uris challenge_tokens keyauths deploy_args
+    local -A challenge_altnames challenge_uris challenge_tokens keyauths deploy_args
   else
-    local -a challenge_uris challenge_tokens keyauths deploy_args
+    local -a challenge_altnames challenge_uris challenge_tokens keyauths deploy_args
   fi
 
   # Request challenges
@@ -460,6 +469,12 @@ sign_csr() {
     # Ask the acme-server for new challenge token and extract them from the resulting json block
     echo " + Requesting challenge for ${altname}..."
     response="$(signed_request "${CA_NEW_AUTHZ}" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}' | clean_json)"
+
+    challenge_status="$(printf '%s' "${response}" | rm_json_arrays | get_json_string_value status)"
+    if [ "${challenge_status}" = "valid" ]; then
+       echo " + Already validated"
+       continue
+    fi
 
     challenges="$(printf '%s\n' "${response}" | sed -n 's/.*\("challenges":[^\[]*\[[^]]*]\).*/\1/p')"
     repl=$'\n''{' # fix syntax highlighting in Vim
@@ -487,6 +502,7 @@ sign_csr() {
         ;;
     esac
 
+    challenge_altnames[${idx}]="${altname}"
     challenge_uris[${idx}]="${challenge_uri}"
     keyauths[${idx}]="${keyauth}"
     challenge_tokens[${idx}]="${challenge_token}"
@@ -496,12 +512,15 @@ sign_csr() {
   done
 
   # Wait for hook script to deploy the challenges if used
-  # shellcheck disable=SC2068
-  [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[@]}
+  if [ ${#deploy_args[@]} -ne 0 ]; then
+    # shellcheck disable=SC2068
+    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[@]}
+  fi
 
   # Respond to challenges
+  reqstatus="valid"
   idx=0
-  for altname in ${altnames}; do
+  for altname in "${challenge_altnames[@]:0}"; do
     challenge_token="${challenge_tokens[${idx}]}"
     keyauth="${keyauths[${idx}]}"
 
@@ -596,6 +615,26 @@ sign_domain() {
       prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${CERTDIR}/${domain}/privkey-${timestamp}.pem";;
     esac
   fi
+  # move rolloverkey into position (if any)
+  if [[ -r "${CERTDIR}/${domain}/privkey.pem" && -r "${CERTDIR}/${domain}/privkey.roll.pem" && "${PRIVATE_KEY_RENEW}" = "yes" && "${PRIVATE_KEY_ROLLOVER}" = "yes" ]]; then
+    echo " + Moving Rolloverkey into position....  "
+    mv "${CERTDIR}/${domain}/privkey.roll.pem" "${CERTDIR}/${domain}/privkey-tmp.pem"
+    mv "${CERTDIR}/${domain}/privkey-${timestamp}.pem" "${CERTDIR}/${domain}/privkey.roll.pem"
+    mv "${CERTDIR}/${domain}/privkey-tmp.pem" "${CERTDIR}/${domain}/privkey-${timestamp}.pem"
+  fi
+  # generate a new private rollover key if we need or want one
+  if [[ ! -r "${CERTDIR}/${domain}/privkey.roll.pem" && "${PRIVATE_KEY_ROLLOVER}" = "yes" && "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
+    echo " + Generating private rollover key..."
+    case "${KEY_ALGO}" in
+      rsa) _openssl genrsa -out "${CERTDIR}/${domain}/privkey.roll.pem" "${KEYSIZE}";;
+      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${CERTDIR}/${domain}/privkey.roll.pem";;
+    esac
+  fi
+  # delete rolloverkeys if disabled
+  if [[ -r "${CERTDIR}/${domain}/privkey.roll.pem" && ! "${PRIVATE_KEY_ROLLOVER}" = "yes" ]]; then
+    echo " + Removing Rolloverkey (feature disabled)..."
+    rm -f "${CERTDIR}/${domain}/privkey.roll.pem"
+  fi
 
   # Generate signing request config and the actual signing request
   echo " + Generating signing request..."
@@ -621,9 +660,13 @@ sign_domain() {
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
   cat "${crt_path}" > "${CERTDIR}/${domain}/fullchain-${timestamp}.pem"
-  http_request get "$(openssl x509 -in "${CERTDIR}/${domain}/cert-${timestamp}.pem" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${CERTDIR}/${domain}/chain-${timestamp}.pem"
-  if ! grep -q "BEGIN CERTIFICATE" "${CERTDIR}/${domain}/chain-${timestamp}.pem"; then
-    openssl x509 -in "${CERTDIR}/${domain}/chain-${timestamp}.pem" -inform DER -out "${CERTDIR}/${domain}/chain-${timestamp}.pem" -outform PEM
+  tmpchain="$(_mktemp)"
+  http_request get "$(openssl x509 -in "${CERTDIR}/${domain}/cert-${timestamp}.pem" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${tmpchain}"
+  if grep -q "BEGIN CERTIFICATE" "${tmpchain}"; then
+    mv "${tmpchain}" "${CERTDIR}/${domain}/chain-${timestamp}.pem"
+  else
+    openssl x509 -in "${tmpchain}" -inform DER -out "${CERTDIR}/${domain}/chain-${timestamp}.pem" -outform PEM
+    rm "${tmpchain}"
   fi
   cat "${CERTDIR}/${domain}/chain-${timestamp}.pem" >> "${CERTDIR}/${domain}/fullchain-${timestamp}.pem"
 
@@ -705,7 +748,7 @@ command_sign_domains() {
         config_var="$(echo "${cfgline:1}" | cut -d'=' -f1)"
         config_value="$(echo "${cfgline:1}" | cut -d'=' -f2-)"
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
+          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
             echo "   + ${config_var} = ${config_value}"
             declare -- "${config_var}=${config_value}"
             ;;
@@ -797,10 +840,13 @@ command_sign_csr() {
   if [ -n "${PARAM_FULL_CHAIN:-}" ]; then
     # get and convert ca cert
     chainfile="$(_mktemp)"
-    http_request get "$(openssl x509 -in "${certfile}" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${chainfile}"
-
-    if ! grep -q "BEGIN CERTIFICATE" "${chainfile}"; then
-      openssl x509 -inform DER -in "${chainfile}" -outform PEM -out "${chainfile}"
+    tmpchain="$(_mktemp)"
+    http_request get "$(openssl x509 -in "${certfile}" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${tmpchain}"
+    if grep -q "BEGIN CERTIFICATE" "${tmpchain}"; then
+      mv "${tmpchain}" "${chainfile}"
+    else
+      openssl x509 -in "${tmpchain}" -inform DER -out "${chainfile}" -outform PEM
+      rm "${tmpchain}"
     fi
 
     echo "# CHAIN #" >&3
@@ -1029,6 +1075,14 @@ main() {
       # PARAM_Description: Don't use lockfile (potentially dangerous!)
       --no-lock|-n)
         PARAM_NO_LOCK="yes"
+        ;;
+
+      # PARAM_Usage: --lock-suffix example.com
+      # PARAM_Description: Suffix lockfile name with a string (useful for with -d)
+      --lock-suffix)
+      	shift 1
+        check_parameters "${1:-}"
+	PARAM_LOCKFILE_SUFFIX="${1}"
         ;;
 
       # PARAM_Usage: --ocsp
