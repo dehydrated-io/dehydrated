@@ -520,41 +520,43 @@ sign_csr() {
   # Respond to challenges
   reqstatus="valid"
   idx=0
-  for altname in "${challenge_altnames[@]:0}"; do
-    challenge_token="${challenge_tokens[${idx}]}"
-    keyauth="${keyauths[${idx}]}"
-
-    # Wait for hook script to deploy the challenge if used
-    # shellcheck disable=SC2086
-    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]}
-
-    # Ask the acme-server to verify our challenge and wait until it is no longer pending
-    echo " + Responding to challenge for ${altname}..."
-    result="$(signed_request "${challenge_uris[${idx}]}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}' | clean_json)"
-
-    reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
-
-    while [[ "${reqstatus}" = "pending" ]]; do
-      sleep 1
-      result="$(http_request get "${challenge_uris[${idx}]}")"
-      reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
-    done
-
-    [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
-
-    # Wait for hook script to clean the challenge if used
-    if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token}" ]]; then
+  if [ ${#challenge_altnames[@]} -ne 0 ]; then
+    for altname in "${challenge_altnames[@]:0}"; do
+      challenge_token="${challenge_tokens[${idx}]}"
+      keyauth="${keyauths[${idx}]}"
+  
+      # Wait for hook script to deploy the challenge if used
       # shellcheck disable=SC2086
-      "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
-    fi
-    idx=$((idx+1))
-
-    if [[ "${reqstatus}" = "valid" ]]; then
-      echo " + Challenge is valid!"
-    else
-      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "invalid_challenge" "${altname}" "${result}"
-    fi
-  done
+      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]}
+  
+      # Ask the acme-server to verify our challenge and wait until it is no longer pending
+      echo " + Responding to challenge for ${altname}..."
+      result="$(signed_request "${challenge_uris[${idx}]}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}' | clean_json)"
+  
+      reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
+  
+      while [[ "${reqstatus}" = "pending" ]]; do
+        sleep 1
+        result="$(http_request get "${challenge_uris[${idx}]}")"
+        reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
+      done
+  
+      [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
+  
+      # Wait for hook script to clean the challenge if used
+      if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token}" ]]; then
+        # shellcheck disable=SC2086
+        "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
+      fi
+      idx=$((idx+1))
+  
+      if [[ "${reqstatus}" = "valid" ]]; then
+        echo " + Challenge is valid!"
+      else
+        [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "invalid_challenge" "${altname}" "${result}"
+      fi
+    done
+  fi
 
   # Wait for hook script to clean the challenges if used
   # shellcheck disable=SC2068
