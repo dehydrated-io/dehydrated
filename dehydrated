@@ -472,7 +472,7 @@ sign_csr() {
 
     challenge_status="$(printf '%s' "${response}" | rm_json_arrays | get_json_string_value status)"
     if [ "${challenge_status}" = "valid" ]; then
-       echo " + Already validated"
+       echo " + Already validated!"
        continue
     fi
 
@@ -510,9 +510,10 @@ sign_csr() {
     deploy_args[${idx}]="${altname} ${challenge_token} ${keyauth_hook}"
     idx=$((idx+1))
   done
+  challenge_count="${idx}"
 
   # Wait for hook script to deploy the challenges if used
-  if [ ${#deploy_args[@]} -ne 0 ]; then
+  if [[ ${challenge_count} -ne 0 ]]; then
     # shellcheck disable=SC2068
     [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[@]}
   fi
@@ -520,7 +521,7 @@ sign_csr() {
   # Respond to challenges
   reqstatus="valid"
   idx=0
-  if [ ${#challenge_altnames[@]} -ne 0 ]; then
+  if [ ${challenge_count} -ne 0 ]; then
     for altname in "${challenge_altnames[@]:0}"; do
       challenge_token="${challenge_tokens[${idx}]}"
       keyauth="${keyauths[${idx}]}"
@@ -560,11 +561,13 @@ sign_csr() {
 
   # Wait for hook script to clean the challenges if used
   # shellcheck disable=SC2068
-  [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "clean_challenge" ${deploy_args[@]}
+  if [[ ${challenge_count} -ne 0 ]]; then
+    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "clean_challenge" ${deploy_args[@]}
+  fi
 
   if [[ "${reqstatus}" != "valid" ]]; then
     # Clean up any remaining challenge_tokens if we stopped early
-    if [[ "${CHALLENGETYPE}" = "http-01" ]]; then
+    if [[ "${CHALLENGETYPE}" = "http-01" ]] && [[ ${challenge_count} -ne 0 ]]; then
       while [ ${idx} -lt ${#challenge_tokens[@]} ]; do
         rm -f "${WELLKNOWN}/${challenge_tokens[${idx}]}"
         idx=$((idx+1))
