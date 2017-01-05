@@ -31,7 +31,7 @@ If you have any problems take a look at our [Troubleshooting](docs/troubleshooti
 dehydrated is looking for a config file in a few different places, it will use the first one it can find in this order:
 
 - `/etc/dehydrated/config`
-- `/usr/local/etc/dehydrated`
+- `/usr/local/etc/dehydrated/config`
 - The current working directory of your shell
 - The directory from which dehydrated was ran
 
