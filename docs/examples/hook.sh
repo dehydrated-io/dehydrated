@@ -74,7 +74,7 @@ unchanged_cert() {
     #   The path of the file containing the intermediate certificate(s).
 }
 
-function invalid_challenge {
+invalid_challenge() {
     local DOMAIN="${1}" RESPONSE="${2}"
 
     # This hook is called if the challenge response has failed, so domain
