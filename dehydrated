@@ -182,7 +182,7 @@ load_config() {
 
   [[ -z "${CERTDIR}" ]] && CERTDIR="${BASEDIR}/certs"
   [[ -z "${DOMAINS_TXT}" ]] && DOMAINS_TXT="${BASEDIR}/domains.txt"
-  [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="/var/www/.well-known/acme-challenge"
+  [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="/var/www/dehydrated"
   [[ -z "${LOCKFILE}" ]] && LOCKFILE="${BASEDIR}/lock"
   [[ -n "${PARAM_LOCKFILE_SUFFIX:-}" ]] && LOCKFILE="${LOCKFILE}-${PARAM_LOCKFILE_SUFFIX}"
   [[ -n "${PARAM_NO_LOCK:-}" ]] && LOCKFILE=""
