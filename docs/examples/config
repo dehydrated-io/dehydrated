@@ -43,7 +43,15 @@
 #ACCOUNTDIR="${BASEDIR}/accounts"
 
 # Output directory for challenge-tokens to be served by webserver or deployed in HOOK (default: /var/www/dehydrated)
-#WELLKNOWN="/var/www/dehydrated"
+# SERVERROOT is the server root of the web server. 
+#SERVERROOT="/var/www/"
+
+# WELLKNOWN location is fixed according to:
+# section Identifier Validation Challenges - HTTP of the document
+# title: "Automatic Certificate Management Environment (ACME)" 
+# abbrev: ACME docname: draft-ietf-acme-acme-latest category: std ipr: trust200902
+# url: https://github.com/ietf-wg-acme/acme/blob/master/draft-ietf-acme-acme.md
+#WELLKNOWN="${SERVERROOT}/.well-known/acme-challenge"
 
 # Default keysize for private keys (default: 4096)
 #KEYSIZE="4096"

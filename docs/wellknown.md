@@ -1,19 +1,51 @@
 # WELLKNOWN
 
-With `http-01`-type verification (default in this script, there is also support for [dns based verification](dns-verification.md)) Let's Encrypt (or the ACME-protocol in general) is checking if you are in control of a domain by accessing a verification file on an URL similar to `http://example.org/.well-known/acme-challenge/m4g1C-t0k3n`.  
-It will do that for any (sub-)domain you want to sign a certificate for.
+`http-01`-type verification is default in this script.
+There is also support for [dns based verification](dns-verification.md)).
 
-At the moment you'll need to have that location available over normal HTTP on port 80 (redirect to HTTPS will work, but starting point is always HTTP!).
+Let's Encrypt or any other certificate provider (using ACME-protocol) 
+will require validation for any (sub-)domain you want to sign a certificate for.
+An acme server verifies if you are in control of a domain 
+by accessing a verification file called a "token".
+A token is referenced via a URL similar to 
+`http://example.org/.well-known/acme-challenge/t0k3n-fil3name`.  
 
-dehydrated has a config variable called `WELLKNOWN`, which corresponds to the directory which should be served under `/.well-known/acme-challenge` on your domain. So in the above example the token would have been saved as `$WELLKNOWN/m4g1C-t0k3n`.
 
-If you only have one docroot on your server you could easily do something like `WELLKNOWN=/var/www/.well-known/acme-challenge`, for anything else look at the example below.
+The verification URL uses normal HTTP on port 80.
+Redirect to HTTPS will work, but starting point is always HTTP.
+
+dehydrated uses a config variable called `WELLKNOWN` to locate the token. 
+WELLKNOWN is set to the full file system directory path of the verification file:
+${WELLKNOWN}/token-filename
+
+The acme standard is in flux.
+Currently, the directory path of the token URL is fixed to `/.well-known/acme-challenge/`.
+You can read more about this in dehydrated's config file comments.
+
+To ease configuration, the dehydration file provides variable: SERVERROOT.
+Set SERVERROOT to the fullpath of the web server's root directory.
+As an example, for apache, the serverroot may be '/var/www'.
+In which case, add a line like this to dehydrated's config file:
+ `SERVERROOT=/var/www/`
+
+If you are specifying the token location to dehydrated as an argument, use WELLKNOWN instead of SERVERROOT;
+SERVERROOT is ignored.
+
+Continuing the example, set WELLKNOWN something like this:
+`WELLKNOWN=/var/www/.well-known/acme-challenge`.
+Remember to append the fixed directory path '.well-known/acme-challenge'
+
+If the server configuration is more complex, look at the example below.
 
 ## Example Usage
 
-If you have more than one docroot (or you are using your server as a reverse proxy / load balancer) the simple configuration mentioned above wouldn't work, but with just a few lines of webserver configuration this can be solved.
 
-An example would be to create a directory `/var/www/dehydrated` and set `WELLKNOWN=/var/www/dehydrated` in the scripts config.
+If you have more than one serverroot, 
+or the server is behind a reverse proxy or load balanced,
+the configuration above won't work.  
+However, a few additional lines of webserver configuration may be all that is needed.
+
+For example create a directory `/var/www/dehydrated` and set `WELLKNOWN=/var/www/dehydrated` in the scripts config.
 
 You'll need to configure aliases on your Webserver:
 
