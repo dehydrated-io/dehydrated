@@ -88,5 +88,22 @@ function invalid_challenge {
     #   The response that the verification server returned
 }
 
+request_failure() {
+    local STATUSCODE="${1}" REASON="${2}" REQTYPE=${3}
+
+    # This hook is called when a HTTP request fails (e.g., when the ACME
+    # server is busy, returns an error, etc). It will be called upon any
+    # response code that does not start with '2'. Useful to alert admins
+    # about problems with requests.
+    #
+    # Parameters:
+    # - STATUSCODE
+    #   The HTML status code that originated the error.
+    # - REASON
+    #   The specified reason for the error.
+    # - REQTYPE
+    #   The kind of request that was made (GET, POST...)
+}
+
 HANDLER="$1"; shift
 "$HANDLER" "$@"
