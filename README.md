@@ -26,6 +26,18 @@ Generally you want to set up your WELLKNOWN path first, and then fill in domains
 
 If you have any problems take a look at our [Troubleshooting](docs/troubleshooting.md) guide.
 
+## Config
+
+dehydrated is looking for a config file in a few different places, it will use the first one it can find in this order:
+
+- `/etc/dehydrated/config`
+- `/usr/local/etc/dehydrated`
+- The current working directory of your shell
+- The directory from which dehydrated was ran
+
+Have a look at [docs/examples/config](docs/examples/config) to get started, copy it to e.g. `/etc/dehydrated/config`
+and edit it to fit your needs.
+
 ## Usage:
 
 ```text
@@ -57,6 +69,3 @@ Parameters:
  --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported
  --algo (-a) rsa|prime256v1|secp384r1 Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
 ```
-## Config
-
-To change the default configuration you can copy [docs/examples/config](docs/examples/config) to the base dir and edit the file.
