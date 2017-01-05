@@ -4,11 +4,8 @@
 
 *Note: This project was renamed from letsencrypt.sh because the original name was violating Let's Encrypts trademark policy. I know that this results in quite a lot of installations failing but I didn't have a choice... For now there is a wrapper script for compatibility with old config locations and symlinks, but it will be removed in a few weeks.*
 
-This is a client for signing certificates with an ACME-server (currently only provided by Let's Encrypt) implemented as a relatively simple bash-script.
-
-It uses the `openssl` utility for everything related to actually handling keys and certificates, so you need to have that installed.
-
-Other dependencies are: cURL, sed, grep, mktemp (all found on almost any system, cURL being the only exception)
+This is a client for signing certificates with an ACME-server.
+Currently only provided Let's Encrypt provides them.
 
 Current features:
 - Signing of a list of domains
@@ -18,11 +15,29 @@ Current features:
 
 Please keep in mind that this software and even the acme-protocol are relatively young and may still have some unresolved issues. Feel free to report any issues you find with this script or contribute by submitting a pull request.
 
+dehydrated is implemented as a relatively simple bash script.
+
+Dependencies:
+- bash (it's a bash script..)
+- openssl (required for key and certificate management) 
+- cURL (file transfer utility)
+- sed
+- grep
+- mktemp
+
+
+
 ### Getting started
 
-For getting started I recommend taking a look at [docs/domains_txt.md](docs/domains_txt.md), [docs/wellknown.md](docs/wellknown.md) and the [Usage](#usage) section on this page (you'll probably only need the `-c` option).
+For getting started, look at:
+- [docs/domains_txt.md](docs/domains_txt.md), 
+- [docs/wellknown.md](docs/wellknown.md), 
+- [docs/examples/config](docs/examples/config) and 
+- [Usage](#usage) section on this page. The `-c` option may be all you need.
 
-Generally you want to set up your WELLKNOWN path first, and then fill in domains.txt.
+Generally you want to:
+- edit a copy of the docs/example/config file to set up your WELLKNOWN (or SERVERROOT) path, reference your domains.txt file etc, and 
+- populate domains.txt with the server domains.
 
 **Please note that you should use the staging URL when experimenting with this script to not hit Let's Encrypt's rate limits.** See [docs/staging.md](docs/staging.md).
 
