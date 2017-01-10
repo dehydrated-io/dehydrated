@@ -1,0 +1,14 @@
+#!/bin/
+# postinst script for dehydrated
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+if [ -f /usr/sbin/a2enconf ] ; then
+	a2enconf dehydrated
+fi
+
+#DEBHELPER#
+
+exit 0

@@ -1,0 +1,14 @@
+#!/bin/sh
+# postrm script for dehydrated
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+if [ -f /usr/sbin/a2disconf ] ; then
+	a2disconf dehydrated
+fi
+
+#DEBHELPER#
+
+exit 0

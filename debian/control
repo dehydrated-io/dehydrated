@@ -1,0 +1,16 @@
+Source: dehydrated
+Build-Depends: debhelper (>= 7.0.50~),po-debconf
+Standards-Version: 3.8.4
+Maintainer: Vítězslav Dvořák <vitezslav.dvorak@adminit.cz>
+Uploaders: Vitex <info@vitexsoftware.cz>
+Priority: optional
+Homepage: https://github.com/Vitexus/dehydrated/
+
+Package: dehydrated
+Depends: ${misc:Depends},openssl,curl,grep,sed,coreutils
+Recommends: www-server
+Architecture: all
+Section: web
+Priority: optional
+Description: letsencrypt/acme client implemented as a shell-script – just add water
+ This is a client for signing certificates with an ACME-server (currently only provided by Let's Encrypt) implemented as a relatively simple bash-script.

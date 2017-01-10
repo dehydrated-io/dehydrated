@@ -1,0 +1,8 @@
+README.md			  usr/share/doc/dehydrated/
+docs/examples/config		  etc/dehydrated/
+debian/conf/dehydrated.cron	  etc/cron.d/
+debian/conf/dehydrated.conf       etc/apache2/conf-available
+dehydrated   		          usr/bin/
+debian/dehydrated.1               usr/share/man/man1
+
+
