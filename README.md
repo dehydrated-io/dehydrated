@@ -46,6 +46,7 @@ Usage: ./dehydrated [-h] [command [argument]] [parameter [argument]] [parameter 
 Default command: help
 
 Commands:
+ --register                       Register account key
  --cron (-c)                      Sign/renew non-existant/changed/expiring certificates.
  --signcsr (-s) path/to/csr.pem   Sign a given CSR, output CRT on stdout (advanced usage)
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
@@ -54,6 +55,7 @@ Commands:
  --env (-e)                       Output configuration variables for use in other scripts
 
 Parameters:
+ --accept-terms                   Accept CAs terms of service
  --full-chain (-fc)               Print full chain when using --signcsr
  --ipv4 (-4)                      Resolve names to IPv4 addresses only
  --ipv6 (-6)                      Resolve names to IPv6 addresses only
@@ -61,6 +63,7 @@ Parameters:
  --keep-going (-g)                Keep going after encountering an error while creating/renewing multiple certificates in cron mode
  --force (-x)                     Force renew of certificate even if it is longer valid than value in RENEW_DAYS
  --no-lock (-n)                   Don't use lockfile (potentially dangerous!)
+ --lock-suffix example.com        Suffix lockfile name with a string (useful for with -d)
  --ocsp                           Sets option in CSR indicating OCSP stapling to be mandatory
  --privkey (-p) path/to/key.pem   Use specified private key instead of account key (useful for revocation)
  --config (-f) path/to/config     Use specified config file

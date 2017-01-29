@@ -9,4 +9,5 @@ To avoid this, please set the CA property to the Let’s Encrypt staging server 
 
 ```bash
 CA="https://acme-staging.api.letsencrypt.org/directory"
+CA_TERMS="https://acme-staging.api.letsencrypt.org/terms"
 ```

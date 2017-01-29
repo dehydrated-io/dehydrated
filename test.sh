@@ -97,7 +97,7 @@ mkdir -p .acme-challenges/.well-known/acme-challenge
 
 # Generate config and create empty domains.txt
 echo 'CA="https://testca.kurz.pw/directory"' > config
-echo 'LICENSE="https://testca.kurz.pw/terms/v1"' >> config
+echo 'CA_TERMS="https://testca.kurz.pw/terms"' >> config
 echo 'WELLKNOWN=".acme-challenges/.well-known/acme-challenge"' >> config
 echo 'RENEW_DAYS="14"' >> config
 touch domains.txt
@@ -110,6 +110,23 @@ _CHECK_LOG "--help (-h)"
 _CHECK_LOG "--domain (-d) domain.tld"
 _CHECK_ERRORLOG
 
+# Register account key without LICENSE set
+_TEST "Register account key without LICENSE set"
+./dehydrated --register > tmplog 2> errorlog && _FAIL "Script execution failed"
+_CHECK_LOG "To accept these terms"
+_CHECK_ERRORLOG
+
+# Register account key and agreeing to terms
+_TEST "Register account key without LICENSE set"
+./dehydrated --register --accept-terms > tmplog 2> errorlog || _FAIL "Script execution failed"
+_CHECK_LOG "Registering account key"
+_CHECK_FILE accounts/*/account_key.pem
+_CHECK_ERRORLOG
+
+# Delete accounts and add LICENSE to config for normal operation
+rm -rf accounts
+echo 'LICENSE="https://testca.kurz.pw/terms/v1"' >> config
+
 # Run in cron mode with empty domains.txt (should only generate private key and exit)
 _TEST "First run in cron mode, checking if private key is generated and registered"
 ./dehydrated --cron > tmplog 2> errorlog || _FAIL "Script execution failed"
@@ -120,7 +137,7 @@ _CHECK_ERRORLOG
 # Temporarily move config out of the way and try signing certificate by using temporary config location
 _TEST "Try signing using temporary config location and with domain as command line parameter"
 mv config tmp_config
-./dehydrated --cron --domain "${TMP_URL}" --domain "${TMP2_URL}" -f tmp_config > tmplog 2> errorlog || _FAIL "Script execution failed"
+./dehydrated --cron --domain "${TMP_URL}" --domain "${TMP2_URL}" --accept-terms -f tmp_config > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_NOT_LOG "Checking domain name(s) of existing cert"
 _CHECK_LOG "Generating private key"
 _CHECK_LOG "Requesting challenge for ${TMP_URL}"
@@ -168,7 +185,7 @@ _CHECK_NOT_LOG "Generating private key"
 _CHECK_LOG "Requesting challenge for ${TMP_URL}"
 _CHECK_LOG "Requesting challenge for ${TMP2_URL}"
 _CHECK_LOG "Requesting challenge for ${TMP3_URL}"
-_CHECK_LOG "Challenge is valid!"
+_CHECK_LOG "Already validated!"
 _CHECK_LOG "Creating fullchain.pem"
 _CHECK_LOG "Done!"
 _CHECK_ERRORLOG

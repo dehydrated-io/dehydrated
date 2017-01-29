@@ -105,7 +105,8 @@ load_config() {
 
   # Default values
   CA="https://acme-v01.api.letsencrypt.org/directory"
-  LICENSE="https://letsencrypt.org/documents/LE-SA-v1.1.1-August-1-2016.pdf"
+  CA_TERMS="https://acme-v01.api.letsencrypt.org/terms"
+  LICENSE=
   CERTDIR=
   ACCOUNTDIR=
   CHALLENGETYPE="http-01"
@@ -233,6 +234,24 @@ init_system() {
   else
     # Check if private account key exists, if it doesn't exist yet generate a new one (rsa key)
     if [[ ! -e "${ACCOUNT_KEY}" ]]; then
+      REAL_LICENSE="$(http_request head "${CA_TERMS}" | (grep Location: || true) | awk -F ': ' '{print $2}' | tr -d '\n\r')"
+      if [[ -z "${REAL_LICENSE}" ]]; then
+        printf '\n'
+        printf 'Error retrieving terms of service from certificate authority.\n'
+        printf 'Please set LICENSE in config manually.\n'
+        exit 1
+      fi
+      if [[ ! "${LICENSE}" = "${REAL_LICENSE}" ]]; then
+        if [[ "${PARAM_ACCEPT_TERMS:-}" = "yes" ]]; then
+          LICENSE="${REAL_LICENSE}"
+        else
+          printf '\n'
+          printf 'To use dehydrated with this certificate authority you have to agree to their terms of service which you can find here: %s\n\n' "${REAL_LICENSE}"
+          printf 'To accept these terms of service run `%s --register --accept-terms`.\n' "${0}"
+          exit 1
+        fi
+      fi
+
       echo "+ Generating account key..."
       _openssl genrsa -out "${ACCOUNT_KEY}" "${KEYSIZE}"
       register_new_key="yes"
@@ -360,29 +379,31 @@ http_request() {
   fi
 
   if [[ ! "${statuscode:0:1}" = "2" ]]; then
-    echo "  + ERROR: An error occurred while sending ${1}-request to ${2} (Status ${statuscode})" >&2
-    echo >&2
-    echo "Details:" >&2
-    cat "${tempcont}" >&2
-    echo >&2
-    echo >&2
+    if [[ ! "${2}" = "${CA_TERMS}" ]] || [[ ! "${statuscode:0:1}" = "3" ]]; then
+      echo "  + ERROR: An error occurred while sending ${1}-request to ${2} (Status ${statuscode})" >&2
+      echo >&2
+      echo "Details:" >&2
+      cat "${tempcont}" >&2
+      echo >&2
+      echo >&2
 
-    # An exclusive hook for the {1}-request error might be useful (e.g., for sending an e-mail to admins)
-    if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]]; then
-      errtxt=`cat ${tempcont}`
-      "${HOOK}" "request_failure" "${statuscode}" "${errtxt}" "${1}"
+      # An exclusive hook for the {1}-request error might be useful (e.g., for sending an e-mail to admins)
+      if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]]; then
+        errtxt=`cat ${tempcont}`
+        "${HOOK}" "request_failure" "${statuscode}" "${errtxt}" "${1}"
+      fi
+
+      rm -f "${tempcont}"
+
+      # Wait for hook script to clean the challenge if used
+      if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token:+set}" ]]; then
+        "${HOOK}" "clean_challenge" '' "${challenge_token}" "${keyauth}"
+      fi
+
+      # remove temporary domains.txt file if used
+      [[ -n "${PARAM_DOMAIN:-}" && -n "${DOMAINS_TXT:-}" ]] && rm "${DOMAINS_TXT}"
+      exit 1
     fi
-
-    rm -f "${tempcont}"
-
-    # Wait for hook script to clean the challenge if used
-    if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token:+set}" ]]; then
-      "${HOOK}" "clean_challenge" '' "${challenge_token}" "${keyauth}"
-    fi
-
-    # remove temporary domains.txt file if used
-    [[ -n "${PARAM_DOMAIN:-}" && -n "${DOMAINS_TXT:-}" ]] && rm "${DOMAINS_TXT}"
-    exit 1
   fi
 
   cat "${tempcont}"
@@ -600,6 +621,39 @@ sign_csr() {
   echo " + Done!"
 }
 
+walk_chain() {
+  certificate="${1}"
+
+  # grep uri from certificate
+  local issuer_cert_uri
+  issuer_cert_uri="$(openssl x509 -in "${certificate}" -noout -text | (grep 'CA Issuers - URI:' | cut -d':' -f2-) || true)"
+  if [[ -n "${issuer_cert_uri}" ]]; then
+    # create temporary files
+    local tmpcert
+    local tmpcert_raw
+    tmpcert_raw="$(_mktemp)"
+    tmpcert="$(_mktemp)"
+
+    # download certificate
+    http_request get "${issuer_cert_uri}" > "${tmpcert_raw}"
+
+    # PEM
+    if grep -q "BEGIN CERTIFICATE" "${tmpcert_raw}"; then mv "${tmpcert_raw}" "${tmpcert}"
+    # DER
+    elif openssl x509 -in "${tmpcert_raw}" -inform DER -out "${tmpcert}" -outform PEM 2> /dev/null > /dev/null; then :
+    # PKCS7
+    elif openssl pkcs7 -in "${tmpcert_raw}" -inform DER -out "${tmpcert}" -outform PEM -print_certs 2> /dev/null > /dev/null; then :
+    # Unknown certificate type
+    else _exiterr "Unknown certificate type in chain"
+    fi
+
+    printf "\n%s\n" "${issuer_cert_uri}"
+    cat "${tmpcert}"
+    walk_chain "${tmpcert}"
+    rm -f "${tmpcert}" "${tmpcert_raw}"
+  fi
+}
+
 # Create certificate for domain(s)
 sign_domain() {
   domain="${1}"
@@ -672,14 +726,7 @@ sign_domain() {
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
   cat "${crt_path}" > "${CERTDIR}/${domain}/fullchain-${timestamp}.pem"
-  tmpchain="$(_mktemp)"
-  http_request get "$(openssl x509 -in "${CERTDIR}/${domain}/cert-${timestamp}.pem" -noout -text | grep 'CA Issuers - URI:' | cut -d':' -f2-)" > "${tmpchain}"
-  if grep -q "BEGIN CERTIFICATE" "${tmpchain}"; then
-    mv "${tmpchain}" "${CERTDIR}/${domain}/chain-${timestamp}.pem"
-  else
-    openssl x509 -in "${tmpchain}" -inform DER -out "${CERTDIR}/${domain}/chain-${timestamp}.pem" -outform PEM
-    rm "${tmpchain}"
-  fi
+  walk_chain "${crt_path}" > "${CERTDIR}/${domain}/chain-${timestamp}.pem"
   cat "${CERTDIR}/${domain}/chain-${timestamp}.pem" >> "${CERTDIR}/${domain}/fullchain-${timestamp}.pem"
 
   # Update symlinks
@@ -695,6 +742,13 @@ sign_domain() {
 
   unset challenge_token
   echo " + Done!"
+}
+
+# Usage: --register
+# Description: Register account key
+command_register() {
+  init_system
+  exit 0
 }
 
 # Usage: --cron (-c)
@@ -1024,6 +1078,16 @@ main() {
         set_command sign_domains
         ;;
 
+      --register)
+        set_command register
+        ;;
+
+      # PARAM_Usage: --accept-terms
+      # PARAM_Description: Accept CAs terms of service
+      --accept-terms)
+        PARAM_ACCEPT_TERMS="yes"
+        ;;
+
       --signcsr|-s)
         shift 1
         set_command sign_csr
@@ -1166,6 +1230,7 @@ main() {
   case "${COMMAND}" in
     env) command_env;;
     sign_domains) command_sign_domains;;
+    register) command_register;;
     sign_csr) command_sign_csr "${PARAM_CSR}";;
     revoke) command_revoke "${PARAM_REVOKECERT}";;
     cleanup) command_cleanup;;
