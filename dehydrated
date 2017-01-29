@@ -691,7 +691,6 @@ sign_domain() {
   ln -sf "cert-${timestamp}.pem" "${CERTDIR}/${domain}/cert.pem"
 
   # Wait for hook script to clean the challenge and to deploy cert if used
-  export KEY_ALGO
   [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${domain}" "${CERTDIR}/${domain}/privkey.pem" "${CERTDIR}/${domain}/cert.pem" "${CERTDIR}/${domain}/fullchain.pem" "${CERTDIR}/${domain}/chain.pem" "${timestamp}"
 
   unset challenge_token
@@ -771,6 +770,7 @@ command_sign_domains() {
       IFS="${ORIGIFS}"
     fi
     verify_config
+    export WELLKNOWN CHALLENGETYPE KEY_ALGO PRIVATE_KEY_ROLLOVER
 
     if [[ -e "${cert}" ]]; then
       printf " + Checking domain name(s) of existing cert..."
