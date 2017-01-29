@@ -221,7 +221,7 @@ init_system() {
   _exiterr "Problem retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."
 
   # Export some environment variables to be used in hook script
-  export WELLKNOWN BASEDIR CERTDIR CONFIG
+  export WELLKNOWN BASEDIR CERTDIR CONFIG COMMAND
 
   # Checking for private key ...
   register_new_key="no"
@@ -822,6 +822,7 @@ command_sign_domains() {
   # remove temporary domains.txt file if used
   [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"
 
+  [[ -n "${HOOK}" ]] && "${HOOK}" "exit_hook"
   exit 0
 }
 

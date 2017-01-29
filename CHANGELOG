@@ -11,6 +11,7 @@ This file contains a log of major changes in dehydrated
 - Added `--lock-suffix` option for allowing parallel execution
 - Added `invalid_challenge` hook
 - Added `request_failure` hook
+- Added `exit_hook` hook
 
 ## [0.3.1] - 2016-09-13
 ## Changed

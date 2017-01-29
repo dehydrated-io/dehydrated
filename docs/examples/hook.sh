@@ -89,7 +89,7 @@ invalid_challenge() {
 }
 
 request_failure() {
-    local STATUSCODE="${1}" REASON="${2}" REQTYPE=${3}
+    local STATUSCODE="${1}" REASON="${2}" REQTYPE="${3}"
 
     # This hook is called when a HTTP request fails (e.g., when the ACME
     # server is busy, returns an error, etc). It will be called upon any
@@ -103,6 +103,13 @@ request_failure() {
     #   The specified reason for the error.
     # - REQTYPE
     #   The kind of request that was made (GET, POST...)
+}
+
+exit_hook() {
+  # This hook is called at the end of a dehydrated command and can be used
+  # to do some final (cleanup or other) tasks.
+
+  :
 }
 
 HANDLER="$1"; shift
