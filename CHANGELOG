@@ -5,6 +5,7 @@ This file contains a log of major changes in dehydrated
 ## Changed
 - Skip challenges for already validated domains
 - Removed need for some special commands (BusyBox compatibility)
+- Exported a few more variables for use in hook-scripts
 
 ## Added
 - Added private-key rollover functionality
