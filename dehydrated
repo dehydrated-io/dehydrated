@@ -446,7 +446,7 @@ extract_altnames() {
   reqtext="$( <<<"${csr}" openssl req -noout -text )"
   if <<<"${reqtext}" grep -q '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$'; then
     # SANs used, extract these
-    altnames="$( <<<"${reqtext}" grep -A1 '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$' | tail -n1 )"
+    altnames="$( <<<"${reqtext}" awk '/^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$/{print;getline;print;}' | tail -n1 )"
     # split to one per line:
     # shellcheck disable=SC1003
     altnames="$( <<<"${altnames}" _sed -e 's/^[[:space:]]*//; s/, /\'$'\n''/g' )"
