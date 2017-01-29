@@ -360,13 +360,13 @@ http_request() {
 
   set +e
   if [[ "${1}" = "head" ]]; then
-    statuscode="$(curl ${ip_version:-} -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
+    statuscode="$(curl ${ip_version:-} -A "dehydrated" -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
     curlret="${?}"
   elif [[ "${1}" = "get" ]]; then
-    statuscode="$(curl ${ip_version:-} -s -w "%{http_code}" -o "${tempcont}" "${2}")"
+    statuscode="$(curl ${ip_version:-} -A "dehydrated" -s -w "%{http_code}" -o "${tempcont}" "${2}")"
     curlret="${?}"
   elif [[ "${1}" = "post" ]]; then
-    statuscode="$(curl ${ip_version:-} -s -w "%{http_code}" -o "${tempcont}" "${2}" -d "${3}")"
+    statuscode="$(curl ${ip_version:-} -A "dehydrated" -s -w "%{http_code}" -o "${tempcont}" "${2}" -d "${3}")"
     curlret="${?}"
   else
     set -e
