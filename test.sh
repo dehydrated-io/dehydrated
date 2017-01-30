@@ -214,7 +214,8 @@ _CHECK_LOG "${TMP2_URL}"
 _SUBTEST "Verifying file with full chain..."
 openssl x509 -in "certs/${TMP_URL}/fullchain.pem" -noout -text > /dev/null 2>> errorlog && _PASS || _FAIL
 _SUBTEST "Verifying certificate against CA certificate..."
-(openssl verify -verbose -CAfile "certs/${TMP_URL}/fullchain.pem" -purpose sslserver "certs/${TMP_URL}/fullchain.pem" 2>&1 || true) | (grep -v ': OK$' || true) >> errorlog 2>> errorlog && _PASS || _FAIL
+curl -s https://testca.kurz.pw/acme/issuer-cert | openssl x509 -inform DER -outform PEM > ca.pem
+(openssl verify -verbose -CAfile "ca.pem" -purpose sslserver "certs/${TMP_URL}/fullchain.pem" 2>&1 || true) | (grep -v ': OK$' || true) >> errorlog 2>> errorlog && _PASS || _FAIL
 _CHECK_ERRORLOG
 
 # Revoke certificate using certificate key

@@ -621,12 +621,20 @@ sign_csr() {
   echo " + Done!"
 }
 
+# grep issuer cert uri from certificate
+get_issuer_cert_uri() {
+  certificate="${1}"
+  openssl x509 -in "${certificate}" -noout -text | (grep 'CA Issuers - URI:' | cut -d':' -f2-) || true
+}
+
+# walk certificate chain, retrieving all intermediate certificates
 walk_chain() {
+  local certificate
   certificate="${1}"
 
-  # grep uri from certificate
   local issuer_cert_uri
-  issuer_cert_uri="$(openssl x509 -in "${certificate}" -noout -text | (grep 'CA Issuers - URI:' | cut -d':' -f2-) || true)"
+  issuer_cert_uri="${2:-}"
+  if [[ -z "${issuer_cert_uri}" ]]; then issuer_cert_uri="$(get_issuer_cert_uri "${certificate}")"; fi
   if [[ -n "${issuer_cert_uri}" ]]; then
     # create temporary files
     local tmpcert
@@ -647,9 +655,13 @@ walk_chain() {
     else _exiterr "Unknown certificate type in chain"
     fi
 
-    printf "\n%s\n" "${issuer_cert_uri}"
-    cat "${tmpcert}"
-    walk_chain "${tmpcert}"
+    local next_issuer_cert_uri
+    next_issuer_cert_uri="$(get_issuer_cert_uri "${tmpcert}")"
+    if [[ -n "${next_issuer_cert_uri}" ]]; then
+      printf "\n%s\n" "${issuer_cert_uri}"
+      cat "${tmpcert}"
+      walk_chain "${tmpcert}" "${next_issuer_cert_uri}"
+    fi
     rm -f "${tmpcert}" "${tmpcert_raw}"
   fi
 }
