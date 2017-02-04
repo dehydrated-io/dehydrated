@@ -1,6 +1,10 @@
 sudo: false
 language: shell
 
+os:
+  - linux
+  - osx
+
 cache:
   directories:
     - ngrok

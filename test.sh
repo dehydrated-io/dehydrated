@@ -69,7 +69,14 @@ if [[ ! -e "ngrok/ngrok" ]]; then
   (
     mkdir -p ngrok
     cd ngrok
-    wget https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip -O ngrok.zip
+    if [ "${TRAVIS_OS_NAME}" = "linux" ]; then
+      wget -O ngrok.zip https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip
+    elif [ "${TRAVIS_OS_NAME}" = "osx" ]; then
+      wget -O ngrok.zip https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-darwin-amd64.zip
+    else
+      echo "No ngrok for ${TRAVIS_OS_NAME}"
+      exit 1
+    fi
     unzip ngrok.zip ngrok
     chmod +x ngrok
   )
@@ -235,12 +242,12 @@ echo 'PRIVATE_KEY_ROLLOVER="yes"' >> config
 _TEST "Testing Rolloverkeys..."
 _SUBTEST "First Run: Creating rolloverkey"
 ./dehydrated --cron --domain "${TMP2_URL}" > tmplog 2> errorlog || _FAIL "Script execution failed"
-CERT_ROLL_HASH=$(openssl rsa -in certs/${TMP2_URL}/privkey.roll.pem -outform DER -pubout 2>/dev/null | openssl sha256)
+CERT_ROLL_HASH=$(openssl rsa -in certs/${TMP2_URL}/privkey.roll.pem -outform DER -pubout 2>/dev/null | openssl sha -sha256)
 _CHECK_LOG "Generating private key"
 _CHECK_LOG "Generating private rollover key"
 _SUBTEST "Second Run: Force Renew, Use rolloverkey"
 ./dehydrated --cron --force --domain "${TMP2_URL}" > tmplog 2> errorlog || _FAIL "Script execution failed"
-CERT_NEW_HASH=$(openssl rsa -in certs/${TMP2_URL}/privkey.pem -outform DER -pubout 2>/dev/null | openssl sha256)
+CERT_NEW_HASH=$(openssl rsa -in certs/${TMP2_URL}/privkey.pem -outform DER -pubout 2>/dev/null | openssl sha -sha256)
 _CHECK_LOG "Generating private key"
 _CHECK_LOG "Moving Rolloverkey into position"
 _SUBTEST "Verifying Hash Rolloverkey and private key second run"
