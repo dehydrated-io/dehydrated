@@ -4,6 +4,7 @@
 # Source: https://github.com/lukas2511/dehydrated
 #
 # This script is licensed under The MIT License (see LICENSE for more information).
+VERSION=0.3.2
 
 set -e
 set -u
@@ -1025,6 +1026,12 @@ command_cleanup() {
   exit 0
 }
 
+# Usage: --version (-v)
+# Description: Show version
+command_version() {
+  printf "dehydrated %s\n" $VERSION
+}
+
 # Usage: --help (-h)
 # Description: Show help text
 command_help() {
@@ -1079,6 +1086,11 @@ main() {
     case "${1}" in
       --help|-h)
         command_help
+        exit 0
+        ;;
+
+      --version|-v)
+        command_version
         exit 0
         ;;
 
