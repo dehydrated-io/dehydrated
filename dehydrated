@@ -81,7 +81,7 @@ verify_config() {
   if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
     _exiterr "Challenge type dns-01 needs a hook script for deployment... can not continue."
   fi
-  if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" ]]; then
+  if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" && ! "${COMMAND:-}" = "register" ]]; then
     _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
   fi
   [[ "${KEY_ALGO}" =~ ^(rsa|prime256v1|secp384r1)$ ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... can not continue."
@@ -268,14 +268,22 @@ init_system() {
   # If we generated a new private key in the step above we have to register it with the acme-server
   if [[ "${register_new_key}" = "yes" ]]; then
     echo "+ Registering account key with ACME server..."
-    [[ ! -z "${CA_NEW_REG}" ]] || _exiterr "Certificate authority doesn't allow registrations."
-    # If an email for the contact has been provided then adding it to the registration request
     FAILED=false
-    if [[ -n "${CONTACT_EMAIL}" ]]; then
-      (signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"$LICENSE"'"}' > "${ACCOUNT_KEY_JSON}") || FAILED=true
-    else
-      (signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > "${ACCOUNT_KEY_JSON}") || FAILED=true
+
+    if [[ -z "${CA_NEW_REG}" ]]; then
+      echo "Certificate authority doesn't allow registrations."
+      FAILED=true
     fi
+
+    # If an email for the contact has been provided then adding it to the registration request
+    if [[ "${FAILED}" = "false" ]]; then
+      if [[ -n "${CONTACT_EMAIL}" ]]; then
+        (signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"$LICENSE"'"}' > "${ACCOUNT_KEY_JSON}") || FAILED=true
+      else
+        (signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > "${ACCOUNT_KEY_JSON}") || FAILED=true
+      fi
+    fi
+
     if [[ "${FAILED}" = "true" ]]; then
       echo
       echo
@@ -283,8 +291,10 @@ init_system() {
       rm "${ACCOUNT_KEY}" "${ACCOUNT_KEY_JSON}"
       exit 1
     fi
+  elif [[ "${COMMAND:-}" = "register" ]]; then
+    echo "+ Account already registered!"
+    exit 0
   fi
-
 }
 
 # Different sed version for different os types...
@@ -760,6 +770,7 @@ sign_domain() {
 # Description: Register account key
 command_register() {
   init_system
+  echo "+ Done!"
   exit 0
 }
 
