@@ -1,0 +1,1 @@
+0 9 * * 6 /usr/local/bin/dehydrated -c -f /etc/letsencrypt/config

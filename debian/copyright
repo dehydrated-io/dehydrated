@@ -1,0 +1,14 @@
+Format-Specification: http://wiki.debian.org/Proposals/CopyrightFormat?action=recall&rev=143
+Upstream-Name: FlexiCen
+Upstream-Source: https://www.vitexsoftware.cz/redmine/repositories/22/download_revision?download_format=tar.gz&rev=master
+
+Files: *
+Homepage: http://www.adminit.cz
+Copyright:
+  (c) 2016 AdminIT s.r.o.
+License: Proprietary 
+
+License: GPL-2
+ On Debian systems the full text of the GNU General Public License can be found
+ in the `/usr/share/common-licenses/GPL-2' file.
+

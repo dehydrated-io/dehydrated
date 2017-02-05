@@ -1,0 +1,84 @@
+.\"Created with GNOME Manpages Editor Wizard
+.\"http://sourceforge.net/projects/gmanedit2
+.TH dehydrated 1 "November 18, 2016" "" "dehydrated"
+
+.SH NAME
+dehydrated \- letsencrypt/acme client implemented as a shell-script – just add water
+
+.SH SYNOPSIS
+.B dehydrated
+.RI [-h] [command [argument]] [parameter [argument]] [parameter [argument]] ...
+.br
+Default command: help
+.br
+.br
+Commands:
+.br
+ --cron (-c)                      Sign/renew non-existant/changed/expiring certificates.
+.br
+ --signcsr (-s) path/to/csr.pem   Sign a given CSR, output CRT on stdout (advanced usage)
+.br
+ --revoke (-r) path/to/cert.pem   Revoke specified certificate
+.br
+ --cleanup (-gc)                  Move unused certificate files to archive directory
+.br
+ --help (-h)                      Show help text
+.br
+ --env (-e)                       Output configuration variables for use in other scripts
+.br
+
+.br
+Parameters:
+.br
+ --full-chain (-fc)               Print full chain when using --signcsr
+.br
+ --ipv4 (-4)                      Resolve names to IPv4 addresses only
+.br
+ --ipv6 (-6)                      Resolve names to IPv6 addresses only
+.br
+ --domain (-d) domain.tld         Use specified domain name(s) instead of domains.txt entry (one certificate!)
+.br
+ --keep-going (-g)                Keep going after encountering an error while creating/renewing multiple certificates in cron mode
+.br
+ --force (-x)                     Force renew of certificate even if it is longer valid than value in RENEW_DAYS
+.br
+ --no-lock (-n)                   Don't use lockfile (potentially dangerous!)
+.br
+ --ocsp                           Sets option in CSR indicating OCSP stapling to be mandatory
+.br
+ --privkey (-p) path/to/key.pem   Use specified private key instead of account key (useful for revocation)
+.br
+ --config (-f) path/to/config     Use specified config file
+.br
+ --hook (-k) path/to/hook.sh      Use specified script for hooks
+.br
+ --out (-o) certs/directory       Output certificates into the specified directory
+.br
+ --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported
+.br
+ --algo (-a) rsa|prime256v1|secp384r1 Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
+.br
+
+
+
+.SH CONFIGURATION
+dehydrated is looking for a config file in a few different places, it will use the first one it can find in this order:
+.br
+      * /etc/dehydrated/config
+.br
+      * /usr/local/etc/dehydrated/config
+.br
+      * The current working directory of your shell
+.br
+      * The directory from which dehydrated was ran
+
+
+
+.SH DESCRIPTION
+This manual page explains the how to configure and run Dehydrated
+.B dehydrated
+
+.PP
+\fBdehydrated\fP 
+
+
