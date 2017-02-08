@@ -612,7 +612,10 @@ sign_csr() {
       done
     fi
 
-    _exiterr "Challenge is invalid! (returned: ${reqstatus}) (result: ${result})"
+     # Non-fatal exception if host cannot be reached as to be able to continue with other hosts in domains.txt
+     echo " !!! WARNING !!! Challenge is invalid! (returned: ${reqstatus}) (result: ${result}) "
+     echo " !!! WARNING !!! Certificate above will *NOT* be renewed/(created)! "
+     continue
   fi
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
