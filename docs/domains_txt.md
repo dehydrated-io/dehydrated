@@ -2,6 +2,8 @@
 
 dehydrated uses the file `domains.txt` as configuration for which certificates should be requested.
 
+The `domains.txt` file needs to be created in the root of this project.
+
 The file should have the following format:
 
 ```text
