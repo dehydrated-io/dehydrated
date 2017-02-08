@@ -1,0 +1,7 @@
+#!/bin/bash
+mkdir -p usr/sbin
+cp ../dehydrated usr/sbin
+mkdir -p usr/share/doc/dehydrated
+cp ../CHANGELOG ../LICENSE ../README.md usr/share/doc/dehydrated
+cp -r 	../docs usr/share/doc/dehydrated
+fakeroot dpkg-deb --build . .

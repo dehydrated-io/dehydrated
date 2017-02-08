@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# MUST BE RUN AS ROOT
+#
+
+BASEDIR="/etc/dehydrated"
+SSLDIR="/etc/ssl"
+
+CERTS=$(/bin/ls -x ${BASEDIR}/certs/)
+
+for CERT in $CERTS
+do
+	# Check if the certificate has changed
+  	if !(diff -q ${BASEDIR}/certs/${CERT}/fullchain.pem ${SSLDIR}/certs/${CERT}.crt > /dev/null)
+	then
+		echo "Certificate for ${CERT} has been renewed."
+		cp -L "${BASEDIR}/certs/${CERT}/privkey.pem"   "${SSLDIR}/private/${CERT}.key"
+		cp -L "${BASEDIR}/certs/${CERT}/fullchain.pem" "${SSLDIR}/certs/${CERT}.crt"
+		chmod 400 "${SSLDIR}/private/${CERT}.key"
+		chmod 644 "${SSLDIR}/certs/${CERT}.crt"
+
+		# Restart relevant services
+		#  [[ "${jail}" = "http" ]] && jexec ${jail} service apache24 restart
+	  	#[[ "${jail}" = "mail" ]] && jexec ${jail} service smtpd    restart
+		/etc/init.d/apache2 restart > /dev/null
+
+		# Clean up old keys and certs
+		sudo -u dehydrated /usr/sbin/dehydrated --cleanup > /dev/null
+	fi
+done

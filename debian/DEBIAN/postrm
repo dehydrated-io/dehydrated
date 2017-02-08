@@ -1,0 +1,8 @@
+#!/bin/bash
+ret=false
+getent passwd dehydrated >/dev/null 2>&1 && ret=true
+
+if $ret; then
+    echo "Removing dehydrated user"
+	userdel dehydrated
+fi

@@ -1,0 +1,10 @@
+#!/bin/bash
+ret=false
+getent passwd dehydrated >/dev/null 2>&1 && ret=true
+
+if $ret; then
+    echo "User dehydrated already exists"
+else
+    echo "Creating dehydrated user"
+	adduser --system --home /etc/dehydrated dehydrated
+fi

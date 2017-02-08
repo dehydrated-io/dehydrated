@@ -1,0 +1,6 @@
+#!/bin/bash
+rm -rf  usr/sbin
+rm -f   usr/share/doc/dehydrated/{CHANGELOG,LICENSE,README.md}
+rm -rf  usr/share/doc/dehydrated/docs
+rm -f dehydrated*.deb
+
