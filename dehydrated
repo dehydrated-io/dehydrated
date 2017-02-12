@@ -56,6 +56,7 @@ store_configvars() {
   __HOOK="${HOOK}"
   __WELLKNOWN="${WELLKNOWN}"
   __HOOK_CHAIN="${HOOK_CHAIN}"
+  __HOOK_DOMAINS="${HOOK_DOMAINS}"
   __OPENSSL_CNF="${OPENSSL_CNF}"
   __RENEW_DAYS="${RENEW_DAYS}"
   __IP_VERSION="${IP_VERSION}"
@@ -70,6 +71,7 @@ reset_configvars() {
   HOOK="${__HOOK}"
   WELLKNOWN="${__WELLKNOWN}"
   HOOK_CHAIN="${__HOOK_CHAIN}"
+  HOOK_DOMAINS="${__HOOK_DOMAINS}"
   OPENSSL_CNF="${__OPENSSL_CNF}"
   RENEW_DAYS="${__RENEW_DAYS}"
   IP_VERSION="${__IP_VERSION}"
@@ -80,6 +82,9 @@ verify_config() {
   [[ "${CHALLENGETYPE}" =~ (http-01|dns-01) ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... can not continue."
   if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
     _exiterr "Challenge type dns-01 needs a hook script for deployment... can not continue."
+  fi
+  if [[ "${HOOK_DOMAINS}" = "yes" ]] && [[ -z "${HOOK}" ]]; then
+    _exiterr "HOOK_DOMAINS needs a hook script... can not continue."
   fi
   if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" && ! "${COMMAND:-}" = "register" ]]; then
     _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
@@ -115,6 +120,7 @@ load_config() {
   DOMAINS_TXT=
   HOOK=
   HOOK_CHAIN="no"
+  HOOK_DOMAINS="no"
   RENEW_DAYS="30"
   KEYSIZE="4096"
   WELLKNOWN=
@@ -409,9 +415,6 @@ http_request() {
       if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token:+set}" ]]; then
         "${HOOK}" "clean_challenge" '' "${challenge_token}" "${keyauth}"
       fi
-
-      # remove temporary domains.txt file if used
-      [[ -n "${PARAM_DOMAIN:-}" && -n "${DOMAINS_TXT:-}" ]] && rm "${DOMAINS_TXT}"
       exit 1
     fi
   fi
@@ -779,25 +782,32 @@ command_register() {
 command_sign_domains() {
   init_system
 
+  local get_domains
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
-    DOMAINS_TXT="$(_mktemp)"
-    printf -- "${PARAM_DOMAIN}" > "${DOMAINS_TXT}"
+    echo_param_domain() {
+      echo "${PARAM_DOMAIN}"
+    }
+    get_domains=echo_param_domain
+  elif [[ "${HOOK_DOMAINS}" = yes ]]; then
+    hook_print_domains() {
+      "${HOOK}" print_domains
+    }
+    get_domains=hook_print_domains
   elif [[ -e "${DOMAINS_TXT}" ]]; then
     if [[ ! -r "${DOMAINS_TXT}" ]]; then
       _exiterr "domains.txt found but not readable"
     fi
+    read_domains_txt() {
+      tr -d '\r' <"${DOMAINS_TXT}" | awk '{print tolower($0)}' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true)
+    }
+    get_domains=read_domains_txt
   else
     _exiterr "domains.txt not found and --domain not given"
   fi
 
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
-  ORIGIFS="${IFS}"
-  IFS=$'\n'
-  for line in $(<"${DOMAINS_TXT}" tr -d '\r' | awk '{print tolower($0)}' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true)); do
+  ${get_domains} | while read -r domain morenames; do
     reset_configvars
-    IFS="${ORIGIFS}"
-    domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
-    morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
     cert="${CERTDIR}/${domain}/cert.pem"
 
     force_renew="${PARAM_FORCE:-no}"
@@ -889,15 +899,12 @@ command_sign_domains() {
 
     # shellcheck disable=SC2086
     if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
-      sign_domain ${line} &
+      sign_domain ${domain} ${morenames} &
       wait $! || true
     else
-      sign_domain ${line}
+      sign_domain ${domain} ${morenames}
     fi
   done
-
-  # remove temporary domains.txt file if used
-  [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"
 
   [[ -n "${HOOK}" ]] && "${HOOK}" "exit_hook"
   exit 0
@@ -1062,7 +1069,7 @@ command_help() {
 command_env() {
   echo "# dehydrated configuration"
   load_config
-  typeset -p CA LICENSE CERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
+  typeset -p CA LICENSE CERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN HOOK_DOMAINS RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
 # Main method (parses script arguments and calls command_* methods)

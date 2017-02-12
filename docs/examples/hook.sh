@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 
+print_domains() {
+    # This hook is called to obtain a list of domains if
+    # HOOK_DOMAINS="yes". Here you can read from an external source
+    # (e.g. your DNS server's zone files) to produce output in the same
+    # format described for domains.txt .
+    #
+    # No parameters.
+}
+
 deploy_challenge() {
     local DOMAIN="${1}" TOKEN_FILENAME="${2}" TOKEN_VALUE="${3}"
 
@@ -113,6 +122,6 @@ exit_hook() {
 }
 
 HANDLER="$1"; shift
-if [[ "${HANDLER}" =~ ^(deploy_challenge|clean_challenge|deploy_cert|unchanged_cert|invalid_challenge|request_failure|exit_hook)$ ]]; then
+if [[ "${HANDLER}" =~ ^(print_domains|deploy_challenge|clean_challenge|deploy_cert|unchanged_cert|invalid_challenge|request_failure|exit_hook)$ ]]; then
   "$HANDLER" "$@"
 fi

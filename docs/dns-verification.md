@@ -6,6 +6,8 @@ You need a hook script that deploys the challenge to your DNS server!
 
 The hook script (indicated in the config file or the --hook/-k command line argument) gets four arguments: an operation name (clean_challenge, deploy_challenge, deploy_cert, invalid_challenge or request_failure) and some operands for that. For deploy_challenge $2 is the domain name for which the certificate is required, $3 is a "challenge token" (which is not needed for dns-01), and $4 is a token which needs to be inserted in a TXT record for the domain.
 
+By configuring `HOOK_DOMAINS="yes"`, your hook will be called for operation `print_domains`, in which you can make it read from an external source (e.g. your DNS server's zone files) to produce output in the same format described for domains.txt, so you don't have to maintain two separate lists of hostnames in your zones and in domains.txt.
+
 Typically, you will need to split the subdomain name in two, the subdomain name and the domain name separately. For example, for "my.example.com", you'll need "my" and "example.com" separately. You then have to prefix "_acme-challenge." before the subdomain name, as in "_acme-challenge.my" and set a TXT record for that on the domain (e.g. "example.com") which has the value supplied in $4
 
 ```
