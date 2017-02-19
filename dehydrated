@@ -160,7 +160,7 @@ load_config() {
   fi
 
   # Remove slash from end of BASEDIR. Mostly for cleaner outputs, doesn't change functionality.
-  BASEDIR="${BASEDIR%%/}"
+  [[ "$BASEDIR" != "/" ]] && BASEDIR="${BASEDIR%%/}"
 
   # Check BASEDIR and set default variables
   [[ -d "${BASEDIR}" ]] || _exiterr "BASEDIR does not exist: ${BASEDIR}"
