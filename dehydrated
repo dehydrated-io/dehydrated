@@ -104,8 +104,9 @@ load_config() {
   fi
 
   # Default values
-  CA="https://acme-v01.api.letsencrypt.org/directory"
-  CA_TERMS="https://acme-v01.api.letsencrypt.org/terms"
+  CA_BASE="https://acme-v01.api.letsencrypt.org"
+  CA="${CA_BASE}/directory"
+  CA_TERMS="${CA_BASE}/terms"
   LICENSE=
   CERTDIR=
   ACCOUNTDIR=
@@ -292,9 +293,13 @@ init_system() {
       exit 1
     fi
   elif [[ "${COMMAND:-}" = "register" ]]; then
-    echo "+ Account already registered!"
+    ACCOUNT_ID=$(cat "${ACCOUNT_KEY_JSON}" | get_json_decimal_value id)
+    echo "+ Account already registered!. ID:${ACCOUNT_ID}"
     exit 0
   fi
+
+  ACCOUNT_ID=$(cat "${ACCOUNT_KEY_JSON}" | get_json_decimal_value id)
+  CA_REG="$(printf '%s/acme/reg/%s' "${CA_BASE}" "${ACCOUNT_ID}")"
 }
 
 # Different sed version for different os types...
@@ -329,10 +334,15 @@ hex2bin() {
   printf -- "$(cat | _sed -e 's/[[:space:]]//g' -e 's/^(.(.{2})*)$/0\1/' -e 's/(.{2})/\\x\1/g')"
 }
 
-# Get string value from json dictionary
+# Get string/decimal value from json dictionary
 get_json_string_value() {
   local filter
   filter=$(printf 's/.*"%s": *"\([^"]*\)".*/\\1/p' "$1")
+  sed -n "${filter}"
+}
+get_json_decimal_value() {
+  local filter
+  filter=$(printf 's/.*"%s": *\([0-9]*\).*/\\1/p' "$1")
   sed -n "${filter}"
 }
 
@@ -363,6 +373,7 @@ _openssl() {
 # Send http(s) request with specified method
 http_request() {
   tempcont="$(_mktemp)"
+  temphdr="$(_mktemp)"
 
   if [[ -n "${IP_VERSION:-}" ]]; then
       ip_version="-${IP_VERSION}"
@@ -373,10 +384,10 @@ http_request() {
     statuscode="$(curl ${ip_version:-} -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
     curlret="${?}"
   elif [[ "${1}" = "get" ]]; then
-    statuscode="$(curl ${ip_version:-} -s -w "%{http_code}" -o "${tempcont}" "${2}")"
+    statuscode="$(curl ${ip_version:-} -s -w "%{http_code}" -o "${tempcont}" -D "${temphdr}" "${2}")"
     curlret="${?}"
   elif [[ "${1}" = "post" ]]; then
-    statuscode="$(curl ${ip_version:-} -s -w "%{http_code}" -o "${tempcont}" "${2}" -d "${3}")"
+    statuscode="$(curl ${ip_version:-} -s -w "%{http_code}" -o "${tempcont}" -D "${temphdr}" "${2}" -d "${3}")"
     curlret="${?}"
   else
     set -e
@@ -393,7 +404,7 @@ http_request() {
       echo "  + ERROR: An error occurred while sending ${1}-request to ${2} (Status ${statuscode})" >&2
       echo >&2
       echo "Details:" >&2
-      cat "${tempcont}" >&2
+      cat "${temphdr}" "${tempcont}" >&2
       echo >&2
       echo >&2
 
@@ -403,7 +414,7 @@ http_request() {
         "${HOOK}" "request_failure" "${statuscode}" "${errtxt}" "${1}"
       fi
 
-      rm -f "${tempcont}"
+      rm -f "${temphdr}" "${tempcont}"
 
       # Wait for hook script to clean the challenge if used
       if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token:+set}" ]]; then
@@ -417,7 +428,7 @@ http_request() {
   fi
 
   cat "${tempcont}"
-  rm -f "${tempcont}"
+  rm -f "${temphdr}" "${tempcont}"
 }
 
 # Send signed request
@@ -774,6 +785,29 @@ command_register() {
   exit 0
 }
 
+# Usage: --update
+# Description: Update account contact
+command_update() {
+  init_system
+
+  FAILED=false
+  if [[ -n "${CONTACT_EMAIL}" ]]; then
+    (signed_request "${CA_REG}" '{"resource": "reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"$LICENSE"'"}' > "${ACCOUNT_KEY_JSON}") || FAILED=true
+  else
+    (signed_request "${CA_REG}" '{"resource": "reg", "agreement": "'"$LICENSE"'"}' > "${ACCOUNT_KEY_JSON}") || FAILED=true
+  fi
+
+  if [[ "${FAILED}" = "true" ]]; then
+    echo
+    echo "+ Error updating account contact."
+    exit 1
+  fi
+
+  echo "+ Done!"
+  exit 0
+}
+
+
 # Usage: --cron (-c)
 # Description: Sign/renew non-existant/changed/expiring certificates.
 command_sign_domains() {
@@ -1105,6 +1139,10 @@ main() {
         set_command register
         ;;
 
+      --update)
+        set_command update
+        ;;
+
       # PARAM_Usage: --accept-terms
       # PARAM_Description: Accept CAs terms of service
       --accept-terms)
@@ -1254,6 +1292,7 @@ main() {
     env) command_env;;
     sign_domains) command_sign_domains;;
     register) command_register;;
+    update) command_update;;
     sign_csr) command_sign_csr "${PARAM_CSR}";;
     revoke) command_revoke "${PARAM_REVOKECERT}";;
     cleanup) command_cleanup;;
