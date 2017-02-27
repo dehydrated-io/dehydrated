@@ -89,3 +89,6 @@
 
 # Option to add CSR-flag indicating OCSP stapling to be mandatory (default: no)
 #OCSP_MUST_STAPLE="no"
+
+# Post certificate (local) deployment commands
+#POST_DEPLOY="systemctl restart nginx.service"

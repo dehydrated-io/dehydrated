@@ -59,6 +59,7 @@ store_configvars() {
   __OPENSSL_CNF="${OPENSSL_CNF}"
   __RENEW_DAYS="${RENEW_DAYS}"
   __IP_VERSION="${IP_VERSION}"
+  __POST_DEPLOY="${POST_DEPLOY}"
 }
 
 reset_configvars() {
@@ -73,6 +74,7 @@ reset_configvars() {
   OPENSSL_CNF="${__OPENSSL_CNF}"
   RENEW_DAYS="${__RENEW_DAYS}"
   IP_VERSION="${__IP_VERSION}"
+  POST_DEPLOY="${__POST_DEPLOY}"
 }
 
 # verify configuration values
@@ -126,6 +128,7 @@ load_config() {
   LOCKFILE=
   OCSP_MUST_STAPLE="no"
   IP_VERSION=
+  POST_DEPLOY=""
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -194,6 +197,7 @@ load_config() {
   [[ -n "${PARAM_KEY_ALGO:-}" ]] && KEY_ALGO="${PARAM_KEY_ALGO}"
   [[ -n "${PARAM_OCSP_MUST_STAPLE:-}" ]] && OCSP_MUST_STAPLE="${PARAM_OCSP_MUST_STAPLE}"
   [[ -n "${PARAM_IP_VERSION:-}" ]] && IP_VERSION="${PARAM_IP_VERSION}"
+  [[ -n "${PARAM_POST_DEPLOY:-}" ]] && POST_DEPLOY="${PARAM_POST_DEPLOY}"
 
   verify_config
   store_configvars
@@ -762,6 +766,9 @@ sign_domain() {
   # Wait for hook script to clean the challenge and to deploy cert if used
   [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${domain}" "${CERTDIR}/${domain}/privkey.pem" "${CERTDIR}/${domain}/cert.pem" "${CERTDIR}/${domain}/fullchain.pem" "${CERTDIR}/${domain}/chain.pem" "${timestamp}"
 
+  # Run post-deploy commands
+  [[ -n "${POST_DEPLOY}" ]] && $(type -p bash) -c "${POST_DEPLOY}"
+
   unset challenge_token
   echo " + Done!"
 }
@@ -1182,7 +1189,7 @@ main() {
       --lock-suffix)
       	shift 1
         check_parameters "${1:-}"
-	PARAM_LOCKFILE_SUFFIX="${1}"
+        PARAM_LOCKFILE_SUFFIX="${1}"
         ;;
 
       # PARAM_Usage: --ocsp
@@ -1237,6 +1244,14 @@ main() {
         shift 1
         check_parameters "${1:-}"
         PARAM_KEY_ALGO="${1}"
+        ;;
+
+      # PARAM_Usage: --post-deploy (-p) "command"
+      # PARAM_Description: Execute specified command(s) after deploying a certificate
+      --post-deploy|-pd)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_POST_DEPLOY="${1}"
         ;;
 
       *)
