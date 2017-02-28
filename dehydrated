@@ -113,6 +113,7 @@ load_config() {
   CONFIG_D=
   DOMAINS_D=
   DOMAINS_TXT=
+  CHALLENGES_TXT=
   HOOK=
   HOOK_CHAIN="no"
   RENEW_DAYS="30"
@@ -183,6 +184,7 @@ load_config() {
 
   [[ -z "${CERTDIR}" ]] && CERTDIR="${BASEDIR}/certs"
   [[ -z "${DOMAINS_TXT}" ]] && DOMAINS_TXT="${BASEDIR}/domains.txt"
+  [[ -z "${CHALLENGES_TXT}" ]] && CHALLENGES_TXT="${BASEDIR}/challenges.txt"
   [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="/var/www/dehydrated"
   [[ -z "${LOCKFILE}" ]] && LOCKFILE="${BASEDIR}/lock"
   [[ -n "${PARAM_LOCKFILE_SUFFIX:-}" ]] && LOCKFILE="${LOCKFILE}-${PARAM_LOCKFILE_SUFFIX}"
@@ -502,51 +504,71 @@ sign_csr() {
     local -a challenge_altnames challenge_uris challenge_tokens keyauths deploy_args
   fi
 
-  # Request challenges
-  for altname in ${altnames}; do
-    # Ask the acme-server for new challenge token and extract them from the resulting json block
-    echo " + Requesting challenge for ${altname}..."
-    response="$(signed_request "${CA_NEW_AUTHZ}" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}' | clean_json)"
+  ! [[ -e "${CHALLENGES_TXT}" ]] && touch "${CHALLENGES_TXT}"
 
-    challenge_status="$(printf '%s' "${response}" | rm_json_arrays | get_json_string_value status)"
-    if [ "${challenge_status}" = "valid" ]; then
-       echo " + Already validated!"
-       continue
-    fi
-
-    challenges="$(printf '%s\n' "${response}" | sed -n 's/.*\("challenges":[^\[]*\[[^]]*]\).*/\1/p')"
-    repl=$'\n''{' # fix syntax highlighting in Vim
-    challenge="$(printf "%s" "${challenges//\{/${repl}}" | grep \""${CHALLENGETYPE}"\")"
-    challenge_token="$(printf '%s' "${challenge}" | get_json_string_value token | _sed 's/[^A-Za-z0-9_\-]/_/g')"
-    challenge_uri="$(printf '%s' "${challenge}" | get_json_string_value uri)"
-
-    if [[ -z "${challenge_token}" ]] || [[ -z "${challenge_uri}" ]]; then
-      _exiterr "Can't retrieve challenges (${response})"
-    fi
-
-    # Challenge response consists of the challenge token and the thumbprint of our public certificate
-    keyauth="${challenge_token}.${thumbprint}"
-
-    case "${CHALLENGETYPE}" in
-      "http-01")
-        # Store challenge response in well-known location and make world-readable (so that a webserver can access it)
-        printf '%s' "${keyauth}" > "${WELLKNOWN}/${challenge_token}"
-        chmod a+r "${WELLKNOWN}/${challenge_token}"
-        keyauth_hook="${keyauth}"
-        ;;
-      "dns-01")
-        # Generate DNS entry content for dns-01 validation
-        keyauth_hook="$(printf '%s' "${keyauth}" | openssl dgst -sha256 -binary | urlbase64)"
-        ;;
-    esac
-
+  while IFS=' ' read altname challenge_token challenge_uri keyauth keyauth_hook
+  do
+    deploy_arg="${altname} ${challenge_token} ${keyauth_hook}"
     challenge_altnames[${idx}]="${altname}"
     challenge_uris[${idx}]="${challenge_uri}"
     keyauths[${idx}]="${keyauth}"
     challenge_tokens[${idx}]="${challenge_token}"
     # Note: assumes args will never have spaces!
-    deploy_args[${idx}]="${altname} ${challenge_token} ${keyauth_hook}"
+    deploy_args[${idx}]="${deploy_arg}"
     idx=$((idx+1))
+  done < "${CHALLENGES_TXT}"
+
+  # Request challenges
+  for altname in ${altnames}; do
+    if [[ $idx -eq 0 ]] || ! [[ " ${challenge_altnames[@]} " =~ " ${altname} " ]]; then
+      # Ask the acme-server for new challenge token and extract them from the resulting json block
+      echo " + Requesting challenge for ${altname}..."
+      response="$(signed_request "${CA_NEW_AUTHZ}" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}' | clean_json)"
+
+      challenge_status="$(printf '%s' "${response}" | rm_json_arrays | get_json_string_value status)"
+      if [ "${challenge_status}" = "valid" ]; then
+         echo " + Already validated!"
+         continue
+      fi
+
+      challenges="$(printf '%s\n' "${response}" | sed -n 's/.*\("challenges":[^\[]*\[[^]]*]\).*/\1/p')"
+      repl=$'\n''{' # fix syntax highlighting in Vim
+      challenge="$(printf "%s" "${challenges//\{/${repl}}" | grep \""${CHALLENGETYPE}"\")"
+      challenge_token="$(printf '%s' "${challenge}" | get_json_string_value token | _sed 's/[^A-Za-z0-9_\-]/_/g')"
+      challenge_uri="$(printf '%s' "${challenge}" | get_json_string_value uri)"
+
+      if [[ -z "${challenge_token}" ]] || [[ -z "${challenge_uri}" ]]; then
+        _exiterr "Can't retrieve challenges (${response})"
+      fi
+
+      # Challenge response consists of the challenge token and the thumbprint of our public certificate
+      keyauth="${challenge_token}.${thumbprint}"
+
+      case "${CHALLENGETYPE}" in
+        "http-01")
+          # Store challenge response in well-known location and make world-readable (so that a webserver can access it)
+          printf '%s' "${keyauth}" > "${WELLKNOWN}/${challenge_token}"
+          chmod a+r "${WELLKNOWN}/${challenge_token}"
+          keyauth_hook="${keyauth}"
+          ;;
+        "dns-01")
+          # Generate DNS entry content for dns-01 validation
+          keyauth_hook="$(printf '%s' "${keyauth}" | openssl dgst -sha256 -binary | urlbase64)"
+          ;;
+      esac
+
+      deploy_arg="${altname} ${challenge_token} ${keyauth_hook}"
+      challenge_altnames[${idx}]="${altname}"
+      challenge_uris[${idx}]="${challenge_uri}"
+      keyauths[${idx}]="${keyauth}"
+      challenge_tokens[${idx}]="${challenge_token}"
+      # Note: assumes args will never have spaces!
+      deploy_args[${idx}]="${deploy_arg}"
+      idx=$((idx+1))
+      echo "${altname} ${challenge_token} ${challenge_uri} ${keyauth} ${keyauth_hook}" >> ${CHALLENGES_TXT}
+    else
+      echo " + Using challenge from ${CHALLENGES_TXT} for ${altname}"
+    fi
   done
   challenge_count="${idx}"
 
@@ -558,50 +580,49 @@ sign_csr() {
 
   # Respond to challenges
   reqstatus="valid"
-  idx=0
-  if [ ${challenge_count} -ne 0 ]; then
-    for altname in "${challenge_altnames[@]:0}"; do
-      challenge_token="${challenge_tokens[${idx}]}"
-      keyauth="${keyauths[${idx}]}"
+  while IFS=' ' read altname challenge_token challenge_uri keyauth keyauth_hook
+  do
+    deploy_arg="${altname} ${challenge_token} ${keyauth_hook}"
+    # Wait for hook script to deploy the challenge if used
+    # shellcheck disable=SC2086
+    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_arg}
 
-      # Wait for hook script to deploy the challenge if used
-      # shellcheck disable=SC2086
-      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]}
+    # Ask the acme-server to verify our challenge and wait until it is no longer pending
+    echo " + Responding to challenge for ${altname}..."
+    result="$(signed_request "${challenge_uri}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}' | clean_json)"
 
-      # Ask the acme-server to verify our challenge and wait until it is no longer pending
-      echo " + Responding to challenge for ${altname}..."
-      result="$(signed_request "${challenge_uris[${idx}]}" '{"resource": "challenge", "keyAuthorization": "'"${keyauth}"'"}' | clean_json)"
+    reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
 
+    while [[ "${reqstatus}" = "pending" ]]; do
+      sleep 1
+      result="$(http_request get "${challenge_uri}")"
       reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
-
-      while [[ "${reqstatus}" = "pending" ]]; do
-        sleep 1
-        result="$(http_request get "${challenge_uris[${idx}]}")"
-        reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
-      done
-
-      [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
-
-      # Wait for hook script to clean the challenge if used
-      if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token}" ]]; then
-        # shellcheck disable=SC2086
-        "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
-      fi
-      idx=$((idx+1))
-
-      if [[ "${reqstatus}" = "valid" ]]; then
-        echo " + Challenge is valid!"
-      else
-        [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "invalid_challenge" "${altname}" "${result}"
-      fi
     done
-  fi
+
+    [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_token}"
+
+    # Wait for hook script to clean the challenge if used
+    if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token}" ]]; then
+      # shellcheck disable=SC2086
+      "${HOOK}" "clean_challenge" ${deploy_arg}
+    fi
+    idx=$((idx+1))
+
+    if [[ "${reqstatus}" = "valid" ]]; then
+      echo " + Challenge is valid!"
+    else
+      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "invalid_challenge" "${altname}" "${result}"
+    fi
+    sed -i '1d' "${CHALLENGES_TXT}"
+  done < "${CHALLENGES_TXT}"
 
   # Wait for hook script to clean the challenges if used
   # shellcheck disable=SC2068
   if [[ ${challenge_count} -ne 0 ]]; then
     [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "clean_challenge" ${deploy_args[@]}
   fi
+
+  rm "${CHALLENGES_TXT}"
 
   if [[ "${reqstatus}" != "valid" ]]; then
     # Clean up any remaining challenge_tokens if we stopped early
