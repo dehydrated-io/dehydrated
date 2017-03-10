@@ -1,0 +1,21 @@
+
+# By default we set staging fake authority server
+CA="https://acme-staging.api.letsencrypt.org/directory"
+#CA="https://acme-v01.api.letsencrypt.org/directory"
+
+CONTACT_EMAIL=admin@illan.co
+
+WELLKNOWN="/opt/dehydrated/.acme-challenges"
+
+# Disabled due to issues with Firefox
+##OCSP_MUST_STAPLE="yes"
+
+# Some specific software can work only with RSA
+#KEY_ALGO=rsa
+KEY_ALGO=secp384r1
+
+# Hooks are very specific to the host, so we disable it by default
+#HOOK=/opt/dehydrated/hook.sh
+
+LOCKFILE=/tmp/dehydrated.lock
+
