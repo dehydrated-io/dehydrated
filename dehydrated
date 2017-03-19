@@ -1160,6 +1160,8 @@ main() {
          fi
         ;;
 
+      # PARAM_Usage: --domains-txt (-d) domains.txt
+      # PARAM_Description: Use alternate domains.txt file
       --domains-txt|-D)
         shift 1
         check_parameters "${1:-}"
