@@ -33,7 +33,7 @@ dehydrated is looking for a config file in a few different places, it will use t
 - `/etc/dehydrated/config`
 - `/usr/local/etc/dehydrated/config`
 - The current working directory of your shell
-- The directory from which dehydrated was ran
+- The directory from which dehydrated was run
 
 Have a look at [docs/examples/config](docs/examples/config) to get started, copy it to e.g. `/etc/dehydrated/config`
 and edit it to fit your needs.
@@ -47,7 +47,7 @@ Default command: help
 
 Commands:
  --register                       Register account key
- --cron (-c)                      Sign/renew non-existant/changed/expiring certificates.
+ --cron (-c)                      Sign/renew non-existent/changed/expiring certificates.
  --signcsr (-s) path/to/csr.pem   Sign a given CSR, output CRT on stdout (advanced usage)
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
  --cleanup (-gc)                  Move unused certificate files to archive directory
