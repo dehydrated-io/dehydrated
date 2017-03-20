@@ -91,7 +91,7 @@ invalid_challenge() {
 request_failure() {
     local STATUSCODE="${1}" REASON="${2}" REQTYPE="${3}"
 
-    # This hook is called when a HTTP request fails (e.g., when the ACME
+    # This hook is called when an HTTP request fails (e.g., when the ACME
     # server is busy, returns an error, etc). It will be called upon any
     # response code that does not start with '2'. Useful to alert admins
     # about problems with requests.
