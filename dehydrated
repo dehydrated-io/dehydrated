@@ -303,7 +303,7 @@ init_system() {
 
 # Different sed version for different os types...
 _sed() {
-  if [[ "${OSTYPE}" = "Linux" ]]; then
+  if [[ "${OSTYPE}" = "Linux" || "${OSTYPE::5}" = "MINGW" ]]; then
     sed -r "${@}"
   else
     sed -E "${@}"
@@ -758,7 +758,13 @@ sign_domain() {
   if [ "${OCSP_MUST_STAPLE}" = "yes" ]; then
     printf "\n1.3.6.1.5.5.7.1.24=DER:30:03:02:01:05" >> "${tmp_openssl_cnf}"
   fi
-  openssl req -new -sha256 -key "${CERTDIR}/${domain}/${privkey}" -out "${CERTDIR}/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
+  SUBJ="/CN=${domain}/"
+  if [[ "${OSTYPE::5}" = "MINGW" ]]; then
+    # The subject starts with a /, so MSYS will assume it's a path and convert
+    # it unless we escape it with another one:
+    SUBJ="/${SUBJ}"
+  fi
+  openssl req -new -sha256 -key "${CERTDIR}/${domain}/${privkey}" -out "${CERTDIR}/${domain}/cert-${timestamp}.csr" -subj "${SUBJ}" -reqexts SAN -config "${tmp_openssl_cnf}"
   rm -f "${tmp_openssl_cnf}"
 
   crt_path="${CERTDIR}/${domain}/cert-${timestamp}.pem"
