@@ -147,7 +147,7 @@ load_config() {
 
   if [[ -n "${CONFIG_D}" ]]; then
     if [[ ! -d "${CONFIG_D}" ]]; then
-      _exiterr "The path ${CONFIG_D} specified for CONFIG_D does not point to a directory." >&2
+      _exiterr "The path ${CONFIG_D} specified for CONFIG_D does not point to a directory."
     fi
 
     for check_config_d in "${CONFIG_D}"/*.sh; do
@@ -159,7 +159,7 @@ load_config() {
         # shellcheck disable=SC1090
         . "${check_config_d}"
       else
-        _exiterr "Specified additional config ${check_config_d} is not readable or not a file at all." >&2
+        _exiterr "Specified additional config ${check_config_d} is not readable or not a file at all."
       fi
    done
   fi
