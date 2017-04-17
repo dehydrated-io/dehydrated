@@ -248,18 +248,18 @@ init_system() {
     if [[ ! -e "${ACCOUNT_KEY}" ]]; then
       REAL_LICENSE="$(http_request head "${CA_TERMS}" | (grep Location: || true) | awk -F ': ' '{print $2}' | tr -d '\n\r')"
       if [[ -z "${REAL_LICENSE}" ]]; then
-        printf '\n'
-        printf 'Error retrieving terms of service from certificate authority.\n'
-        printf 'Please set LICENSE in config manually.\n'
+        printf '\n' >&2
+        printf 'Error retrieving terms of service from certificate authority.\n' >&2
+        printf 'Please set LICENSE in config manually.\n' >&2
         exit 1
       fi
       if [[ ! "${LICENSE}" = "${REAL_LICENSE}" ]]; then
         if [[ "${PARAM_ACCEPT_TERMS:-}" = "yes" ]]; then
           LICENSE="${REAL_LICENSE}"
         else
-          printf '\n'
-          printf 'To use dehydrated with this certificate authority you have to agree to their terms of service which you can find here: %s\n\n' "${REAL_LICENSE}"
-          printf 'To accept these terms of service run `%s --register --accept-terms`.\n' "${0}"
+          printf '\n' >&2
+          printf 'To use dehydrated with this certificate authority you have to agree to their terms of service which you can find here: %s\n\n' "${REAL_LICENSE}" >&2
+          printf 'To accept these terms of service run `%s --register --accept-terms`.\n' "${0}" >&2
           exit 1
         fi
       fi
@@ -297,9 +297,9 @@ init_system() {
     fi
 
     if [[ "${FAILED}" = "true" ]]; then
-      echo
-      echo
-      echo "Error registering account key. See message above for more information."
+      echo >&2
+      echo >&2
+      echo "Error registering account key. See message above for more information." >&2
       rm "${ACCOUNT_KEY}" "${ACCOUNT_KEY_JSON}"
       exit 1
     fi
@@ -951,7 +951,7 @@ command_sign_domains() {
             declare -- "${config_var}=${config_value}"
             ;;
           _) ;;
-          *) echo "   ! Setting ${config_var} on a per-certificate base is not (yet) supported"
+          *) echo "   ! Setting ${config_var} on a per-certificate base is not (yet) supported" >&2
         esac
       done
       IFS="${ORIGIFS}"
