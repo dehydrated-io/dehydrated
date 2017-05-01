@@ -36,6 +36,7 @@ check_dependencies() {
   command -v grep > /dev/null 2>&1 || _exiterr "This script requires grep."
   command -v mktemp > /dev/null 2>&1 || _exiterr "This script requires mktemp."
   command -v diff > /dev/null 2>&1 || _exiterr "This script requires diff."
+  command -v dig > /dev/null 2>&1 || _exiterr "This script requires dig."
 
   # curl returns with an error code in some ancient versions so we have to catch that
   set +e
@@ -475,6 +476,31 @@ extract_altnames() {
   fi
 }
 
+# For DNS-01 challenge checks if all authoritative nameservers for a domain have
+# had their challenge TXT record propagated
+dns_propagation_complete() {
+  declare fulldomain
+  declare keyauth_hook
+  declare registereddomain
+  [[ "${1}" ]] && fulldomain="${1}" || _exiterr "Domain name required as positional argument 1"
+  [[ "${2}" ]] && keyauth_hook="${2}" || _exiterr "DNS TXT record value required as positional argument 2"
+  if [[ -z "${nameserverslist}" ]]; then
+    nameserverslist=$(dig +short ns "${fulldomain}")
+    if [[ -z "${nameserverslist}" ]]; then
+      for ((counter=1; counter<=3; counter++)); do
+        registereddomain=$(dig soa "${fulldomain}" | grep -Pi '^;; authority section' -A1 | tail -n1 |  awk '{print $1}')
+        [[ "${registereddomain}" ]] && break
+        [[ "${counter}" -eq '3' ]] && _exiterr "Unable to determine registered domain"
+      done
+    fi
+    nameserverslist=$(dig +short ns "${registereddomain}")
+  fi
+  while read -r; do
+    if ! dig +short txt "_acme-challenge.${fulldomain}" @"${REPLY}" | grep -Piq "^\"${keyauth_hook}\"$"; then return 1; fi
+  done <<< "${nameserverslist}"
+  return 0
+}
+
 # Create certificate for domain(s) and outputs it FD 3
 sign_csr() {
   csr="${1}" # the CSR itself (not a file)
@@ -567,6 +593,54 @@ sign_csr() {
       # Wait for hook script to deploy the challenge if used
       # shellcheck disable=SC2086
       [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]}
+
+      declare rechecktimer
+      declare stoprechecksafter
+      declare totalwaittime
+      declare totalwaittimeminutes
+      declare totalwaittimeseconds
+      declare firstrecheckloop
+      declare -g nameserverslist
+      rechecktimer='10'
+      stoprechecksafter='3600'
+      totalwaittime='0'
+      totalwaittimeminutes='0'
+      totalwaittimeseconds='0'
+      firstrecheckloop='true'
+      nameserverslist=''
+      while ! dns_propagation_complete "${altname}" "${keyauth_hook}"; do
+        if [[ "${firstrecheckloop}" ]]; then
+          firstrecheckloop=''
+          echo -n " + TXT record not yet propagated"
+          if [[ "${totalwaittime}" -le "${stoprechecksafter}" ]]; then
+            echo ", backing off..."
+          else
+            echo ", ignoring..."
+            break
+          fi
+        else
+          echo " TXT record not yet propagated!"
+        fi
+        if [[ "${totalwaittime}" -gt "${stoprechecksafter}" ]]; then
+          echo " + Time limit reached for DNS re-checks."
+          break
+        fi
+        echo " + Re-check in ${rechecktimer}s."
+        sleep "${rechecktimer}"
+        totalwaittime=$(( ${totalwaittime} + ${rechecktimer} ))
+        if [[ "${totalwaittime}" -ge '60' ]]; then
+          totalwaittimeminutes=$(( ${totalwaittime} / 60 ))
+          totalwaittimeseconds=$(( ${totalwaittime} % 60 ))
+        else
+          totalwaittimeseconds="${totalwaittime}"
+        fi
+        echo -n " + $([[ ${totalwaittimeminutes} -gt '0' ]] && echo -n "${totalwaittimeminutes}min ")$([[ ${totalwaittimeseconds} -gt '0' ]] && echo -n "${totalwaittimeseconds}s ")total wait time..."
+        rechecktimer=$(expr "${rechecktimer}" \* 2)
+        if dns_propagation_complete "${altname}" "${keyauth_hook}"; then
+          echo " TXT record propagated!"
+          break
+        fi
+      done
 
       # Ask the acme-server to verify our challenge and wait until it is no longer pending
       echo " + Responding to challenge for ${altname}..."
