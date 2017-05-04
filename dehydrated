@@ -794,9 +794,7 @@ command_account() {
 
   # Check if we have the registration id
   if [[ -z "${REG_ID}" ]]; then
-    printf '\n'
-    printf 'Error retrieving registration id.\n'
-    exit 1
+    _exiterr "Error retrieving registration id."
   fi
 
   echo "+ Updating registration id: ${REG_ID} contact information..."
@@ -808,11 +806,8 @@ command_account() {
   fi
 
   if [[ "${FAILED}" = "true" ]]; then
-    echo
-    echo
-    echo "Error updating account information. See message above for more information."
     rm "${NEW_ACCOUNT_KEY_JSON}"
-    exit 1
+    _exiterr "Error updating account information. See message above for more information."
   fi
   if diff -q "${NEW_ACCOUNT_KEY_JSON}" "${ACCOUNT_KEY_JSON}" > /dev/null; then
     echo "+ Account information was the same after the update"
