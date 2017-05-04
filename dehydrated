@@ -789,8 +789,8 @@ command_account() {
   init_system
   FAILED=false
 
-  NEW_ACCOUNT_KEY_JSON=${ACCOUNT_KEY_JSON}.$$
-  REG_ID=$(cat ${ACCOUNT_KEY_JSON} | get_json_int_value id)
+  NEW_ACCOUNT_KEY_JSON="$(_mktemp)"
+  REG_ID=$(cat "${ACCOUNT_KEY_JSON}" | get_json_int_value id)
 
   # Check if we have the registration id
   if [[ -z "${REG_ID}" ]]; then
@@ -799,13 +799,12 @@ command_account() {
     exit 1
   fi
 
+  echo "+ Updating registration id: ${REG_ID} contact information..."
   # If an email for the contact has been provided then adding it to the registered account
-  if [[ "${FAILED}" = "false" ]]; then
-    if [[ -n "${CONTACT_EMAIL}" ]]; then
-      (signed_request "${CA_REG}"/${REG_ID} '{"resource": "reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"]}' > "${NEW_ACCOUNT_KEY_JSON}") || FAILED=true
-    else
-      (signed_request "${CA_REG}"/${REG_ID} '{"resource": "reg", "contact":[]}' > "${NEW_ACCOUNT_KEY_JSON}") || FAILED=true
-    fi
+  if [[ -n "${CONTACT_EMAIL}" ]]; then
+    (signed_request "${CA_REG}"/"${REG_ID}" '{"resource": "reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"]}' > "${NEW_ACCOUNT_KEY_JSON}") || FAILED=true
+  else
+    (signed_request "${CA_REG}"/"${REG_ID}" '{"resource": "reg", "contact":[]}' > "${NEW_ACCOUNT_KEY_JSON}") || FAILED=true
   fi
 
   if [[ "${FAILED}" = "true" ]]; then
@@ -815,7 +814,16 @@ command_account() {
     rm "${NEW_ACCOUNT_KEY_JSON}"
     exit 1
   fi
-  mv ${NEW_ACCOUNT_KEY_JSON} ${ACCOUNT_KEY_JSON}
+  if diff -q "${NEW_ACCOUNT_KEY_JSON}" "${ACCOUNT_KEY_JSON}" > /dev/null; then
+    echo "+ Account information was the same after the update"
+    rm "${NEW_ACCOUNT_KEY_JSON}"
+  else
+    ACCOUNT_KEY_JSON_BACKUP="$(echo "${ACCOUNT_KEY_JSON}" | cut -d. -f1)-$(date +%s).json"
+    echo "+ Backup ${ACCOUNT_KEY_JSON} as ${ACCOUNT_KEY_JSON_BACKUP}"
+    cp -p "${ACCOUNT_KEY_JSON}" "${ACCOUNT_KEY_JSON_BACKUP}"
+    echo "+ Populate ${ACCOUNT_KEY_JSON}"
+    mv "${NEW_ACCOUNT_KEY_JSON}" "${ACCOUNT_KEY_JSON}"
+  fi
   echo "+ Done!"
   exit 0
 }
