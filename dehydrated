@@ -220,6 +220,8 @@ init_system() {
   # shellcheck disable=SC2015
   CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revoke-cert)" ||
   _exiterr "Problem retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."
+  # Since reg URI is missing from directory we will assume it is the same as CA_NEW_REG without the new part
+  CA_REG=${CA_NEW_REG/new-reg/reg}
 
   # Export some environment variables to be used in hook script
   export WELLKNOWN BASEDIR CERTDIR CONFIG COMMAND
@@ -333,6 +335,13 @@ hex2bin() {
 get_json_string_value() {
   local filter
   filter=$(printf 's/.*"%s": *"\([^"]*\)".*/\\1/p' "$1")
+  sed -n "${filter}"
+}
+
+# Get integer value from json
+get_json_int_value() {
+  local filter
+  filter=$(printf 's/.*"%s": *\([0-9]*\).*/\\1/p' "$1")
   sed -n "${filter}"
 }
 
@@ -774,6 +783,46 @@ command_register() {
   exit 0
 }
 
+# Usage: --account
+# Description: Update account contact information
+command_account() {
+  init_system
+  FAILED=false
+
+  NEW_ACCOUNT_KEY_JSON="$(_mktemp)"
+  REG_ID=$(cat "${ACCOUNT_KEY_JSON}" | get_json_int_value id)
+
+  # Check if we have the registration id
+  if [[ -z "${REG_ID}" ]]; then
+    _exiterr "Error retrieving registration id."
+  fi
+
+  echo "+ Updating registration id: ${REG_ID} contact information..."
+  # If an email for the contact has been provided then adding it to the registered account
+  if [[ -n "${CONTACT_EMAIL}" ]]; then
+    (signed_request "${CA_REG}"/"${REG_ID}" '{"resource": "reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"]}' > "${NEW_ACCOUNT_KEY_JSON}") || FAILED=true
+  else
+    (signed_request "${CA_REG}"/"${REG_ID}" '{"resource": "reg", "contact":[]}' > "${NEW_ACCOUNT_KEY_JSON}") || FAILED=true
+  fi
+
+  if [[ "${FAILED}" = "true" ]]; then
+    rm "${NEW_ACCOUNT_KEY_JSON}"
+    _exiterr "Error updating account information. See message above for more information."
+  fi
+  if diff -q "${NEW_ACCOUNT_KEY_JSON}" "${ACCOUNT_KEY_JSON}" > /dev/null; then
+    echo "+ Account information was the same after the update"
+    rm "${NEW_ACCOUNT_KEY_JSON}"
+  else
+    ACCOUNT_KEY_JSON_BACKUP="$(echo "${ACCOUNT_KEY_JSON}" | cut -d. -f1)-$(date +%s).json"
+    echo "+ Backup ${ACCOUNT_KEY_JSON} as ${ACCOUNT_KEY_JSON_BACKUP}"
+    cp -p "${ACCOUNT_KEY_JSON}" "${ACCOUNT_KEY_JSON_BACKUP}"
+    echo "+ Populate ${ACCOUNT_KEY_JSON}"
+    mv "${NEW_ACCOUNT_KEY_JSON}" "${ACCOUNT_KEY_JSON}"
+  fi
+  echo "+ Done!"
+  exit 0
+}
+
 # Usage: --cron (-c)
 # Description: Sign/renew non-existant/changed/expiring certificates.
 command_sign_domains() {
@@ -1105,6 +1154,10 @@ main() {
         set_command register
         ;;
 
+      --account|-a)
+        set_command account
+        ;;
+
       # PARAM_Usage: --accept-terms
       # PARAM_Description: Accept CAs terms of service
       --accept-terms)
@@ -1254,6 +1307,7 @@ main() {
     env) command_env;;
     sign_domains) command_sign_domains;;
     register) command_register;;
+    account) command_account;;
     sign_csr) command_sign_csr "${PARAM_CSR}";;
     revoke) command_revoke "${PARAM_REVOKECERT}";;
     cleanup) command_cleanup;;
