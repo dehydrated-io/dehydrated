@@ -23,6 +23,7 @@ def subdomain_from_repo(repo):
         'api-workplace': "workplace",
         'api-princeton': "princeton",
         'etl_pipeline': "airflow",
+        'api-techcheck': "techcheck",
     }
 
     return switcher.get(repo, "nothing")
@@ -39,7 +40,7 @@ def create_domain_string(domain, subdomain, new_treeish):
 
     s3_bucket_list = s3_bucket.list(prefix="deploy/" + flavor + "-app/deployed_hashes/")
 
-    deployed_list = [domain, 'www.' + domain, '2016.' + domain, 'assessmentmaterials.' + domain, 'catalog.' + domain, 'kidinsight.' + domain, 'room.' + domain, 'library.' + domain, 'store.' + domain, 'apps.' + domain, 'setup.' + domain, 'login.' + domain, 'test.' + domain, 'live.' + domain, 'kibana.' + domain, 'patterns.' + domain, 'schedule.' + domain, 'workplace.' + domain, 'user.' + domain, 'client.' + domain, 'billing.' + domain, 'ci.' + domain, 'princeton.' + domain, 'airflow.' + domain, 'metabase.' + domain]
+    deployed_list = [domain, 'www.' + domain, '2016.' + domain, 'assessmentmaterials.' + domain, 'catalog.' + domain, 'kidinsight.' + domain, 'room.' + domain, 'library.' + domain, 'store.' + domain, 'apps.' + domain, 'setup.' + domain, 'login.' + domain, 'test.' + domain, 'live.' + domain, 'kibana.' + domain, 'patterns.' + domain, 'schedule.' + domain, 'workplace.' + domain, 'user.' + domain, 'client.' + domain, 'billing.' + domain, 'ci.' + domain, 'princeton.' + domain, 'airflow.' + domain, 'metabase.' + domain, 'techcheck.' + domain]
     return " ".join(deployed_list)
 
     deployed_set = set({})
@@ -71,7 +72,10 @@ def create_domain_string(domain, subdomain, new_treeish):
 
 def create_domain_textfile(domain, filename):
     domain_parts = domain.split('.')
-    treeish = domain_parts[-4]
+    try:
+        treeish = domain_parts[-4]
+    except IndexError:
+        treeish = None
     subdomain = domain_parts[-3]
     tld = domain_parts[-2] + '.' + domain_parts[-1]
 
