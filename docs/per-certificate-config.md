@@ -14,5 +14,6 @@ Currently supported options:
 - HOOK
 - HOOK_CHAIN
 - WELLKNOWN
+- OPENSSL_BIN
 - OPENSSL_CNF
 - RENEW_DAYS

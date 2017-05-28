@@ -51,6 +51,9 @@
 # Default keysize for private keys (default: 4096)
 #KEYSIZE="4096"
 
+# Path to openssl binary file (default: <unset> - Uses openssl in the path)
+#OPENSSL_BIN=
+
 # Path to openssl config file (default: <unset> - tries to figure out system default)
 #OPENSSL_CNF=
 
