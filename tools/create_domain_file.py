@@ -22,8 +22,13 @@ def subdomain_from_repo(repo):
         'pl-docs': "patterns",
         'api-workplace': "workplace",
         'api-princeton': "princeton",
-        'etl_pipeline': "airflow",
+        'etl-pipeline': "airflow",
         'api-techcheck': "techcheck",
+        'hamm': "apps",
+        'woody': "apps",
+        'rex': "apps",
+        'edu-clients': "apps",
+        'pl-landing': "apps",
     }
 
     return switcher.get(repo, "nothing")
@@ -32,6 +37,9 @@ def subdomain_from_repo(repo):
 def create_domain_string(domain, subdomain, new_treeish):
     if domain == "presencetest.com":
         flavor = "test"
+    elif domain == "presencestag.com":
+        flavor = "stag"
+        new_treeish = new_treeish[0:7]
     else:
         flavor = "live"
 
@@ -41,7 +49,8 @@ def create_domain_string(domain, subdomain, new_treeish):
     s3_bucket_list = s3_bucket.list(prefix="deploy/" + flavor + "-app/deployed_hashes/")
 
     deployed_list = [domain, 'www.' + domain, '2016.' + domain, 'assessmentmaterials.' + domain, 'catalog.' + domain, 'kidinsight.' + domain, 'room.' + domain, 'library.' + domain, 'store.' + domain, 'apps.' + domain, 'setup.' + domain, 'login.' + domain, 'test.' + domain, 'live.' + domain, 'kibana.' + domain, 'patterns.' + domain, 'schedule.' + domain, 'workplace.' + domain, 'user.' + domain, 'client.' + domain, 'billing.' + domain, 'ci.' + domain, 'princeton.' + domain, 'airflow.' + domain, 'metabase.' + domain, 'techcheck.' + domain]
-    return " ".join(deployed_list)
+    if flavor != 'stag':
+        return " ".join(deployed_list)
 
     deployed_set = set({})
 
@@ -55,9 +64,12 @@ def create_domain_string(domain, subdomain, new_treeish):
         key_list = key.name.split('/')
         if key_list[3]: 
             s3_key = s3_bucket.get_key(key)
-            active_list = key_list[3].split('_')
+            key_info = key_list[3].replace('etl_pipeline', 'etl-pipeline')
+            active_list = key_info.split('_')
             repo = active_list[0]
             treeish = active_list[1]
+            if flavor == 'stag':
+                treeish = treeish[0:7]
 
             if repo == 'bopeep' or repo == 'clinicianportal':
                 continue
