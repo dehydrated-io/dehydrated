@@ -5,7 +5,7 @@ It will do that for any (sub-)domain you want to sign a certificate for.
 
 At the moment you'll need to have that location available over normal HTTP on port 80 (redirect to HTTPS will work, but starting point is always HTTP!).
 
-letsencrypt.sh has a config variable called `WELLKNOWN`, which corresponds to the directory which should be served under `/.well-known/acme-challenge` on your domain. So in the above example the token would have been saved as `$WELLKNOWN/m4g1C-t0k3n`.
+dehydrated has a config variable called `WELLKNOWN`, which corresponds to the directory which should be served under `/.well-known/acme-challenge` on your domain. So in the above example the token would have been saved as `$WELLKNOWN/m4g1C-t0k3n`.
 
 If you only have one docroot on your server you could easily do something like `WELLKNOWN=/var/www/.well-known/acme-challenge`, for anything else look at the example below.
 
@@ -13,7 +13,7 @@ If you only have one docroot on your server you could easily do something like `
 
 If you have more than one docroot (or you are using your server as a reverse proxy / load balancer) the simple configuration mentioned above wouldn't work, but with just a few lines of webserver configuration this can be solved.
 
-An example would be to create a directory `/var/www/letsencrypt` and set `WELLKNOWN=/var/www/letsencrypt` in the scripts config.
+An example would be to create a directory `/var/www/dehydrated` and set `WELLKNOWN=/var/www/dehydrated` in the scripts config.
 
 You'll need to configure aliases on your Webserver:
 
@@ -25,7 +25,7 @@ With Nginx you'll need to add this to any of your `server`/VHost config blocks:
 server {
   [...]
   location /.well-known/acme-challenge {
-    alias /var/www/letsencrypt;
+    alias /var/www/dehydrated;
   }
   [...]
 }
@@ -36,9 +36,9 @@ server {
 With Apache just add this to your config and it should work in any VHost:
 
 ```apache
-Alias /.well-known/acme-challenge /var/www/letsencrypt
+Alias /.well-known/acme-challenge /var/www/dehydrated
 
-<Directory /var/www/letsencrypt>
+<Directory /var/www/dehydrated>
         Options None
         AllowOverride None
 
@@ -53,4 +53,15 @@ Alias /.well-known/acme-challenge /var/www/letsencrypt
                 Require all granted
         </IfModule>
 </Directory>
+```
+
+### Lighttpd example config
+
+With Lighttpd just add this to your config and it should work in any VHost:
+
+```lighttpd
+server.modules += ("alias")
+alias.url += (
+ "/.well-known/acme-challenge/" => "/var/www/dehydrated/",
+)
 ```

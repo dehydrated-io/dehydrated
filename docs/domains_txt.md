@@ -1,6 +1,6 @@
 ### domains.txt
 
-letsencrypt.sh uses the file `domains.txt` as configuration for which certificates should be requested.
+dehydrated uses the file `domains.txt` as configuration for which certificates should be requested.
 
 The file should have the following format:
 
