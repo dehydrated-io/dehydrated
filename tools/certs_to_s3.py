@@ -23,6 +23,8 @@ def get_filename_flavor(domain):
     domain_parts = domain.split('.')
     if domain_parts[-2] == 'presencelearning':
         flavor = 'live'
+    elif domain_parts[-2] == 'presencestag': 
+        flavor = 'stag'
     else:
         flavor = 'test'
 
@@ -54,9 +56,9 @@ def parse_and_run(argv):
 
 
     filename, flavor = get_filename_flavor(domain)
-    copy_file_to_s3('.' + certfile, "letsencrypt/{flavor}-app/certs/{filename}.crt".format(flavor=flavor, filename=filename))
-    copy_file_to_s3('.' + keyfile, "letsencrypt/{flavor}-app/keys/{filename}.key".format(flavor=flavor, filename=filename))
-    copy_file_to_s3('.' + fullchainfile, "letsencrypt/{flavor}-app/keys/fullchain.pem".format(flavor=flavor))
+    copy_file_to_s3(certfile, "letsencrypt/{flavor}-app/certs/{filename}.crt".format(flavor=flavor, filename=filename))
+    copy_file_to_s3(keyfile, "letsencrypt/{flavor}-app/keys/{filename}.key".format(flavor=flavor, filename=filename))
+    copy_file_to_s3(fullchainfile, "letsencrypt/{flavor}-app/keys/fullchain.pem".format(flavor=flavor))
 
 
 if __name__ == '__main__':
