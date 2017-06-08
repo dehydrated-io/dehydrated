@@ -678,16 +678,16 @@ walk_chain() {
 
 # Create certificate for domain(s)
 sign_domain() {
-  domain="${1}"
-  altnames="${*}"
+  local certdir="${1}"
+  shift
+  local primary="${1}"
+  local alldomains="${*}"
   timestamp="$(date +%s)"
 
   echo " + Signing domains..."
   if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
     _exiterr "Certificate authority doesn't allow certificate signing"
   fi
-
-  local certdir="${CERTDIR}/${domain}"
 
   # If there is no existing certificate directory => make it
   if [[ ! -e "${certdir}" ]]; then
@@ -729,7 +729,7 @@ sign_domain() {
   # Generate signing request config and the actual signing request
   echo " + Generating signing request..."
   SAN=""
-  for altname in ${altnames}; do
+  for altname in ${alldomains}; do
     SAN+="DNS:${altname}, "
   done
   SAN="${SAN%%, }"
@@ -740,12 +740,12 @@ sign_domain() {
   if [ "${OCSP_MUST_STAPLE}" = "yes" ]; then
     printf "\n1.3.6.1.5.5.7.1.24=DER:30:03:02:01:05" >> "${tmp_openssl_cnf}"
   fi
-  openssl req -new -sha256 -key "${certdir}/${privkey}" -out "${certdir}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
+  openssl req -new -sha256 -key "${certdir}/${privkey}" -out "${certdir}/cert-${timestamp}.csr" -subj "/CN=${primary}/" -reqexts SAN -config "${tmp_openssl_cnf}"
   rm -f "${tmp_openssl_cnf}"
 
   crt_path="${certdir}/cert-${timestamp}.pem"
   # shellcheck disable=SC2086
-  sign_csr "$(< "${certdir}/cert-${timestamp}.csr" )" ${altnames} 3>"${crt_path}"
+  sign_csr "$(< "${certdir}/cert-${timestamp}.csr" )" ${alldomains} 3>"${crt_path}"
 
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
@@ -798,19 +798,20 @@ command_sign_domains() {
   for line in $(<"${DOMAINS_TXT}" tr -d '\r' | awk '{print tolower($0)}' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true)); do
     reset_configvars
     IFS="${ORIGIFS}"
-    domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
+    primary="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
     morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
+    alldomains="${primary} ${morenames}"
 
-    local certdir="${CERTDIR}/${domain}"
+    local certdir="${CERTDIR}/${primary}"
 
     cert="${certdir}/cert.pem"
 
     force_renew="${PARAM_FORCE:-no}"
 
     if [[ -z "${morenames}" ]];then
-      echo "Processing ${domain}"
+      echo "Processing ${primary}"
     else
-      echo "Processing ${domain} with alternative names: ${morenames}"
+      echo "Processing ${primary} with alternative names: ${morenames}"
     fi
 
     # read cert config
@@ -818,7 +819,7 @@ command_sign_domains() {
     # we could just source the config file but i decided to go this way to protect people from accidentally overriding
     # variables used internally by this script itself.
     if [[ -n "${DOMAINS_D}" ]]; then
-      certconfig="${DOMAINS_D}/${domain}"
+      certconfig="${DOMAINS_D}/${primary}"
     else
       certconfig="${certdir}/config"
     fi
@@ -858,7 +859,7 @@ command_sign_domains() {
       printf " + Checking domain name(s) of existing cert..."
 
       certnames="$(openssl x509 -in "${cert}" -text -noout | grep DNS: | _sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//')"
-      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | _sed 's/^ //')"
+      givennames="$(echo "${alldomains}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | _sed 's/^ //')"
 
       if [[ "${certnames}" = "${givennames}" ]]; then
         echo " unchanged."
@@ -884,7 +885,7 @@ command_sign_domains() {
         else
           # Certificate-Names unchanged and cert is still valid
           echo "Skipping renew!"
-          [[ -n "${HOOK}" ]] && "${HOOK}" "unchanged_cert" "${domain}" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem"
+          [[ -n "${HOOK}" ]] && "${HOOK}" "unchanged_cert" "${primary}" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem"
           continue
         fi
       else
@@ -894,10 +895,10 @@ command_sign_domains() {
 
     # shellcheck disable=SC2086
     if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
-      sign_domain ${line} &
+      sign_domain "${certdir}" ${alldomains} &
       wait $! || true
     else
-      sign_domain ${line}
+      sign_domain "${certdir}" ${alldomains}
     fi
   done
 
