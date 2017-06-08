@@ -762,7 +762,7 @@ sign_domain() {
   ln -sf "cert-${timestamp}.pem" "${certdir}/cert.pem"
 
   # Wait for hook script to clean the challenge and to deploy cert if used
-  [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${domain}" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem" "${timestamp}"
+  [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${primary}" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem" "${timestamp}"
 
   unset challenge_token
   echo " + Done!"
@@ -798,28 +798,39 @@ command_sign_domains() {
   for line in $(<"${DOMAINS_TXT}" tr -d '\r' | awk '{print tolower($0)}' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true)); do
     reset_configvars
     IFS="${ORIGIFS}"
-    primary="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
-    morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
+    first_arg="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
+    if [[ ${first_arg} == "--alias" ]]; then
+      alias="$(printf '%s\n' "${line}" | cut -s -d' ' -f2)"
+      primary="$(printf '%s\n' "${line}" | cut -s -d' ' -f3)"
+      morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f4-)"
+    else
+      alias="${first_arg}"
+      primary="${first_arg}"
+      morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
+    fi
     alldomains="${primary} ${morenames}"
 
-    local certdir="${CERTDIR}/${primary}"
+    local certdir="${CERTDIR}/${alias}"
 
     cert="${certdir}/cert.pem"
 
     force_renew="${PARAM_FORCE:-no}"
 
-    if [[ -z "${morenames}" ]];then
-      echo "Processing ${primary}"
-    else
-      echo "Processing ${primary} with alternative names: ${morenames}"
+    echo -n "Processing ${primary}"
+    if [[ -n "${morenames}" ]];then
+      echo -n " with alternative names: ${morenames}"
     fi
+    if [[ "${alias}" != "${primary}" ]]; then
+      echo -n " with alias ${alias}"
+    fi
+    echo
 
     # read cert config
     # for now this loads the certificate specific config in a subshell and parses a diff of set variables.
     # we could just source the config file but i decided to go this way to protect people from accidentally overriding
     # variables used internally by this script itself.
     if [[ -n "${DOMAINS_D}" ]]; then
-      certconfig="${DOMAINS_D}/${primary}"
+      certconfig="${DOMAINS_D}/${alias}"
     else
       certconfig="${certdir}/config"
     fi

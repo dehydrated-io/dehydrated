@@ -1,2 +1,4 @@
 example.org www.example.org
 example.com www.example.com wiki.example.com
+--alias examplenet-rsa example.net www.example.net
+--alias examplenet-ecdsa example.net www.example.net
