@@ -69,7 +69,14 @@ if [[ ! -e "ngrok/ngrok" ]]; then
   (
     mkdir -p ngrok
     cd ngrok
-    wget https://dl.ngrok.com/ngrok_2.0.19_linux_amd64.zip -O ngrok.zip
+    if [ "${TRAVIS_OS_NAME}" = "linux" ]; then
+      wget -O ngrok.zip https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip
+    elif [ "${TRAVIS_OS_NAME}" = "osx" ]; then
+      wget -O ngrok.zip https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-darwin-amd64.zip
+    else
+      echo "No ngrok for ${TRAVIS_OS_NAME}"
+      exit 1
+    fi
     unzip ngrok.zip ngrok
     chmod +x ngrok
   )
@@ -84,7 +91,7 @@ TMP_URL="$(grep -Eo "Hostname:[a-z0-9]+.ngrok.io" tmp.log | head -1 | cut -d':' 
 TMP2_URL="$(grep -Eo "Hostname:[a-z0-9]+.ngrok.io" tmp2.log | head -1 | cut -d':' -f2)"
 TMP3_URL="$(grep -Eo "Hostname:[a-z0-9]+.ngrok.io" tmp3.log | head -1 | cut -d':' -f2)"
 if [[ -z "${TMP_URL}" ]] || [[ -z "${TMP2_URL}" ]] || [[ -z "${TMP3_URL}" ]]; then
-  echo "Couldn't get an url from ngrok, not a letsencrypt.sh bug, tests can't continue."
+  echo "Couldn't get an url from ngrok, not a dehydrated bug, tests can't continue."
   exit 1
 fi
 
@@ -96,31 +103,48 @@ mkdir -p .acme-challenges/.well-known/acme-challenge
 ) &
 
 # Generate config and create empty domains.txt
-echo 'CA="https://testca.kurz.pw/directory"' > config.sh
-echo 'LICENSE="https://testca.kurz.pw/terms/v1"' >> config.sh
-echo 'WELLKNOWN=".acme-challenges/.well-known/acme-challenge"' >> config.sh
-echo 'RENEW_DAYS="14"' >> config.sh
+echo 'CA="https://testca.kurz.pw/directory"' > config
+echo 'CA_TERMS="https://testca.kurz.pw/terms"' >> config
+echo 'WELLKNOWN=".acme-challenges/.well-known/acme-challenge"' >> config
+echo 'RENEW_DAYS="14"' >> config
 touch domains.txt
 
 # Check if help command is working
 _TEST "Checking if help command is working..."
-./letsencrypt.sh --help > tmplog 2> errorlog || _FAIL "Script execution failed"
+./dehydrated --help > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Default command: help"
 _CHECK_LOG "--help (-h)"
 _CHECK_LOG "--domain (-d) domain.tld"
 _CHECK_ERRORLOG
 
+# Register account key without LICENSE set
+_TEST "Register account key without LICENSE set"
+./dehydrated --register > tmplog 2> errorlog && _FAIL "Script execution failed"
+_CHECK_LOG "To accept these terms"
+_CHECK_ERRORLOG
+
+# Register account key and agreeing to terms
+_TEST "Register account key without LICENSE set"
+./dehydrated --register --accept-terms > tmplog 2> errorlog || _FAIL "Script execution failed"
+_CHECK_LOG "Registering account key"
+_CHECK_FILE accounts/*/account_key.pem
+_CHECK_ERRORLOG
+
+# Delete accounts and add LICENSE to config for normal operation
+rm -rf accounts
+echo 'LICENSE="https://testca.kurz.pw/terms/v1"' >> config
+
 # Run in cron mode with empty domains.txt (should only generate private key and exit)
 _TEST "First run in cron mode, checking if private key is generated and registered"
-./letsencrypt.sh --cron > tmplog 2> errorlog || _FAIL "Script execution failed"
+./dehydrated --cron > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Registering account key"
-_CHECK_FILE "private_key.pem"
+_CHECK_FILE accounts/*/account_key.pem
 _CHECK_ERRORLOG
 
 # Temporarily move config out of the way and try signing certificate by using temporary config location
 _TEST "Try signing using temporary config location and with domain as command line parameter"
-mv config.sh tmp_config.sh
-./letsencrypt.sh --cron --domain "${TMP_URL}" --domain "${TMP2_URL}" -f tmp_config.sh > tmplog 2> errorlog || _FAIL "Script execution failed"
+mv config tmp_config
+./dehydrated --cron --domain "${TMP_URL}" --domain "${TMP2_URL}" --accept-terms -f tmp_config > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_NOT_LOG "Checking domain name(s) of existing cert"
 _CHECK_LOG "Generating private key"
 _CHECK_LOG "Requesting challenge for ${TMP_URL}"
@@ -129,15 +153,11 @@ _CHECK_LOG "Challenge is valid!"
 _CHECK_LOG "Creating fullchain.pem"
 _CHECK_LOG "Done!"
 _CHECK_ERRORLOG
-mv tmp_config.sh config.sh
-
-# Move private key and add new location to config
-mv private_key.pem account_key.pem
-echo 'PRIVATE_KEY="./account_key.pem"' >> config.sh
+mv tmp_config config
 
 # Add third domain to command-lime, should force renewal.
 _TEST "Run in cron mode again, this time adding third domain, should force renewal."
-./letsencrypt.sh --cron --domain "${TMP_URL}" --domain "${TMP2_URL}" --domain "${TMP3_URL}" > tmplog 2> errorlog || _FAIL "Script execution failed"
+./dehydrated --cron --domain "${TMP_URL}" --domain "${TMP2_URL}" --domain "${TMP3_URL}" > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Domain name(s) are not matching!"
 _CHECK_LOG "Forcing renew."
 _CHECK_LOG "Generating private key"
@@ -155,42 +175,39 @@ echo "${TMP_URL} ${TMP2_URL} $(tr 'a-z' 'A-Z' <<<"${TMP3_URL}")" >> domains.txt
 
 # Run in cron mode again (should find a non-expiring certificate and do nothing)
 _TEST "Run in cron mode again, this time with domain in domains.txt, should find non-expiring certificate"
-./letsencrypt.sh --cron > tmplog 2> errorlog || _FAIL "Script execution failed"
+./dehydrated --cron > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Checking domain name(s) of existing cert... unchanged."
 _CHECK_LOG "Skipping renew"
 _CHECK_ERRORLOG
 
 # Disable private key renew
-echo 'PRIVATE_KEY_RENEW="no"' >> config.sh
+echo 'PRIVATE_KEY_RENEW="no"' >> config
 
 # Run in cron mode one last time, with domain in domains.txt and force-resign (should find certificate, resign anyway, and not generate private key)
 _TEST "Run in cron mode one last time, with domain in domains.txt and force-resign"
-./letsencrypt.sh --cron --force > tmplog 2> errorlog || _FAIL "Script execution failed"
+./dehydrated --cron --force > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Checking domain name(s) of existing cert... unchanged."
 _CHECK_LOG "Ignoring because renew was forced!"
 _CHECK_NOT_LOG "Generating private key"
 _CHECK_LOG "Requesting challenge for ${TMP_URL}"
 _CHECK_LOG "Requesting challenge for ${TMP2_URL}"
 _CHECK_LOG "Requesting challenge for ${TMP3_URL}"
-_CHECK_LOG "Challenge is valid!"
+_CHECK_LOG "Already validated!"
 _CHECK_LOG "Creating fullchain.pem"
 _CHECK_LOG "Done!"
 _CHECK_ERRORLOG
 
 # Check if signcsr command is working
 _TEST "Running signcsr command"
-./letsencrypt.sh --signcsr certs/${TMP_URL}/cert.csr > tmplog 2> errorlog || _FAIL "Script execution failed"
+./dehydrated --signcsr certs/${TMP_URL}/cert.csr > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "BEGIN CERTIFICATE"
 _CHECK_LOG "END CERTIFICATE"
 _CHECK_NOT_LOG "ERROR"
 
-# Delete account key (not needed anymore)
-rm account_key.pem
-
 # Check if renewal works
 _TEST "Run in cron mode again, to check if renewal works"
-echo 'RENEW_DAYS="300"' >> config.sh
-./letsencrypt.sh --cron > tmplog 2> errorlog || _FAIL "Script execution failed"
+echo 'RENEW_DAYS="300"' >> config
+./dehydrated --cron > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Checking domain name(s) of existing cert... unchanged."
 _CHECK_LOG "Renewing!"
 _CHECK_ERRORLOG
@@ -204,21 +221,42 @@ _CHECK_LOG "${TMP2_URL}"
 _SUBTEST "Verifying file with full chain..."
 openssl x509 -in "certs/${TMP_URL}/fullchain.pem" -noout -text > /dev/null 2>> errorlog && _PASS || _FAIL
 _SUBTEST "Verifying certificate against CA certificate..."
-(openssl verify -verbose -CAfile "certs/${TMP_URL}/fullchain.pem" -purpose sslserver "certs/${TMP_URL}/fullchain.pem" 2>&1 || true) | (grep -v ': OK$' || true) >> errorlog 2>> errorlog && _PASS || _FAIL
+curl -s https://testca.kurz.pw/acme/issuer-cert | openssl x509 -inform DER -outform PEM > ca.pem
+(openssl verify -verbose -CAfile "ca.pem" -purpose sslserver "certs/${TMP_URL}/fullchain.pem" 2>&1 || true) | (grep -v ': OK$' || true) >> errorlog 2>> errorlog && _PASS || _FAIL
 _CHECK_ERRORLOG
 
 # Revoke certificate using certificate key
 _TEST "Revoking certificate..."
-./letsencrypt.sh --revoke "certs/${TMP_URL}/cert.pem" --privkey "certs/${TMP_URL}/privkey.pem" > tmplog 2> errorlog || _FAIL "Script execution failed"
+./dehydrated --revoke "certs/${TMP_URL}/cert.pem" --privkey "certs/${TMP_URL}/privkey.pem" > tmplog 2> errorlog || _FAIL "Script execution failed"
 REAL_CERT="$(readlink -n "certs/${TMP_URL}/cert.pem")"
 _CHECK_LOG "Revoking certs/${TMP_URL}/${REAL_CERT}"
 _CHECK_LOG "Done."
 _CHECK_FILE "certs/${TMP_URL}/${REAL_CERT}-revoked"
 _CHECK_ERRORLOG
 
+# Enable private key renew
+echo 'PRIVATE_KEY_RENEW="yes"' >> config
+echo 'PRIVATE_KEY_ROLLOVER="yes"' >> config
+
+# Check if Rolloverkey creation works
+_TEST "Testing Rolloverkeys..."
+_SUBTEST "First Run: Creating rolloverkey"
+./dehydrated --cron --domain "${TMP2_URL}" > tmplog 2> errorlog || _FAIL "Script execution failed"
+CERT_ROLL_HASH=$(openssl rsa -in certs/${TMP2_URL}/privkey.roll.pem -outform DER -pubout 2>/dev/null | openssl sha -sha256)
+_CHECK_LOG "Generating private key"
+_CHECK_LOG "Generating private rollover key"
+_SUBTEST "Second Run: Force Renew, Use rolloverkey"
+./dehydrated --cron --force --domain "${TMP2_URL}" > tmplog 2> errorlog || _FAIL "Script execution failed"
+CERT_NEW_HASH=$(openssl rsa -in certs/${TMP2_URL}/privkey.pem -outform DER -pubout 2>/dev/null | openssl sha -sha256)
+_CHECK_LOG "Generating private key"
+_CHECK_LOG "Moving Rolloverkey into position"
+_SUBTEST "Verifying Hash Rolloverkey and private key second run"
+[[ "${CERT_ROLL_HASH}" = "${CERT_NEW_HASH}" ]] && _PASS || _FAIL
+_CHECK_ERRORLOG
+
 # Test cleanup command
 _TEST "Cleaning up certificates"
-./letsencrypt.sh --cleanup > tmplog 2> errorlog || _FAIL "Script execution failed"
+./dehydrated --cleanup > tmplog 2> errorlog || _FAIL "Script execution failed"
 _CHECK_LOG "Moving unused file to archive directory: ${TMP_URL}/cert-"
 _CHECK_LOG "Moving unused file to archive directory: ${TMP_URL}/chain-"
 _CHECK_LOG "Moving unused file to archive directory: ${TMP_URL}/fullchain-"
