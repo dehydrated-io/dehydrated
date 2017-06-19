@@ -16,6 +16,7 @@
 #IP_VERSION=
 
 # Path to certificate authority (default: https://acme-v01.api.letsencrypt.org/directory)
+CA="https://acme-staging.api.letsencrypt.org/directory"
 #CA="https://acme-v01.api.letsencrypt.org/directory"
 
 # Path to certificate authority license terms redirect (default: https://acme-v01.api.letsencrypt.org/terms)

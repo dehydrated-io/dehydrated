@@ -20,26 +20,45 @@ def get_zone_name(fqd):
 
     return zone_name
 
-def create_txt_record(fqd, token):
-    zone_name = get_zone_name(fqd)
+def parse_domains(domains):
+    #presencestag.com bsDx_WNkm-NWWI-a1bg2Mhl10JcSUnUlL6DaYZKXTZU JEXW4L4PkzMP6yRrPudTGRcpIwW-BFbtqaS34jQkGZI www.presencestag.com Pkhq50AMRdqIATUc0n5vSIxEPS_rO7eOCkwL61vfLJc qy0PwBWnWa7hujLkRunxZfuKDnCKCf4s1IPL858-AjM
+    domain_dict = {}
+    domain_token_list = domains.split(' ')
+    while len(domain_token_list) > 0:
+        token_end = domain_token_list.pop()
+        token_start = domain_token_list.pop()
+        fqd = domain_token_list.pop()
+        domain_dict[fqd] = token_end 
+
+    return domain_dict
+
+def create_txt_record(domains):
+    status_collection = []
+    domain_dict = parse_domains(domains)
     conn = route53_connect()
-    zone = conn.get_zone(zone_name)
-    status = zone.add_record("TXT", "_acme-challenge." + fqd, '"{token}"'.format(token=token), ttl=1)
+    for fqd, token in domain_dict.iteritems():
+        zone_name = get_zone_name(fqd)
+        zone = conn.get_zone(zone_name)
+        status = zone.add_record("TXT", "_acme-challenge." + fqd, '"{token}"'.format(token=token), ttl=1)
+        status_collection.append(status)
+        print "Add {domain} to Route53".format(domain=fqd)    
 
-    print "Add {domain} to Route53".format(domain=fqd)    
 
-#    while True:
-#        print status
-#        if status.update() == "INSYNC":
-#            break
-#        sleep(0.1)
+    for route53_status in status_collection:
+        while True:
+            if route53_status.update() == "INSYNC":
+                print("Domain is INSYNC, bye bye bye!")
+                break
+            sleep(0.1)
 
-def delete_txt_record(fqd, token):
-    zone_name = get_zone_name(fqd)
+def delete_txt_record(domains):
+    domain_dict = parse_domains(domains)
     conn = route53_connect()
-    zone = conn.get_zone(zone_name)
-    record = zone.find_records("_acme-challenge." + fqd, "TXT", desired=1, all=False)
-    zone.delete_record(record)
+    for fqd, token in domain_dict.iteritems():
+        zone_name = get_zone_name(fqd)
+        zone = conn.get_zone(zone_name)
+        record = zone.find_records("_acme-challenge." + fqd, "TXT", desired=1, all=False)
+        zone.delete_record(record)
 
 def update_txt_record(fqd, token):
     zone_name = get_zone_name(fqd)
@@ -62,12 +81,27 @@ def batch_create_txt_record(domain_file, token):
             zone = conn.get_zone(zone_name)
             status = zone.add_record("TXT", "_acme-challenge." + domain, '"{token}"'.format(token=token), ttl=1)
 
+def check_txt_record(fqd):
+    zone_name = get_zone_name(fqd)
+    conn = route53_connect()
+    zone = conn.get_zone(zone_name)
+    status = zone.find_records("_acme-challenge." + fqd, "TXT")
+
+    print "Checking {domain}".format(domain=fqd)    
+
+    while True:
+        print status
+        if status.update() == "INSYNC":
+            print "In Sync"
+            break
+        sleep(0.1)
+
 
 def parse_and_run(argv):
     fqd = None
     domain_file = None
     try:
-        opts, args = getopt.getopt(argv,"ha:d:f:t:")
+        opts, args = getopt.getopt(argv,"ha:d:f:t:l:")
     except getopt.GetoptError:
         print help_text
         sys.exit(2)
@@ -80,24 +114,28 @@ def parse_and_run(argv):
             action = arg
         elif opt in ("-d"):
             fqd = arg
+        elif opt in ("-l"):
+            domain_list = arg
         elif opt in ("-f"):
             domain_file = arg
         elif opt in ("-t"):
             token = arg
 
-    if not fqd and not domain_file:
+    if not fqd and not domain_file and not domain_list:
         print help_text
         sys.exit(0)
-    if not action or not token:
+    if not action:
         print help_text
         sys.exit(0)
 
     if action == 'create':
-        create_txt_record(fqd, token)
+        create_txt_record(domain_list)
     elif action == 'delete': 
-        delete_txt_record(fqd, token)
+        delete_txt_record(domain_list)
     elif action == 'update': 
         update_txt_record(fqd, token)
+    elif action == 'check': 
+        check_txt_record(fqd)
     elif action == 'batchcreate': 
         batch_create_txt_record(domain_file, token)
     else:
