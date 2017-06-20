@@ -5,13 +5,13 @@ function deploy_challenge {
     aLen=${#domains[@]} 
 
     cd tools/
+    python route53_txt_record.py -a create -l "${domains[*]}"
 
-    for (( i=0; i<${aLen}; i=i+3));
-    do
-        j=i+2
-        python route53_txt_record.py -a create -d ${domains[$i]} -t ${domains[$j]}
-    done
-    sleep 15
+#    for (( i=0; i<${aLen}; i=i+3));
+#    do
+#        j=i+2
+#        python route53_txt_record.py -a create -d ${domains[$i]} -t ${domains[$j]}
+#    done
 
 }
 
@@ -21,11 +21,7 @@ function clean_challenge {
 
     cd tools/
 
-    for (( i=0; i<${aLen}; i=i+3));
-    do
-        j=i+2
-        python route53_txt_record.py -a delete -d ${domains[$i]} -t ${domains[$j]}
-    done
+    python route53_txt_record.py -a delete -l "${domains[*]}" 
 }
 
 function deploy_cert {
