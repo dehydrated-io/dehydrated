@@ -1318,8 +1318,10 @@ main() {
 # Determine OS type
 OSTYPE="$(uname)"
 
-# Check for missing dependencies
-check_dependencies
+if [[ ! "${DEHYDRATED_NOOP:-}" = "NOOP" ]]; then
+  # Check for missing dependencies
+  check_dependencies
 
-# Run script
-main "${@:-}"
+  # Run script
+  main "${@:-}"
+fi
