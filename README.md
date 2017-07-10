@@ -47,6 +47,7 @@ Default command: help
 
 Commands:
  --register                       Register account key
+ --account                        Update account contact information
  --cron (-c)                      Sign/renew non-existant/changed/expiring certificates.
  --signcsr (-s) path/to/csr.pem   Sign a given CSR, output CRT on stdout (advanced usage)
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
