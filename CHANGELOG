@@ -5,6 +5,9 @@ This file contains a log of major changes in dehydrated
 ## Changed
 - ...
 
+## Added
+- New feature for updating contact information (--account)
+
 ## [0.4.0] - 2017-02-05
 ## Changed
 - dehydrated now asks you to read and accept the CAs terms of service before creating an account
