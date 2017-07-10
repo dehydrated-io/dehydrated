@@ -77,16 +77,16 @@ reset_configvars() {
 
 # verify configuration values
 verify_config() {
-  [[ "${CHALLENGETYPE}" == "http-01" || "${CHALLENGETYPE}" == "dns-01" ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... can not continue."
+  [[ "${CHALLENGETYPE}" == "http-01" || "${CHALLENGETYPE}" == "dns-01" ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... cannot continue."
   if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
-    _exiterr "Challenge type dns-01 needs a hook script for deployment... can not continue."
+    _exiterr "Challenge type dns-01 needs a hook script for deployment... cannot continue."
   fi
   if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" && ! "${COMMAND:-}" = "register" ]]; then
     _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
   fi
-  [[ "${KEY_ALGO}" == "rsa" || "${KEY_ALGO}" == "prime256v1" || "${KEY_ALGO}" == "secp384r1" ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... can not continue."
+  [[ "${KEY_ALGO}" == "rsa" || "${KEY_ALGO}" == "prime256v1" || "${KEY_ALGO}" == "secp384r1" ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... cannot continue."
   if [[ -n "${IP_VERSION}" ]]; then
-    [[ "${IP_VERSION}" = "4" || "${IP_VERSION}" = "6" ]] || _exiterr "Unknown IP version ${IP_VERSION}... can not continue."
+    [[ "${IP_VERSION}" = "4" || "${IP_VERSION}" = "6" ]] || _exiterr "Unknown IP version ${IP_VERSION}... cannot continue."
   fi
 }
 
@@ -262,7 +262,7 @@ init_system() {
       register_new_key="yes"
     fi
   fi
-  openssl rsa -in "${ACCOUNT_KEY}" -check 2>/dev/null > /dev/null || _exiterr "Account key is not valid, can not continue."
+  openssl rsa -in "${ACCOUNT_KEY}" -check 2>/dev/null > /dev/null || _exiterr "Account key is not valid, cannot continue."
 
   # Get public components from private key and calculate thumbprint
   pubExponent64="$(printf '%x' "$(openssl rsa -in "${ACCOUNT_KEY}" -noout -text | awk '/publicExponent/ {print $2}')" | hex2bin | urlbase64)"
@@ -853,7 +853,7 @@ command_account() {
 }
 
 # Usage: --cron (-c)
-# Description: Sign/renew non-existant/changed/expiring certificates.
+# Description: Sign/renew non-existent/changed/expiring certificates.
 command_sign_domains() {
   init_system
 
@@ -1065,7 +1065,7 @@ command_revoke() {
 command_cleanup() {
   load_config
 
-  # Create global archive directory if not existant
+  # Create global archive directory if not existent
   if [[ ! -e "${BASEDIR}/archive" ]]; then
     mkdir "${BASEDIR}/archive"
   fi
@@ -1078,7 +1078,7 @@ command_cleanup() {
     # Get certificate name
     certname="$(basename "${certdir}")"
 
-    # Create certitifaces archive directory if not existant
+    # Create certificates archive directory if not existent
     archivedir="${BASEDIR}/archive/${certname}"
     if [[ ! -e "${archivedir}" ]]; then
       mkdir "${archivedir}"
