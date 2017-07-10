@@ -889,6 +889,7 @@ command_account() {
 # Description: Sign/renew non-existent/changed/expiring certificates.
 command_sign_domains() {
   init_system
+  [[ -n "${HOOK}" ]] && "${HOOK}" "startup_hook"
 
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
     DOMAINS_TXT="$(_mktemp)"

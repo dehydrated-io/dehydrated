@@ -105,14 +105,21 @@ request_failure() {
     #   The kind of request that was made (GET, POST...)
 }
 
+startup_hook() {
+  # This hook is called before the cron command to do some initial tasks
+  # (e.g. starting a webserver).
+
+  :
+}
+
 exit_hook() {
-  # This hook is called at the end of a dehydrated command and can be used
-  # to do some final (cleanup or other) tasks.
+  # This hook is called at the end of the cron command and can be used to
+  # do some final (cleanup or other) tasks.
 
   :
 }
 
 HANDLER="$1"; shift
-if [[ "${HANDLER}" =~ ^(deploy_challenge|clean_challenge|deploy_cert|unchanged_cert|invalid_challenge|request_failure|exit_hook)$ ]]; then
+if [[ "${HANDLER}" =~ ^(deploy_challenge|clean_challenge|deploy_cert|unchanged_cert|invalid_challenge|request_failure|startup_hook|exit_hook)$ ]]; then
   "$HANDLER" "$@"
 fi
