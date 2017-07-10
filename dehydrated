@@ -687,8 +687,10 @@ walk_chain() {
 
 # Create certificate for domain(s)
 sign_domain() {
-  domain="${1}"
-  altnames="${*}"
+  local certdir="${1}"
+  shift
+  local primary="${1}"
+  local alldomains="${*}"
   timestamp="$(date +%s)"
 
   echo " + Signing domains..."
@@ -697,46 +699,46 @@ sign_domain() {
   fi
 
   # If there is no existing certificate directory => make it
-  if [[ ! -e "${CERTDIR}/${domain}" ]]; then
-    echo " + Creating new directory ${CERTDIR}/${domain} ..."
-    mkdir -p "${CERTDIR}/${domain}" || _exiterr "Unable to create directory ${CERTDIR}/${domain}"
+  if [[ ! -e "${certdir}" ]]; then
+    echo " + Creating new directory ${certdir} ..."
+    mkdir -p "${certdir}" || _exiterr "Unable to create directory ${certdir}"
   fi
 
   privkey="privkey.pem"
   # generate a new private key if we need or want one
-  if [[ ! -r "${CERTDIR}/${domain}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
+  if [[ ! -r "${certdir}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
     echo " + Generating private key..."
     privkey="privkey-${timestamp}.pem"
     case "${KEY_ALGO}" in
-      rsa) _openssl genrsa -out "${CERTDIR}/${domain}/privkey-${timestamp}.pem" "${KEYSIZE}";;
-      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${CERTDIR}/${domain}/privkey-${timestamp}.pem";;
+      rsa) _openssl genrsa -out "${certdir}/privkey-${timestamp}.pem" "${KEYSIZE}";;
+      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${certdir}/privkey-${timestamp}.pem";;
     esac
   fi
   # move rolloverkey into position (if any)
-  if [[ -r "${CERTDIR}/${domain}/privkey.pem" && -r "${CERTDIR}/${domain}/privkey.roll.pem" && "${PRIVATE_KEY_RENEW}" = "yes" && "${PRIVATE_KEY_ROLLOVER}" = "yes" ]]; then
+  if [[ -r "${certdir}/privkey.pem" && -r "${certdir}/privkey.roll.pem" && "${PRIVATE_KEY_RENEW}" = "yes" && "${PRIVATE_KEY_ROLLOVER}" = "yes" ]]; then
     echo " + Moving Rolloverkey into position....  "
-    mv "${CERTDIR}/${domain}/privkey.roll.pem" "${CERTDIR}/${domain}/privkey-tmp.pem"
-    mv "${CERTDIR}/${domain}/privkey-${timestamp}.pem" "${CERTDIR}/${domain}/privkey.roll.pem"
-    mv "${CERTDIR}/${domain}/privkey-tmp.pem" "${CERTDIR}/${domain}/privkey-${timestamp}.pem"
+    mv "${certdir}/privkey.roll.pem" "${certdir}/privkey-tmp.pem"
+    mv "${certdir}/privkey-${timestamp}.pem" "${certdir}/privkey.roll.pem"
+    mv "${certdir}/privkey-tmp.pem" "${certdir}/privkey-${timestamp}.pem"
   fi
   # generate a new private rollover key if we need or want one
-  if [[ ! -r "${CERTDIR}/${domain}/privkey.roll.pem" && "${PRIVATE_KEY_ROLLOVER}" = "yes" && "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
+  if [[ ! -r "${certdir}/privkey.roll.pem" && "${PRIVATE_KEY_ROLLOVER}" = "yes" && "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
     echo " + Generating private rollover key..."
     case "${KEY_ALGO}" in
-      rsa) _openssl genrsa -out "${CERTDIR}/${domain}/privkey.roll.pem" "${KEYSIZE}";;
-      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${CERTDIR}/${domain}/privkey.roll.pem";;
+      rsa) _openssl genrsa -out "${certdir}/privkey.roll.pem" "${KEYSIZE}";;
+      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${certdir}/privkey.roll.pem";;
     esac
   fi
   # delete rolloverkeys if disabled
-  if [[ -r "${CERTDIR}/${domain}/privkey.roll.pem" && ! "${PRIVATE_KEY_ROLLOVER}" = "yes" ]]; then
+  if [[ -r "${certdir}/privkey.roll.pem" && ! "${PRIVATE_KEY_ROLLOVER}" = "yes" ]]; then
     echo " + Removing Rolloverkey (feature disabled)..."
-    rm -f "${CERTDIR}/${domain}/privkey.roll.pem"
+    rm -f "${certdir}/privkey.roll.pem"
   fi
 
   # Generate signing request config and the actual signing request
   echo " + Generating signing request..."
   SAN=""
-  for altname in ${altnames}; do
+  for altname in ${alldomains}; do
     SAN+="DNS:${altname}, "
   done
   SAN="${SAN%%, }"
@@ -747,29 +749,29 @@ sign_domain() {
   if [ "${OCSP_MUST_STAPLE}" = "yes" ]; then
     printf "\n1.3.6.1.5.5.7.1.24=DER:30:03:02:01:05" >> "${tmp_openssl_cnf}"
   fi
-  openssl req -new -sha256 -key "${CERTDIR}/${domain}/${privkey}" -out "${CERTDIR}/${domain}/cert-${timestamp}.csr" -subj "/CN=${domain}/" -reqexts SAN -config "${tmp_openssl_cnf}"
+  openssl req -new -sha256 -key "${certdir}/${privkey}" -out "${certdir}/cert-${timestamp}.csr" -subj "/CN=${primary}/" -reqexts SAN -config "${tmp_openssl_cnf}"
   rm -f "${tmp_openssl_cnf}"
 
-  crt_path="${CERTDIR}/${domain}/cert-${timestamp}.pem"
+  crt_path="${certdir}/cert-${timestamp}.pem"
   # shellcheck disable=SC2086
-  sign_csr "$(< "${CERTDIR}/${domain}/cert-${timestamp}.csr" )" ${altnames} 3>"${crt_path}"
+  sign_csr "$(< "${certdir}/cert-${timestamp}.csr" )" ${alldomains} 3>"${crt_path}"
 
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
-  cat "${crt_path}" > "${CERTDIR}/${domain}/fullchain-${timestamp}.pem"
-  walk_chain "${crt_path}" > "${CERTDIR}/${domain}/chain-${timestamp}.pem"
-  cat "${CERTDIR}/${domain}/chain-${timestamp}.pem" >> "${CERTDIR}/${domain}/fullchain-${timestamp}.pem"
+  cat "${crt_path}" > "${certdir}/fullchain-${timestamp}.pem"
+  walk_chain "${crt_path}" > "${certdir}/chain-${timestamp}.pem"
+  cat "${certdir}/chain-${timestamp}.pem" >> "${certdir}/fullchain-${timestamp}.pem"
 
   # Update symlinks
-  [[ "${privkey}" = "privkey.pem" ]] || ln -sf "privkey-${timestamp}.pem" "${CERTDIR}/${domain}/privkey.pem"
+  [[ "${privkey}" = "privkey.pem" ]] || ln -sf "privkey-${timestamp}.pem" "${certdir}/privkey.pem"
 
-  ln -sf "chain-${timestamp}.pem" "${CERTDIR}/${domain}/chain.pem"
-  ln -sf "fullchain-${timestamp}.pem" "${CERTDIR}/${domain}/fullchain.pem"
-  ln -sf "cert-${timestamp}.csr" "${CERTDIR}/${domain}/cert.csr"
-  ln -sf "cert-${timestamp}.pem" "${CERTDIR}/${domain}/cert.pem"
+  ln -sf "chain-${timestamp}.pem" "${certdir}/chain.pem"
+  ln -sf "fullchain-${timestamp}.pem" "${certdir}/fullchain.pem"
+  ln -sf "cert-${timestamp}.csr" "${certdir}/cert.csr"
+  ln -sf "cert-${timestamp}.pem" "${certdir}/cert.pem"
 
   # Wait for hook script to clean the challenge and to deploy cert if used
-  [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${domain}" "${CERTDIR}/${domain}/privkey.pem" "${CERTDIR}/${domain}/cert.pem" "${CERTDIR}/${domain}/fullchain.pem" "${CERTDIR}/${domain}/chain.pem" "${timestamp}"
+  [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${primary}" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem" "${timestamp}"
 
   unset challenge_token
   echo " + Done!"
@@ -845,26 +847,41 @@ command_sign_domains() {
   for line in $(<"${DOMAINS_TXT}" tr -d '\r' | awk '{print tolower($0)}' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true)); do
     reset_configvars
     IFS="${ORIGIFS}"
-    domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
-    morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
-    cert="${CERTDIR}/${domain}/cert.pem"
+    first_arg="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
+    if [[ ${first_arg} == "--alias" ]]; then
+      alias="$(printf '%s\n' "${line}" | cut -s -d' ' -f2)"
+      primary="$(printf '%s\n' "${line}" | cut -s -d' ' -f3)"
+      morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f4-)"
+    else
+      alias="${first_arg}"
+      primary="${first_arg}"
+      morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
+    fi
+    alldomains="${primary} ${morenames}"
+
+    local certdir="${CERTDIR}/${alias}"
+
+    cert="${certdir}/cert.pem"
 
     force_renew="${PARAM_FORCE:-no}"
 
-    if [[ -z "${morenames}" ]];then
-      echo "Processing ${domain}"
-    else
-      echo "Processing ${domain} with alternative names: ${morenames}"
+    echo -n "Processing ${primary}"
+    if [[ -n "${morenames}" ]];then
+      echo -n " with alternative names: ${morenames}"
     fi
+    if [[ "${alias}" != "${primary}" ]]; then
+      echo -n " with alias ${alias}"
+    fi
+    echo
 
     # read cert config
     # for now this loads the certificate specific config in a subshell and parses a diff of set variables.
     # we could just source the config file but i decided to go this way to protect people from accidentally overriding
     # variables used internally by this script itself.
     if [[ -n "${DOMAINS_D}" ]]; then
-      certconfig="${DOMAINS_D}/${domain}"
+      certconfig="${DOMAINS_D}/${alias}"
     else
-      certconfig="${CERTDIR}/${domain}/config"
+      certconfig="${certdir}/config"
     fi
 
     if [ -f "${certconfig}" ]; then
@@ -902,7 +919,7 @@ command_sign_domains() {
       printf " + Checking domain name(s) of existing cert..."
 
       certnames="$(openssl x509 -in "${cert}" -text -noout | grep DNS: | _sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//')"
-      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | _sed 's/^ //')"
+      givennames="$(echo "${alldomains}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | _sed 's/^ //')"
 
       if [[ "${certnames}" = "${givennames}" ]]; then
         echo " unchanged."
@@ -928,7 +945,7 @@ command_sign_domains() {
         else
           # Certificate-Names unchanged and cert is still valid
           echo "Skipping renew!"
-          [[ -n "${HOOK}" ]] && "${HOOK}" "unchanged_cert" "${domain}" "${CERTDIR}/${domain}/privkey.pem" "${CERTDIR}/${domain}/cert.pem" "${CERTDIR}/${domain}/fullchain.pem" "${CERTDIR}/${domain}/chain.pem"
+          [[ -n "${HOOK}" ]] && "${HOOK}" "unchanged_cert" "${primary}" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem"
           continue
         fi
       else
@@ -938,10 +955,10 @@ command_sign_domains() {
 
     # shellcheck disable=SC2086
     if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
-      sign_domain ${line} &
+      sign_domain "${certdir}" ${alldomains} &
       wait $! || true
     else
-      sign_domain ${line}
+      sign_domain "${certdir}" ${alldomains}
     fi
   done
 

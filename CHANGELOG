@@ -3,7 +3,7 @@ This file contains a log of major changes in dehydrated
 
 ## [x.x.x] - xxxx-xx-xx
 ## Changed
-- ...
+- domains.txt and the commandline "--domain" allows an alias name to be given by leading "--alias alias-name"
 
 ## Added
 - New feature for updating contact information (--account)
