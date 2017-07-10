@@ -1,4 +1,4 @@
-# dehydrated [![Build Status](https://travis-ci.org/lukas2511/dehydrated.svg?branch=master)](https://travis-ci.org/lukas2511/dehydrated)
+# dehydrated
 
 ![](docs/logo.jpg)
 
