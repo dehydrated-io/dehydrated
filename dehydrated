@@ -206,7 +206,9 @@ load_config() {
   [[ -n "${PARAM_OCSP_MUST_STAPLE:-}" ]] && OCSP_MUST_STAPLE="${PARAM_OCSP_MUST_STAPLE}"
   [[ -n "${PARAM_IP_VERSION:-}" ]] && IP_VERSION="${PARAM_IP_VERSION}"
 
-  verify_config
+  if [ ! "${1:-}" = "noverify" ]; then
+    verify_config
+  fi
   store_configvars
 }
 
@@ -815,6 +817,8 @@ sign_domain() {
 # Usage: --version (-v)
 # Description: Print version information
 command_version() {
+  load_config noverify
+
   echo "Dehydrated by Lukas Schauer"
   echo "https://dehydrated.de"
   echo ""
@@ -827,12 +831,12 @@ command_version() {
   [[ -n "${BASH_VERSION:-}" ]] && echo " bash: ${BASH_VERSION}"
   [[ -n "${ZSH_VERSION:-}" ]] && echo " zsh: ${ZSH_VERSION}"
   echo " sed: $(sed --version 2>&1 | head -n1)"
-  echo " openssl: $("${OPENSSL}" version 2>&1)"
   echo " curl: $(curl --version 2>&1 | head -n1 | cut -d" " -f1-2)"
   echo " awk: $(awk -W version 2>&1 | head -n1)"
   echo " grep: $(grep --version 2>&1 | head -n1)"
   echo " mktemp: $(mktemp --version 2>&1 | head -n1)"
   echo " diff: $(diff --version 2>&1 | head -n1)"
+  echo " openssl: $("${OPENSSL}" version 2>&1)"
 
   exit 0
 }
