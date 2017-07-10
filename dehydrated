@@ -1136,7 +1136,7 @@ command_cleanup() {
       fileext="$(echo "${filetype}" | cut -d. -f2)"
 
       # Loop over all files of this type
-      for file in "${certdir}/${filebase}-"*".${fileext}"; do
+      for file in "${certdir}/${filebase}-"*".${fileext}" "${certdir}/${filebase}-"*".${fileext}-revoked"; do
         # Handle case where no files match the wildcard
         [[ -f "${file}" ]] || break
 
