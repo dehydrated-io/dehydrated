@@ -93,6 +93,9 @@
 # Option to add CSR-flag indicating OCSP stapling to be mandatory (default: no)
 #OCSP_MUST_STAPLE="no"
 
+# Fetch OCSP responses (default: no)
+#OCSP_FETCH="no"
+
 # Issuer chain cache directory (default: $BASEDIR/chains)
 #CHAINCACHE="${BASEDIR}/chains"
 

@@ -129,6 +129,7 @@ load_config() {
   CONTACT_EMAIL=
   LOCKFILE=
   OCSP_MUST_STAPLE="no"
+  OCSP_FETCH="no"
   IP_VERSION=
   CHAINCACHE=
   AUTO_CLEANUP="no"
@@ -664,6 +665,11 @@ get_issuer_hash() {
   "${OPENSSL}" x509 -in "${certificate}" -noout -issuer_hash
 }
 
+get_ocsp_url() {
+  certificate="${1}"
+  "${OPENSSL}" x509 -in "${certificate}" -noout -ocsp_uri
+}
+
 # walk certificate chain, retrieving all intermediate certificates
 walk_chain() {
   local certificate
@@ -915,6 +921,7 @@ command_sign_domains() {
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
     morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
     cert="${CERTDIR}/${domain}/cert.pem"
+    chain="${CERTDIR}/${domain}/chain.pem"
 
     force_renew="${PARAM_FORCE:-no}"
 
@@ -965,6 +972,8 @@ command_sign_domains() {
     verify_config
     export WELLKNOWN CHALLENGETYPE KEY_ALGO PRIVATE_KEY_ROLLOVER
 
+    skip="no"
+
     if [[ -e "${cert}" ]]; then
       printf " + Checking domain name(s) of existing cert..."
 
@@ -996,19 +1005,43 @@ command_sign_domains() {
           # Certificate-Names unchanged and cert is still valid
           echo "Skipping renew!"
           [[ -n "${HOOK}" ]] && "${HOOK}" "unchanged_cert" "${domain}" "${CERTDIR}/${domain}/privkey.pem" "${CERTDIR}/${domain}/cert.pem" "${CERTDIR}/${domain}/fullchain.pem" "${CERTDIR}/${domain}/chain.pem"
-          continue
+          skip="yes"
         fi
       else
         echo "(Less than ${RENEW_DAYS} days). Renewing!"
       fi
     fi
 
+    local update_ocsp
+    update_ocsp="no"
+
     # shellcheck disable=SC2086
-    if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
-      sign_domain ${line} &
-      wait $! || true
-    else
-      sign_domain ${line}
+    if [[ ! "${skip}" = "yes" ]]; then
+      update_ocsp="yes"
+      if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
+        sign_domain ${line} &
+        wait $! || true
+      else
+        sign_domain ${line}
+      fi
+    fi
+
+    if [[ "${OCSP_FETCH}" = "yes" ]]; then
+      local ocsp_url
+      ocsp_url="$(get_ocsp_url "${cert}")"
+
+      if [[ ! -e "${CERTDIR}/${domain}/ocsp.der" ]]; then
+        update_ocsp="yes"
+      elif ! ("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respin "${CERTDIR}/${domain}/ocsp.der" -status_age 432000 2>&1 | grep -q "${cert}: good"); then
+        update_ocsp="yes"
+      fi
+
+      if [[ "${update_ocsp}" = "yes" ]]; then
+        echo " + Updating OCSP stapling file"
+        ocsp_timestamp="$(date +%s)"
+        "${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${CERTDIR}/${domain}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" > /dev/null 2>&1
+        ln -sf "${CERTDIR}/${domain}/ocsp-${ocsp_timestamp}.der" "${CERTDIR}/${domain}/ocsp.der"
+      fi
     fi
   done
 
