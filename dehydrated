@@ -204,6 +204,7 @@ load_config() {
   [[ -n "${PARAM_KEY_ALGO:-}" ]] && KEY_ALGO="${PARAM_KEY_ALGO}"
   [[ -n "${PARAM_OCSP_MUST_STAPLE:-}" ]] && OCSP_MUST_STAPLE="${PARAM_OCSP_MUST_STAPLE}"
   [[ -n "${PARAM_IP_VERSION:-}" ]] && IP_VERSION="${PARAM_IP_VERSION}"
+  [[ -n "${PARAM_DOMAINS_TXT:+x}" ]] && DOMAINS_TXT="${PARAM_DOMAINS_TXT}" && echo "# INFO: using external domains file : ${DOMAINS_TXT}"
 
   verify_config
   store_configvars
@@ -1275,6 +1276,14 @@ main() {
         else
           PARAM_DOMAIN="${PARAM_DOMAIN} ${1}"
          fi
+        ;;
+
+      # PARAM_Usage: --domains-txt (-d) domains.txt
+      # PARAM_Description: Use alternate domains.txt file
+      --domains-txt|-D)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_DOMAINS_TXT="${1}"
         ;;
 
       # PARAM_Usage: --keep-going (-g)
