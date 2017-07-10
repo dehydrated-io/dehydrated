@@ -637,7 +637,7 @@ sign_csr() {
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
   echo " + Requesting certificate..."
-  csr64="$( <<<"${csr}" "${OPENSSL}" req -outform DER | urlbase64)"
+  csr64="$( <<<"${csr}" "${OPENSSL}" req -config "${OPENSSL_CNF}" -outform DER | urlbase64)"
   crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | "${OPENSSL}" base64 -e)"
   crt="$( printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" )"
 
