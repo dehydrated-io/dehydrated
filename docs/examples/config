@@ -95,3 +95,6 @@
 
 # Issuer chain cache directory (default: $BASEDIR/chains)
 #CHAINCACHE="${BASEDIR}/chains"
+
+# Automatic cleanup (default: no)
+#AUTO_CLEANUP="no"

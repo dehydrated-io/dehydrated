@@ -131,6 +131,7 @@ load_config() {
   OCSP_MUST_STAPLE="no"
   IP_VERSION=
   CHAINCACHE=
+  AUTO_CLEANUP="no"
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -1009,6 +1010,10 @@ command_sign_domains() {
   # remove temporary domains.txt file if used
   [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"
 
+  if [[ "${AUTO_CLEANUP}" == "yes" ]]; then
+    echo "+ Running automatic cleanup"
+    command_cleanup noinit
+  fi
   [[ -n "${HOOK}" ]] && "${HOOK}" "exit_hook"
   exit 0
 }
@@ -1095,7 +1100,9 @@ command_revoke() {
 # Usage: --cleanup (-gc)
 # Description: Move unused certificate files to archive directory
 command_cleanup() {
-  load_config
+  if [ ! "${1:-}" = "noinit" ]; then
+    load_config
+  fi
 
   # Create global archive directory if not existent
   if [[ ! -e "${BASEDIR}/archive" ]]; then
