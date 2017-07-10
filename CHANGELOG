@@ -4,6 +4,7 @@ This file contains a log of major changes in dehydrated
 ## [x.x.x] - xxxx-xx-xx
 ## Changed
 - Certificate chain is now cached (CHAINCACHE)
+- OpenSSL binary path is now configurable (OPENSSL)
 
 ## Added
 - New feature for updating contact information (--account)
