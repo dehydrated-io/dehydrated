@@ -126,6 +126,7 @@ load_config() {
   LOCKFILE=
   OCSP_MUST_STAPLE="no"
   IP_VERSION=
+  CHAINCACHE=
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -182,6 +183,7 @@ load_config() {
   fi
 
   [[ -z "${CERTDIR}" ]] && CERTDIR="${BASEDIR}/certs"
+  [[ -z "${CHAINCACHE}" ]] && CHAINCACHE="${BASEDIR}/chains"
   [[ -z "${DOMAINS_TXT}" ]] && DOMAINS_TXT="${BASEDIR}/domains.txt"
   [[ -z "${WELLKNOWN}" ]] && WELLKNOWN="/var/www/dehydrated"
   [[ -z "${LOCKFILE}" ]] && LOCKFILE="${BASEDIR}/lock"
@@ -646,6 +648,11 @@ get_issuer_cert_uri() {
   openssl x509 -in "${certificate}" -noout -text | (grep 'CA Issuers - URI:' | cut -d':' -f2-) || true
 }
 
+get_issuer_hash() {
+  certificate="${1}"
+  openssl x509 -in "${certificate}" -noout -issuer_hash
+}
+
 # walk certificate chain, retrieving all intermediate certificates
 walk_chain() {
   local certificate
@@ -700,6 +707,10 @@ sign_domain() {
   if [[ ! -e "${CERTDIR}/${domain}" ]]; then
     echo " + Creating new directory ${CERTDIR}/${domain} ..."
     mkdir -p "${CERTDIR}/${domain}" || _exiterr "Unable to create directory ${CERTDIR}/${domain}"
+  fi
+  if [ ! -d "${CHAINCACHE}" ]; then
+    echo " + Creating chain cache directory ${CHAINCACHE}"
+    mkdir "${CHAINCACHE}"
   fi
 
   privkey="privkey.pem"
@@ -757,7 +768,18 @@ sign_domain() {
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
   cat "${crt_path}" > "${CERTDIR}/${domain}/fullchain-${timestamp}.pem"
-  walk_chain "${crt_path}" > "${CERTDIR}/${domain}/chain-${timestamp}.pem"
+  local issuer_hash
+  issuer_hash="$(get_issuer_hash "${crt_path}")"
+  if [ -e "${CHAINCACHE}/${issuer_hash}.chain" ]; then
+    echo " + Using cached chain!"
+    cat "${CHAINCACHE}/${issuer_hash}.chain" > "${CERTDIR}/${domain}/chain-${timestamp}.pem"
+  else
+    echo " + Walking chain..."
+    local issuer_cert_uri
+    issuer_cert_uri="$(get_issuer_cert_uri "${crt_path}" || echo "unknown")"
+    (walk_chain "${crt_path}" > "${CERTDIR}/${domain}/chain-${timestamp}.pem") || _exiterr "Walking chain has failed, your certificate has been created and can be found at ${crt_path}, the corresponding private key at ${privkey}. If you want you can manually continue on creating and linking all necessary files. If this error occurs again you should manually generate the certificate chain and place it under ${CHAINCACHE}/${issuer_hash}.chain (see ${issuer_cert_uri})"
+    cat "${CERTDIR}/${domain}/chain-${timestamp}.pem" > "${CHAINCACHE}/${issuer_hash}.chain"
+  fi
   cat "${CERTDIR}/${domain}/chain-${timestamp}.pem" >> "${CERTDIR}/${domain}/fullchain-${timestamp}.pem"
 
   # Update symlinks
