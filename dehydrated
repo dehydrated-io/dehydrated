@@ -1210,7 +1210,7 @@ main() {
         set_command register
         ;;
 
-      --account|-a)
+      --account)
         set_command account
         ;;
 
