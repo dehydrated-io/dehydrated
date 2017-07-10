@@ -513,6 +513,7 @@ sign_csr() {
   if [ -z "${altnames}" ]; then
     altnames="$( extract_altnames "${csr}" )"
   fi
+  export altnames
 
   if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
     _exiterr "Certificate authority doesn't allow certificate signing"
@@ -714,6 +715,8 @@ sign_domain() {
   domain="${1}"
   altnames="${*}"
   timestamp="$(date +%s)"
+
+  export altnames
 
   echo " + Signing domains..."
   if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
