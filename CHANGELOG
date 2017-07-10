@@ -5,6 +5,7 @@ This file contains a log of major changes in dehydrated
 ## Changed
 - Certificate chain is now cached (CHAINCACHE)
 - OpenSSL binary path is now configurable (OPENSSL)
+- Cleanup now also moves revoked certificates
 
 ## Added
 - New feature for updating contact information (--account)
