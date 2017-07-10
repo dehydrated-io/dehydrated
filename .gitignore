@@ -6,3 +6,4 @@ hook.sh
 certs/*
 archive/*
 accounts/*
+chains/*
