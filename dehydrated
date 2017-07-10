@@ -484,11 +484,11 @@ extract_altnames() {
     # shellcheck disable=SC1003
     altnames="$( <<<"${altnames}" _sed -e 's/^[[:space:]]*//; s/, /\'$'\n''/g' )"
     # we can only get DNS: ones signed
-    if grep -qv '^DNS:' <<<"${altnames}"; then
+    if grep -qEv '^(DNS|othername):' <<<"${altnames}"; then
       _exiterr "Certificate signing request contains non-DNS Subject Alternative Names"
     fi
     # strip away the DNS: prefix
-    altnames="$( <<<"${altnames}" _sed -e 's/^DNS://' )"
+    altnames="$( <<<"${altnames}" _sed -e 's/^(DNS:|othername:<unsupported>)//' )"
     echo "${altnames}"
 
   else
