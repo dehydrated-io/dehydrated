@@ -11,6 +11,8 @@ set -o pipefail
 [[ -n "${ZSH_VERSION:-}" ]] && set -o SH_WORD_SPLIT && set +o FUNCTION_ARGZERO
 umask 077 # paranoid umask, we're creating private keys
 
+VERSION="0.4.0"
+
 # Find directory in which this script is stored by traversing all symbolic links
 SOURCE="${0}"
 while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
@@ -804,6 +806,31 @@ sign_domain() {
   echo " + Done!"
 }
 
+# Usage: --version (-v)
+# Description: Print version information
+command_version() {
+  echo "Dehydrated by Lukas Schauer"
+  echo "https://dehydrated.de"
+  echo ""
+  echo "Dehydrated version: ${VERSION}"
+  revision="$(cd "${SCRIPTDIR}"; git rev-parse HEAD 2>/dev/null || echo "unknown")"
+  echo "GIT-Revision: ${revision}"
+  echo ""
+  echo "OS: $(cat /etc/issue | grep -v ^$ | head -n1 | _sed 's/\\(r|n|l) .*//g')"
+  echo "Used software:"
+  [[ -n "${BASH_VERSION:-}" ]] && echo " bash: ${BASH_VERSION}"
+  [[ -n "${ZSH_VERSION:-}" ]] && echo " zsh: ${ZSH_VERSION}"
+  echo " sed: $(sed --version 2>&1 | head -n1)"
+  echo " openssl: $(openssl version 2>&1)"
+  echo " curl: $(curl --version 2>&1 | head -n1 | cut -d" " -f1-2)"
+  echo " awk: $(awk -W version 2>&1 | head -n1)"
+  echo " grep: $(grep --version 2>&1 | head -n1)"
+  echo " mktemp: $(mktemp --version 2>&1 | head -n1)"
+  echo " diff: $(diff --version 2>&1 | head -n1)"
+
+  exit 0
+}
+
 # Usage: --register
 # Description: Register account key
 command_register() {
@@ -1207,6 +1234,10 @@ main() {
         PARAM_REVOKECERT="${1}"
         ;;
 
+      --version|-v)
+        set_command version
+        ;;
+
       --cleanup|-gc)
         set_command cleanup
         ;;
@@ -1262,9 +1293,9 @@ main() {
       # PARAM_Usage: --lock-suffix example.com
       # PARAM_Description: Suffix lockfile name with a string (useful for with -d)
       --lock-suffix)
-      	shift 1
+        shift 1
         check_parameters "${1:-}"
-	PARAM_LOCKFILE_SUFFIX="${1}"
+        PARAM_LOCKFILE_SUFFIX="${1}"
         ;;
 
       # PARAM_Usage: --ocsp
@@ -1340,6 +1371,7 @@ main() {
     sign_csr) command_sign_csr "${PARAM_CSR}";;
     revoke) command_revoke "${PARAM_REVOKECERT}";;
     cleanup) command_cleanup;;
+    version) command_version;;
     *) command_help; exit 1;;
   esac
 }
