@@ -1054,11 +1054,11 @@ command_sign_domains() {
   # remove temporary domains.txt file if used
   [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"
 
+  [[ -n "${HOOK}" ]] && "${HOOK}" "exit_hook"
   if [[ "${AUTO_CLEANUP}" == "yes" ]]; then
     echo "+ Running automatic cleanup"
     command_cleanup noinit
   fi
-  [[ -n "${HOOK}" ]] && "${HOOK}" "exit_hook"
   exit 0
 }
 
