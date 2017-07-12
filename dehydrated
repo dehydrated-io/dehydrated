@@ -1045,7 +1045,7 @@ command_sign_domains() {
       if [[ "${update_ocsp}" = "yes" ]]; then
         echo " + Updating OCSP stapling file"
         ocsp_timestamp="$(date +%s)"
-        "${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${CERTDIR}/${domain}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" > /dev/null 2>&1
+        "${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${CERTDIR}/${domain}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" -header "HOST=$(echo "${ocsp_url}" | _sed 's/^http(s?):\/\///')" > /dev/null 2>&1
         ln -sf "${CERTDIR}/${domain}/ocsp-${ocsp_timestamp}.der" "${CERTDIR}/${domain}/ocsp.der"
       fi
     fi
