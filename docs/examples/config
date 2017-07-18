@@ -54,6 +54,9 @@
 # Path to openssl config file (default: <unset> - tries to figure out system default)
 #OPENSSL_CNF=
 
+# Path to OpenSSL binary (default: "openssl")
+#OPENSSL="openssl"
+
 # Extra options passed to the curl binary (default: <unset>)
 #CURL_OPTS=
 
