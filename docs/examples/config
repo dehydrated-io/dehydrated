@@ -104,3 +104,6 @@
 
 # Automatic cleanup (default: no)
 #AUTO_CLEANUP="no"
+
+# Use hardlinks instead of softlinks/symlinks (default: no)
+#HARDLINK="no"
