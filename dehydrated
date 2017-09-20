@@ -622,6 +622,7 @@ sign_csr() {
         echo " + Challenge is valid!"
       else
         [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "invalid_challenge" "${altname}" "${result}"
+        break
       fi
     done
   fi
