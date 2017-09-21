@@ -26,6 +26,8 @@ SCRIPTDIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 BASEDIR="${SCRIPTDIR}"
 
+ORIGARGS="$@"
+
 # Create (identifiable) temporary files
 _mktemp() {
   # shellcheck disable=SC2068
@@ -135,6 +137,8 @@ load_config() {
   IP_VERSION=
   CHAINCACHE=
   AUTO_CLEANUP="no"
+  DEHYDRATED_USER=
+  DEHYDRATED_GROUP=
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -163,6 +167,21 @@ load_config() {
         _exiterr "Specified additional config ${check_config_d} is not readable or not a file at all."
       fi
    done
+  fi
+
+  # Check if we are running & are allowed to run as root
+  if [[ ! -z "$DEHYDRATED_USER" && $EUID == 0 ]]; then
+    sudo=`command -v sudo`
+    if [ -z $sudo ]; then
+       echo "DEHYDRATED_USER set but sudo not available. Please install sudo."
+       exit
+    fi
+    if [ ! -z "$DEHYDRATED_GROUP" ]; then
+        group="-g $DEHYDRATED_GROUP"
+    fi
+    echo "# INFO: Running $0 as $DEHYDRATED_USER"
+    $sudo -u $DEHYDRATED_USER $group "$0" $ORIGARGS
+    exit
   fi
 
   # Check for missing dependencies
