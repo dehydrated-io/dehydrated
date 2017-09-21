@@ -8,7 +8,9 @@
 set -e
 set -u
 set -o pipefail
-[[ -n "${ZSH_VERSION:-}" ]] && set -o SH_WORD_SPLIT && set +o FUNCTION_ARGZERO
+[[ -n "${ZSH_VERSION:-}" ]] && set -o SH_WORD_SPLIT && set +o FUNCTION_ARGZERO && set -o NULL_GLOB
+[[ -z "${ZSH_VERSION:-}" ]] && shopt -s nullglob
+
 umask 077 # paranoid umask, we're creating private keys
 
 VERSION="0.4.0"
@@ -153,10 +155,7 @@ load_config() {
     fi
 
     for check_config_d in "${CONFIG_D}"/*.sh; do
-      if [[ ! -e "${check_config_d}" ]]; then
-        echo "# !! WARNING !! Extra configuration directory ${CONFIG_D} exists, but no configuration found in it." >&2
-        break
-      elif [[ -f "${check_config_d}" ]] && [[ -r "${check_config_d}" ]]; then
+      if [[ -f "${check_config_d}" ]] && [[ -r "${check_config_d}" ]]; then
         echo "# INFO: Using additional config file ${check_config_d}"
         # shellcheck disable=SC1090
         . "${check_config_d}"
@@ -1199,9 +1198,6 @@ command_cleanup() {
 
       # Loop over all files of this type
       for file in "${certdir}/${filebase}-"*".${fileext}" "${certdir}/${filebase}-"*".${fileext}-revoked"; do
-        # Handle case where no files match the wildcard
-        [[ -f "${file}" ]] || break
-
         # Check if current file is in use, if unused move to archive directory
         filename="$(basename "${file}")"
         if [[ ! "${filename}" = "${current}" ]]; then
