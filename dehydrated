@@ -913,11 +913,19 @@ command_account() {
   exit 0
 }
 
+# Usage: --check (-x)
+# Description: Check for certificate validity, no renewal is performed
+command_check_domains() {
+  check_mode="yes"
+  check_mode_exit=0
+  command_sign_domains
+}
+
 # Usage: --cron (-c)
-# Description: Sign/renew non-existent/changed/expiring certificates.
+# Description: Sign/renew non-existent/changed/expiring certificates
 command_sign_domains() {
   init_system
-  [[ -n "${HOOK}" ]] && "${HOOK}" "startup_hook"
+  [[ -n "${HOOK}" ]] && [[ -z "$check_mode" ]] && "${HOOK}" "startup_hook"
 
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
     DOMAINS_TXT="$(_mktemp)"
@@ -943,6 +951,42 @@ command_sign_domains() {
     chain="${certdir}/chain.pem"
 
     force_renew="${PARAM_FORCE:-no}"
+
+    if [[ "${check_mode}" = "yes" ]]; then
+      if [[ -e "${cert}" ]]; then
+
+      valid="$("${OPENSSL}" x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
+
+
+      if [[ "${OSTYPE}" = "FreeBSD" ]] || [[ "${OSTYPE}" = "Darwin" ]]; then
+        valid_s=$(date -jf "%b %e %H:%M:%S %Y %Z" "$valid" +%s)
+      else
+        valid_s=$(date --date="$valid" --iso-8601 +%s)
+      fi
+
+      now=$(date +%s)
+      vdiff1=$((${valid_s} - ${now}))
+      vdiffdays=$(($vdiff1 / 86400))
+      renewsoon=$((RENEW_DAYS * 86400))
+      vdiff2=$((${vdiff1} - ${renewsoon}))
+      if [[ ${vdiff1} -lt 0 ]]; then
+        vdiffstatus="EXPIRED"
+        check_mode_exit=2
+      elif [[ ${vdiff2} -lt 0 ]]; then
+        vdiffstatus="RENEWAL" # ready for renewal
+        [[ ${check_mode_exit} -lt 1  ]] && check_mode_exit=1
+      else
+        vdiffstatus="VALID"
+      fi
+
+      printf "%36s %5d %-7s  %s\n" ${domain} ${vdiffdays} ${vdiffstatus} "${valid}"
+      fi
+    fi
+
+    # in check mode don't sign, renew etc.
+    if [[ $check_mode = "yes" ]]; then
+        continue
+    fi
 
     if [[ -z "${morenames}" ]];then
       echo "Processing ${domain}"
@@ -1071,11 +1115,17 @@ command_sign_domains() {
   # remove temporary domains.txt file if used
   [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"
 
-  [[ -n "${HOOK}" ]] && "${HOOK}" "exit_hook"
+  [[ -n "${HOOK}" ]] && [[ -z "$check_mode" ]] && "${HOOK}" "exit_hook"
   if [[ "${AUTO_CLEANUP}" == "yes" ]]; then
     echo "+ Running automatic cleanup"
     command_cleanup noinit
   fi
+
+  # for --check we have dedicated exit codes
+  if [[ "${check_mode}" = "yes" ]]; then
+    exit ${check_mode_exit}
+  fi
+
   exit 0
 }
 
@@ -1276,6 +1326,10 @@ main() {
         set_command sign_domains
         ;;
 
+      --check|-x)
+        set_command check_domains
+        ;;
+
       --register)
         set_command register
         ;;
@@ -1436,6 +1490,7 @@ main() {
   case "${COMMAND}" in
     env) command_env;;
     sign_domains) command_sign_domains;;
+    check_domains) command_check_domains;;
     register) command_register;;
     account) command_account;;
     sign_csr) command_sign_csr "${PARAM_CSR}";;
