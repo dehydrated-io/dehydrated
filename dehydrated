@@ -8,7 +8,9 @@
 set -e
 set -u
 set -o pipefail
-[[ -n "${ZSH_VERSION:-}" ]] && set -o SH_WORD_SPLIT && set +o FUNCTION_ARGZERO
+[[ -n "${ZSH_VERSION:-}" ]] && set -o SH_WORD_SPLIT && set +o FUNCTION_ARGZERO && set -o NULL_GLOB
+[[ -z "${ZSH_VERSION:-}" ]] && shopt -s nullglob
+
 umask 077 # paranoid umask, we're creating private keys
 
 VERSION="0.4.0"
@@ -153,10 +155,7 @@ load_config() {
     fi
 
     for check_config_d in "${CONFIG_D}"/*.sh; do
-      if [[ ! -e "${check_config_d}" ]]; then
-        echo "# !! WARNING !! Extra configuration directory ${CONFIG_D} exists, but no configuration found in it." >&2
-        break
-      elif [[ -f "${check_config_d}" ]] && [[ -r "${check_config_d}" ]]; then
+      if [[ -f "${check_config_d}" ]] && [[ -r "${check_config_d}" ]]; then
         echo "# INFO: Using additional config file ${check_config_d}"
         # shellcheck disable=SC1090
         . "${check_config_d}"
@@ -498,7 +497,7 @@ extract_altnames() {
 
   else
     # No SANs, extract CN
-    altnames="$( <<<"${reqtext}" grep '^[[:space:]]*Subject:' | _sed -e 's/.* CN=([^ /,]*).*/\1/' )"
+    altnames="$( <<<"${reqtext}" grep '^[[:space:]]*Subject:' | _sed -e 's/.* CN ?= ?([^ /,]*).*/\1/' )"
     echo "${altnames}"
   fi
 }
@@ -622,6 +621,7 @@ sign_csr() {
         echo " + Challenge is valid!"
       else
         [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "invalid_challenge" "${altname}" "${result}"
+        break
       fi
     done
   fi
@@ -842,7 +842,11 @@ command_version() {
   revision="$(cd "${SCRIPTDIR}"; git rev-parse HEAD 2>/dev/null || echo "unknown")"
   echo "GIT-Revision: ${revision}"
   echo ""
-  [[ -f /etc/issue ]] && echo "OS: $(cat /etc/issue | grep -v ^$ | head -n1 | _sed 's/\\(r|n|l) .*//g')"
+  if [[ "${OSTYPE}" = "FreeBSD" ]]; then
+    echo "OS: $(uname -sr)"
+  else
+    echo "OS: $(cat /etc/issue | grep -v ^$ | head -n1 | _sed 's/\\(r|n|l) .*//g')"
+  fi
   echo "Used software:"
   [[ -n "${BASH_VERSION:-}" ]] && echo " bash: ${BASH_VERSION}"
   [[ -n "${ZSH_VERSION:-}" ]] && echo " zsh: ${ZSH_VERSION}"
@@ -1194,9 +1198,6 @@ command_cleanup() {
 
       # Loop over all files of this type
       for file in "${certdir}/${filebase}-"*".${fileext}" "${certdir}/${filebase}-"*".${fileext}-revoked"; do
-        # Handle case where no files match the wildcard
-        [[ -f "${file}" ]] || break
-
         # Check if current file is in use, if unused move to archive directory
         filename="$(basename "${file}")"
         if [[ ! "${filename}" = "${current}" ]]; then
