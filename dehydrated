@@ -974,139 +974,139 @@ command_sign_domains() {
 }
 
 sign_one_domain() {
-    local alias="$1"
-    shift
-    local domain="$1"
-    local altnames="${*}"
-    shift
-    local morenames="${*}"
+  local alias="$1"
+  shift
+  local domain="$1"
+  local altnames="${*}"
+  shift
+  local morenames="${*}"
 
-    local certdir="${CERTDIR}/${alias}"
-    cert="${certdir}/cert.pem"
-    chain="${certdir}/chain.pem"
+  local certdir="${CERTDIR}/${alias}"
+  cert="${certdir}/cert.pem"
+  chain="${certdir}/chain.pem"
 
-    force_renew="${PARAM_FORCE:-no}"
+  force_renew="${PARAM_FORCE:-no}"
 
-    echo -n "Processing ${domain}"
-    [[ -n "${morenames}" ]] && echo -n " with alternative names: ${morenames}"
-    [[ "${alias}" != "${domain}" ]] && echo -n " with alias: ${alias}"
+  echo -n "Processing ${domain}"
+  [[ -n "${morenames}" ]] && echo -n " with alternative names: ${morenames}"
+  [[ "${alias}" != "${domain}" ]] && echo -n " with alias: ${alias}"
 
-    # read cert config
-    # for now this loads the certificate specific config in a subshell and parses a diff of set variables.
-    # we could just source the config file but i decided to go this way to protect people from accidentally overriding
-    # variables used internally by this script itself.
-    if [[ -n "${DOMAINS_D}" ]]; then
-      certconfig="${DOMAINS_D}/${alias}"
+  # read cert config
+  # for now this loads the certificate specific config in a subshell and parses a diff of set variables.
+  # we could just source the config file but i decided to go this way to protect people from accidentally overriding
+  # variables used internally by this script itself.
+  if [[ -n "${DOMAINS_D}" ]]; then
+    certconfig="${DOMAINS_D}/${alias}"
+  else
+    certconfig="${certdir}/config"
+  fi
+
+  if [ -f "${certconfig}" ]; then
+    echo " + Using certificate specific config file!"
+    ORIGIFS="${IFS}"
+    IFS=$'\n'
+    for cfgline in $(
+      beforevars="$(_mktemp)"
+      aftervars="$(_mktemp)"
+      set > "${beforevars}"
+      # shellcheck disable=SC1090
+      . "${certconfig}"
+      set > "${aftervars}"
+      diff -u "${beforevars}" "${aftervars}" | grep -E '^\+[^+]'
+      rm "${beforevars}"
+      rm "${aftervars}"
+    ); do
+      config_var="$(echo "${cfgline:1}" | cut -d'=' -f1)"
+      config_value="$(echo "${cfgline:1}" | cut -d'=' -f2-)"
+      case "${config_var}" in
+        KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
+          echo "   + ${config_var} = ${config_value}"
+          declare -- "${config_var}=${config_value}"
+          ;;
+        _) ;;
+        *) echo "   ! Setting ${config_var} on a per-certificate base is not (yet) supported" >&2
+      esac
+    done
+    IFS="${ORIGIFS}"
+  fi
+  verify_config
+  export WELLKNOWN CHALLENGETYPE KEY_ALGO PRIVATE_KEY_ROLLOVER
+
+  skip="no"
+
+  if [[ -e "${cert}" ]]; then
+    printf " + Checking domain name(s) of existing cert..."
+
+    certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep DNS: | _sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//')"
+    givennames="$(echo "${altnames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | _sed 's/^ //')"
+
+    if [[ "${certnames}" = "${givennames}" ]]; then
+      echo " unchanged."
     else
-      certconfig="${certdir}/config"
+      echo " changed!"
+      echo " + Domain name(s) are not matching!"
+      echo " + Names in old certificate: ${certnames}"
+      echo " + Configured names: ${givennames}"
+      echo " + Forcing renew."
+      force_renew="yes"
     fi
+  fi
 
-    if [ -f "${certconfig}" ]; then
-      echo " + Using certificate specific config file!"
-      ORIGIFS="${IFS}"
-      IFS=$'\n'
-      for cfgline in $(
-        beforevars="$(_mktemp)"
-        aftervars="$(_mktemp)"
-        set > "${beforevars}"
-        # shellcheck disable=SC1090
-        . "${certconfig}"
-        set > "${aftervars}"
-        diff -u "${beforevars}" "${aftervars}" | grep -E '^\+[^+]'
-        rm "${beforevars}"
-        rm "${aftervars}"
-      ); do
-        config_var="$(echo "${cfgline:1}" | cut -d'=' -f1)"
-        config_value="$(echo "${cfgline:1}" | cut -d'=' -f2-)"
-        case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
-            echo "   + ${config_var} = ${config_value}"
-            declare -- "${config_var}=${config_value}"
-            ;;
-          _) ;;
-          *) echo "   ! Setting ${config_var} on a per-certificate base is not (yet) supported" >&2
-        esac
-      done
-      IFS="${ORIGIFS}"
-    fi
-    verify_config
-    export WELLKNOWN CHALLENGETYPE KEY_ALGO PRIVATE_KEY_ROLLOVER
+  if [[ -e "${cert}" ]]; then
+    echo " + Checking expire date of existing cert..."
+    valid="$("${OPENSSL}" x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
 
-    skip="no"
-
-    if [[ -e "${cert}" ]]; then
-      printf " + Checking domain name(s) of existing cert..."
-
-      certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep DNS: | _sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//')"
-      givennames="$(echo "${altnames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | _sed 's/^ //')"
-
-      if [[ "${certnames}" = "${givennames}" ]]; then
-        echo " unchanged."
+    printf " + Valid till %s " "${valid}"
+    if "${OPENSSL}" x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; then
+      printf "(Longer than %d days). " "${RENEW_DAYS}"
+      if [[ "${force_renew}" = "yes" ]]; then
+        echo "Ignoring because renew was forced!"
       else
-        echo " changed!"
-        echo " + Domain name(s) are not matching!"
-        echo " + Names in old certificate: ${certnames}"
-        echo " + Configured names: ${givennames}"
-        echo " + Forcing renew."
-        force_renew="yes"
+        # Certificate-Names unchanged and cert is still valid
+        echo "Skipping renew!"
+        [[ -n "${HOOK}" ]] && "${HOOK}" "unchanged_cert" "${domain}" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem"
+        skip="yes"
       fi
+    else
+      echo "(Less than ${RENEW_DAYS} days). Renewing!"
     fi
+  fi
 
-    if [[ -e "${cert}" ]]; then
-      echo " + Checking expire date of existing cert..."
-      valid="$("${OPENSSL}" x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
+  local update_ocsp
+  update_ocsp="no"
 
-      printf " + Valid till %s " "${valid}"
-      if "${OPENSSL}" x509 -checkend $((RENEW_DAYS * 86400)) -noout -in "${cert}"; then
-        printf "(Longer than %d days). " "${RENEW_DAYS}"
-        if [[ "${force_renew}" = "yes" ]]; then
-          echo "Ignoring because renew was forced!"
-        else
-          # Certificate-Names unchanged and cert is still valid
-          echo "Skipping renew!"
-          [[ -n "${HOOK}" ]] && "${HOOK}" "unchanged_cert" "${domain}" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem"
-          skip="yes"
-        fi
-      else
-        echo "(Less than ${RENEW_DAYS} days). Renewing!"
-      fi
+  # shellcheck disable=SC2086
+  if [[ ! "${skip}" = "yes" ]]; then
+    update_ocsp="yes"
+    if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
+      sign_domain "${certdir}" ${altnames} &
+      wait $! || true
+    else
+      sign_domain "${certdir}" ${altnames}
     fi
+  fi
 
-    local update_ocsp
-    update_ocsp="no"
+  if [[ "${OCSP_FETCH}" = "yes" ]]; then
+    local ocsp_url
+    ocsp_url="$(get_ocsp_url "${cert}")"
 
-    # shellcheck disable=SC2086
-    if [[ ! "${skip}" = "yes" ]]; then
+    if [[ ! -e "${certdir}/ocsp.der" ]]; then
       update_ocsp="yes"
-      if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
-        sign_domain "${certdir}" ${altnames} &
-        wait $! || true
+    elif ! ("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respin "${certdir}/ocsp.der" -status_age 432000 2>&1 | grep -q "${cert}: good"); then
+      update_ocsp="yes"
+    fi
+
+    if [[ "${update_ocsp}" = "yes" ]]; then
+      echo " + Updating OCSP stapling file"
+      ocsp_timestamp="$(date +%s)"
+      if grep -qE "^(0|(1\.0))\." <<< "$(${OPENSSL} version | awk '{print $2}')"; then
+        "${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" -header "HOST" "$(echo "${ocsp_url}" | _sed -e 's/^http(s?):\/\///' -e 's/\/.*$//g')" > /dev/null 2>&1
       else
-        sign_domain "${certdir}" ${altnames}
+        "${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" > /dev/null 2>&1
       fi
+      ln -sf "${certdir}/ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
     fi
-
-    if [[ "${OCSP_FETCH}" = "yes" ]]; then
-      local ocsp_url
-      ocsp_url="$(get_ocsp_url "${cert}")"
-
-      if [[ ! -e "${certdir}/ocsp.der" ]]; then
-        update_ocsp="yes"
-      elif ! ("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respin "${certdir}/ocsp.der" -status_age 432000 2>&1 | grep -q "${cert}: good"); then
-        update_ocsp="yes"
-      fi
-
-      if [[ "${update_ocsp}" = "yes" ]]; then
-        echo " + Updating OCSP stapling file"
-        ocsp_timestamp="$(date +%s)"
-        if grep -qE "^(0|(1\.0))\." <<< "$(${OPENSSL} version | awk '{print $2}')"; then
-          "${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" -header "HOST" "$(echo "${ocsp_url}" | _sed -e 's/^http(s?):\/\///' -e 's/\/.*$//g')" > /dev/null 2>&1
-        else
-          "${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" > /dev/null 2>&1
-        fi
-        ln -sf "${certdir}/ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
-      fi
-    fi
+  fi
 }
 
 # Usage: --signcsr (-s) path/to/csr.pem
