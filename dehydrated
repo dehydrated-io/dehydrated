@@ -717,6 +717,8 @@ walk_chain() {
 
 # Create certificate for domain(s)
 sign_domain() {
+  local certdir="${1}"
+  shift
   domain="${1}"
   altnames="${*}"
   timestamp="$(date +%s)"
@@ -727,8 +729,6 @@ sign_domain() {
   if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
     _exiterr "Certificate authority doesn't allow certificate signing"
   fi
-
-  local certdir="${CERTDIR}/${domain}"
 
   # If there is no existing certificate directory => make it
   if [[ ! -e "${certdir}" ]]; then
@@ -1038,10 +1038,10 @@ command_sign_domains() {
     if [[ ! "${skip}" = "yes" ]]; then
       update_ocsp="yes"
       if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
-        sign_domain ${line} &
+        sign_domain "${certdir}" ${domain} ${morenames} &
         wait $! || true
       else
-        sign_domain ${line}
+        sign_domain "${certdir}" ${domain} ${morenames}
       fi
     fi
 
