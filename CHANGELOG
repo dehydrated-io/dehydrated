@@ -6,6 +6,7 @@ This file contains a log of major changes in dehydrated
 - Certificate chain is now cached (CHAINCACHE)
 - OpenSSL binary path is now configurable (OPENSSL)
 - Cleanup now also moves revoked certificates
+- domains.txt and the commandline "--domain" allows one or more alias names to be specified
 
 ## Added
 - New feature for updating contact information (--account)

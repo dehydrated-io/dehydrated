@@ -933,31 +933,70 @@ command_sign_domains() {
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
   ORIGIFS="${IFS}"
   IFS=$'\n'
-  for line in $(<"${DOMAINS_TXT}" tr -d '\r' | awk '{print tolower($0)}' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true)); do
+  for line in $(<"${DOMAINS_TXT}" tr -d '\r' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' -e 's/[[:space:]]*>[[:space:]]*/>/g' -e 's/(.)>/\1 >/g' | (grep -vE '^(#|$)' || true)); do
     reset_configvars
     IFS="${ORIGIFS}"
-    local domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
-    local morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
-    local altnames="${primary} ${morenames}"
-    altnames="${altnames%% }"
-    local certdir="${CERTDIR}/${domain}"
+    local aliases=""
+    local domain=""
+    local morenames=""
+    for elem in ${line}; do
+      case "${elem}" in
+      \>*) aliases+=" ${elem#>}"
+           ;;
+      *)   local domlower="$(<<< "${elem}" awk '{print tolower($0)}')"
+           if [[ -z "${domain}" ]]; then
+             domain="${domlower}"
+           else
+             morenames+=" ${domlower}"
+           fi
+           ;;
+      esac
+    done
+    aliases="${aliases# }"
+    morenames="${morenames# }"
+    [[ -z "${aliases}" ]] &&  aliases="${domain}"
+
+    for alias in ${aliases}; do
+      echo "${alias}" "${domain}" ${morenames}
+      sign_one_domain "${alias}" "${domain}" ${morenames}
+    done
+  done
+
+  # remove temporary domains.txt file if used
+  [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"
+
+  [[ -n "${HOOK}" ]] && "${HOOK}" "exit_hook"
+  if [[ "${AUTO_CLEANUP}" == "yes" ]]; then
+    echo "+ Running automatic cleanup"
+    command_cleanup noinit
+  fi
+  exit 0
+}
+
+sign_one_domain() {
+    local alias="$1"
+    shift
+    local domain="$1"
+    local altnames="${*}"
+    shift
+    local morenames="${*}"
+
+    local certdir="${CERTDIR}/${alias}"
     cert="${certdir}/cert.pem"
     chain="${certdir}/chain.pem"
 
     force_renew="${PARAM_FORCE:-no}"
 
-    if [[ -z "${morenames}" ]];then
-      echo "Processing ${domain}"
-    else
-      echo "Processing ${domain} with alternative names: ${morenames}"
-    fi
+    echo -n "Processing ${domain}"
+    [[ -n "${morenames}" ]] && echo -n " with alternative names: ${morenames}"
+    [[ "${alias}" != "${domain}" ]] && echo -n " with alias: ${alias}"
 
     # read cert config
     # for now this loads the certificate specific config in a subshell and parses a diff of set variables.
     # we could just source the config file but i decided to go this way to protect people from accidentally overriding
     # variables used internally by this script itself.
     if [[ -n "${DOMAINS_D}" ]]; then
-      certconfig="${DOMAINS_D}/${domain}"
+      certconfig="${DOMAINS_D}/${alias}"
     else
       certconfig="${certdir}/config"
     fi
@@ -1068,17 +1107,6 @@ command_sign_domains() {
         ln -sf "${certdir}/ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
       fi
     fi
-  done
-
-  # remove temporary domains.txt file if used
-  [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"
-
-  [[ -n "${HOOK}" ]] && "${HOOK}" "exit_hook"
-  if [[ "${AUTO_CLEANUP}" == "yes" ]]; then
-    echo "+ Running automatic cleanup"
-    command_cleanup noinit
-  fi
-  exit 0
 }
 
 # Usage: --signcsr (-s) path/to/csr.pem
