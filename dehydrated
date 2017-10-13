@@ -1063,7 +1063,7 @@ command_sign_domains() {
         else
           "${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" > /dev/null 2>&1
         fi
-        ln -sf "${certdir}/ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
+        ln -sf "ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
       fi
     fi
   done
