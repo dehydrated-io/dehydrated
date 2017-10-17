@@ -903,7 +903,7 @@ command_account() {
     echo "+ Account information was the same after the update"
     rm "${NEW_ACCOUNT_KEY_JSON}"
   else
-    ACCOUNT_KEY_JSON_BACKUP="$(echo "${ACCOUNT_KEY_JSON}" | cut -d. -f1)-$(date +%s).json"
+    ACCOUNT_KEY_JSON_BACKUP="${ACCOUNT_KEY_JSON%.*}-$(date +%s).json"
     echo "+ Backup ${ACCOUNT_KEY_JSON} as ${ACCOUNT_KEY_JSON_BACKUP}"
     cp -p "${ACCOUNT_KEY_JSON}" "${ACCOUNT_KEY_JSON_BACKUP}"
     echo "+ Populate ${ACCOUNT_KEY_JSON}"
