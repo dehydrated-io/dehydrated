@@ -31,8 +31,8 @@ This also is an API limit from boulder, you are requesting to sign a certificate
 
 There are a few factors that could result in invalid challenges.
 
-If you are using http validation make sure that the path you have configured with WELLKNOWN is readable under your domain.
+If you are using HTTP validation make sure that the path you have configured with WELLKNOWN is readable under your domain.
 
-To test this create a file (e.g. `test.txt`) in that directory and try opening it with your browser: `http://example.org/.well-known/acme-challenge/test.txt`.
+To test this create a file (e.g. `test.txt`) in that directory and try opening it with your browser: `http://example.org/.well-known/acme-challenge/test.txt`. Note that if you have an IPv6 address, the challenge connection will be on IPv6. Be sure that you test HTTP connections on both IPv4 and IPv6. Checking the test file in your browser is often not sufficient because the browser just fails over to IPv4.
 
-If you get any error you'll have to fix your webserver configuration.
+If you get any error you'll have to fix your web server configuration.

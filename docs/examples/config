@@ -54,6 +54,12 @@
 # Path to openssl config file (default: <unset> - tries to figure out system default)
 #OPENSSL_CNF=
 
+# Path to OpenSSL binary (default: "openssl")
+#OPENSSL="openssl"
+
+# Extra options passed to the curl binary (default: <unset>)
+#CURL_OPTS=
+
 # Program or function called in certain situations
 #
 # After generating the challenge-response, or after failed challenge (in this case altname is empty)
@@ -89,3 +95,12 @@
 
 # Option to add CSR-flag indicating OCSP stapling to be mandatory (default: no)
 #OCSP_MUST_STAPLE="no"
+
+# Fetch OCSP responses (default: no)
+#OCSP_FETCH="no"
+
+# Issuer chain cache directory (default: $BASEDIR/chains)
+#CHAINCACHE="${BASEDIR}/chains"
+
+# Automatic cleanup (default: no)
+#AUTO_CLEANUP="no"

@@ -3,7 +3,14 @@ This file contains a log of major changes in dehydrated
 
 ## [x.x.x] - xxxx-xx-xx
 ## Changed
-- ...
+- Certificate chain is now cached (CHAINCACHE)
+- OpenSSL binary path is now configurable (OPENSSL)
+- Cleanup now also moves revoked certificates
+
+## Added
+- New feature for updating contact information (--account)
+- Allow automatic cleanup on exit (AUTO_CLEANUP)
+- Initial support for fetching OCSP status to be used for OCSP stapling (OCSP_FETCH)
 
 ## [0.4.0] - 2017-02-05
 ## Changed

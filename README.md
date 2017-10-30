@@ -1,4 +1,4 @@
-# dehydrated [![Build Status](https://travis-ci.org/lukas2511/dehydrated.svg?branch=master)](https://travis-ci.org/lukas2511/dehydrated)
+# dehydrated
 
 ![](docs/logo.jpg)
 
@@ -33,7 +33,7 @@ dehydrated is looking for a config file in a few different places, it will use t
 - `/etc/dehydrated/config`
 - `/usr/local/etc/dehydrated/config`
 - The current working directory of your shell
-- The directory from which dehydrated was ran
+- The directory from which dehydrated was run
 
 Have a look at [docs/examples/config](docs/examples/config) to get started, copy it to e.g. `/etc/dehydrated/config`
 and edit it to fit your needs.
@@ -46,8 +46,10 @@ Usage: ./dehydrated [-h] [command [argument]] [parameter [argument]] [parameter 
 Default command: help
 
 Commands:
+ --version (-v)                   Print version information
  --register                       Register account key
- --cron (-c)                      Sign/renew non-existant/changed/expiring certificates.
+ --account                        Update account contact information
+ --cron (-c)                      Sign/renew non-existent/changed/expiring certificates.
  --signcsr (-s) path/to/csr.pem   Sign a given CSR, output CRT on stdout (advanced usage)
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
  --cleanup (-gc)                  Move unused certificate files to archive directory
@@ -72,3 +74,34 @@ Parameters:
  --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported
  --algo (-a) rsa|prime256v1|secp384r1 Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
 ```
+
+## Donate
+
+I'm having fun developing dehydrated, but it takes time, and time is money, at least that's what I've been told.
+
+I will definitively continue developing dehydrated for free, but if you want to support me you can do so using the following ways:
+
+### PayPal
+
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=23P9DSJBTY7C8)
+
+### BitCoin
+
+Send bitcoins to 12487bHxcrREffTGwUDnoxF1uYxCA7ztKK
+
+### Server
+
+I'm still planning on building a bigger testing-suite for dehydrated, it would be really cool to have a big(ish) server running
+in a datacenter somewhere without having to pay for it... If you are a server provider and can offer me a (dedicated!) machine,
+please contact me at `donations@dehydrated.de`.
+
+### Other ways
+
+I always like to play around with modern(ish) network and computer gear, 10G switches and stuff, modern ARM boards
+(but please not that Raspberry Pi rubbish), tiny PCs for routing, etc.
+
+If you have something that seems of value and that you don't need anymore feel free to contact me at
+`donations@dehydrated.de`.
+
+Also here is my [Amazon Wishlist](http://www.amazon.de/registry/wishlist/1TUCFJK35IO4Q) :)
+
