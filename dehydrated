@@ -537,7 +537,7 @@ sign_csr() {
     response="$(signed_request "${CA_NEW_AUTHZ}" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}' | clean_json)"
 
     challenge_status="$(printf '%s' "${response}" | rm_json_arrays | get_json_string_value status)"
-    if [ "${challenge_status}" = "valid" ]; then
+    if [ "${challenge_status}" = "valid" ] && [ ! "${PARAM_FORCE:-no}" = "yes" ]; then
        echo " + Already validated!"
        continue
     fi
