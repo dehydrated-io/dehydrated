@@ -1,5 +1,17 @@
-dehydrated (0.3.1) UNRELEASED; urgency=medium
+dehydrated (0.3.1-byte1) xenial; urgency=medium
+
+  [ Ingrid ]
+  * update license
+
+  [ Rick van de Loo ]
+  * tag 0.3.1-byte1
+
+ -- Rick van de Loo <vdloo@workstation4>  Thu, 16 Nov 2017 11:11:01 +0100
+
+dehydrated (0.3.1) xenial; urgency=medium
+
 
   * Initial dehydrated release.
 
  -- Allard Hoeve <allard@byte.nl>  Wed, 14 Sep 2016 11:41:53 +0200
+
