@@ -398,8 +398,15 @@ http_request() {
     statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -s -w "%{http_code}" -o "${tempcont}" "${2}")"
     curlret="${?}"
   elif [[ "${1}" = "post" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -s -w "%{http_code}" -o "${tempcont}" "${2}" -d "${3}")"
-    curlret="${?}"
+    statuscode=1
+    while [[ ! "${statuscode:0:1}" = "2" ]]; do
+        statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -s -w "%{http_code}" -o "${tempcont}" "${2}" -d "${3}")"
+        curlret="${?}"
+        if [[ ! "${statuscode:0:1}" = "2" ]]; then
+            echo "WARNING: Statuscode is: ${statuscode}, retrying..." >&2
+            sleep 2
+        fi
+    done
   else
     set -e
     _exiterr "Unknown request method: ${1}"
