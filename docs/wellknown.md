@@ -65,3 +65,14 @@ alias.url += (
  "/.well-known/acme-challenge/" => "/var/www/dehydrated/",
 )
 ```
+
+
+### Hiawatha example config
+
+With Hiawatha just add an alias to your config file for each VirtualHost and it should work:
+```hiawatha
+VirtualHost {
+    Hostname = example.tld subdomain.mywebsite.tld
+    Alias = /.well-known/acme-challenge:/var/www/dehydrated
+}
+```
