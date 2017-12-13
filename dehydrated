@@ -1064,6 +1064,8 @@ command_sign_domains() {
           "${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" > /dev/null 2>&1
         fi
         ln -sf "ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
+      else
+        echo " + OSCP stapling file is still valid (skipping update)"
       fi
     fi
   done
