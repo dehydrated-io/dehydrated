@@ -63,6 +63,7 @@ store_configvars() {
   __OPENSSL_CNF="${OPENSSL_CNF}"
   __RENEW_DAYS="${RENEW_DAYS}"
   __IP_VERSION="${IP_VERSION}"
+  __HARDLINK="${HARDLINK}"
 }
 
 reset_configvars() {
@@ -77,6 +78,7 @@ reset_configvars() {
   OPENSSL_CNF="${__OPENSSL_CNF}"
   RENEW_DAYS="${__RENEW_DAYS}"
   IP_VERSION="${__IP_VERSION}"
+  HARDLINK="${__HARDLINK}"
 }
 
 # verify configuration values
@@ -135,6 +137,7 @@ load_config() {
   IP_VERSION=
   CHAINCACHE=
   AUTO_CLEANUP="no"
+  HARDLINK="no"
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -205,6 +208,7 @@ load_config() {
   [[ -n "${PARAM_KEY_ALGO:-}" ]] && KEY_ALGO="${PARAM_KEY_ALGO}"
   [[ -n "${PARAM_OCSP_MUST_STAPLE:-}" ]] && OCSP_MUST_STAPLE="${PARAM_OCSP_MUST_STAPLE}"
   [[ -n "${PARAM_IP_VERSION:-}" ]] && IP_VERSION="${PARAM_IP_VERSION}"
+  [[ -n "${PARAM_HARDLINK:-}" ]] && HARDLINK="${PARAM_HARDLINK}"
 
   if [ ! "${1:-}" = "noverify" ]; then
     verify_config
@@ -723,6 +727,9 @@ sign_domain() {
 
   export altnames
 
+  # Choose whether to use hardlinks or softlinks
+  [[ "${HARDLINK}" = "yes" ]] && link="ln -f" || link="ln -sf"
+
   echo " + Signing domains..."
   if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
     _exiterr "Certificate authority doesn't allow certificate signing"
@@ -816,12 +823,12 @@ sign_domain() {
   cat "${certdir}/chain-${timestamp}.pem" >> "${certdir}/fullchain-${timestamp}.pem"
 
   # Update symlinks
-  [[ "${privkey}" = "privkey.pem" ]] || ln -sf "privkey-${timestamp}.pem" "${certdir}/privkey.pem"
+  [[ "${privkey}" = "privkey.pem" ]] || $link "privkey-${timestamp}.pem" "${certdir}/privkey.pem"
 
-  ln -sf "chain-${timestamp}.pem" "${certdir}/chain.pem"
-  ln -sf "fullchain-${timestamp}.pem" "${certdir}/fullchain.pem"
-  ln -sf "cert-${timestamp}.csr" "${certdir}/cert.csr"
-  ln -sf "cert-${timestamp}.pem" "${certdir}/cert.pem"
+  $link "chain-${timestamp}.pem" "${certdir}/chain.pem"
+  $link "fullchain-${timestamp}.pem" "${certdir}/fullchain.pem"
+  $link "cert-${timestamp}.csr" "${certdir}/cert.csr"
+  $link "cert-${timestamp}.pem" "${certdir}/cert.pem"
 
   # Wait for hook script to clean the challenge and to deploy cert if used
   [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${domain}" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem" "${timestamp}"
@@ -1223,14 +1230,14 @@ command_help() {
     if [[ ! "${usage}" =~ Usage ]] || [[ ! "${description}" =~ Description ]] || [[ ! "${command}" =~ ^command_ ]]; then
       _exiterr "Error generating help text."
     fi
-    printf " %-32s %s\n" "${usage##"# Usage: "}" "${description##"# Description: "}"
+    printf " %-36s %s\n" "${usage##"# Usage: "}" "${description##"# Description: "}"
   done
   printf -- "\nParameters:\n"
   grep -E -e '^[[:space:]]*# PARAM_Usage:' -e '^[[:space:]]*# PARAM_Description:' "${0}" | while read -r usage; read -r description; do
     if [[ ! "${usage}" =~ Usage ]] || [[ ! "${description}" =~ Description ]]; then
       _exiterr "Error generating help text."
     fi
-    printf " %-32s %s\n" "${usage##"# PARAM_Usage: "}" "${description##"# PARAM_Description: "}"
+    printf " %-36s %s\n" "${usage##"# PARAM_Usage: "}" "${description##"# PARAM_Description: "}"
   done
 }
 
@@ -1422,6 +1429,12 @@ main() {
         shift 1
         check_parameters "${1:-}"
         PARAM_KEY_ALGO="${1}"
+        ;;
+
+      # PARAM_Usage: --hardlink (-hl)
+      # PARAM_Description: Use hardlinks instead of softlinks (symlinks)
+      --hardlink|-hl)
+        PARAM_HARDLINK="yes"
         ;;
 
       *)
