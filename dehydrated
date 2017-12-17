@@ -948,6 +948,7 @@ command_sign_domains() {
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
     morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
     [ ${aliascount} -lt 1 ] && alias="${domain}" || alias="${alias#>}"
+    export alias
 
     local certdir="${CERTDIR}/${alias}"
     cert="${certdir}/cert.pem"
