@@ -921,7 +921,11 @@ command_sign_domains() {
 
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
     DOMAINS_TXT="$(_mktemp)"
-    printf -- "${PARAM_DOMAIN}" > "${DOMAINS_TXT}"
+    if [[ -n "${PARAM_ALIAS:-}" ]]; then
+      printf -- "${PARAM_DOMAIN} > ${PARAM_ALIAS}" > "${DOMAINS_TXT}"
+    else
+      printf -- "${PARAM_DOMAIN}" > "${DOMAINS_TXT}"
+    fi
   elif [[ -e "${DOMAINS_TXT}" ]]; then
     if [[ ! -r "${DOMAINS_TXT}" ]]; then
       _exiterr "domains.txt found but not readable"
@@ -933,12 +937,19 @@ command_sign_domains() {
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
   ORIGIFS="${IFS}"
   IFS=$'\n'
-  for line in $(<"${DOMAINS_TXT}" tr -d '\r' | awk '{print tolower($0)}' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' | (grep -vE '^(#|$)' || true)); do
+  for line in $(<"${DOMAINS_TXT}" tr -d '\r' | awk '{print tolower($0)}' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' -e 's/([^ ])>/\1 >/g' -e 's/> />/g' | (grep -vE '^(#|$)' || true)); do
     reset_configvars
     IFS="${ORIGIFS}"
+    alias="$(grep -Eo '>[^ ]+' <<< "${line}" || true)"
+    line="$(_sed -e 's/>[^ ]+[ ]*//g' <<< "${line}")"
+    aliascount="$(grep -Eo '>' <<< "${alias}" | awk 'END {print NR}' || true )"
+    [ ${aliascount} -gt 1 ] && _exiterr "Only one alias per line is allowed in domains.txt!"
+
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
     morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
-    local certdir="${CERTDIR}/${domain}"
+    [ ${aliascount} -lt 1 ] && alias="${domain}" || alias="${alias#>}"
+
+    local certdir="${CERTDIR}/${alias}"
     cert="${certdir}/cert.pem"
     chain="${certdir}/chain.pem"
 
@@ -955,7 +966,7 @@ command_sign_domains() {
     # we could just source the config file but i decided to go this way to protect people from accidentally overriding
     # variables used internally by this script itself.
     if [[ -n "${DOMAINS_D}" ]]; then
-      certconfig="${DOMAINS_D}/${domain}"
+      certconfig="${DOMAINS_D}/${alias}"
     else
       certconfig="${certdir}/config"
     fi
@@ -1342,6 +1353,15 @@ main() {
         else
           PARAM_DOMAIN="${PARAM_DOMAIN} ${1}"
          fi
+        ;;
+
+      # PARAM_Usage: --alias certalias
+      # PARAM_Description: Use specified name for certificate directory (and per-certificate config) instead of the primary domain (only used if --domain is specified)
+      --alias)
+        shift 1
+        check_parameters "${1:-}"
+        [[ -n "${PARAM_ALIAS:-}" ]] && _exiterr "Alias can only be specified once!"
+        PARAM_ALIAS="${1}"
         ;;
 
       # PARAM_Usage: --keep-going (-g)
