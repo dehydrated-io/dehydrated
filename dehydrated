@@ -25,6 +25,7 @@ done
 SCRIPTDIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 BASEDIR="${SCRIPTDIR}"
+ORIGARGS="$@"
 
 # Create (identifiable) temporary files
 _mktemp() {
@@ -135,6 +136,8 @@ load_config() {
   IP_VERSION=
   CHAINCACHE=
   AUTO_CLEANUP="no"
+  DEHYDRATED_USER=
+  DEHYDRATED_GROUP=
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -163,6 +166,32 @@ load_config() {
         _exiterr "Specified additional config ${check_config_d} is not readable or not a file at all."
       fi
    done
+  fi
+
+  # Check if we are running & are allowed to run as root
+  if [[ -n "$DEHYDRATED_USER" ]]; then
+    command -v sudo > /dev/null 2>&1 || _exiterr "DEHYDRATED_USER set but sudo not available. Please install sudo."
+    command -v getent > /dev/null 2>&1 || _exiterr "DEHYDRATED_USER set but getent not available. Please install getent."
+
+    TARGET_UID="$(getent passwd "${DEHYDRATED_USER}" | cut -d':' -f3)"
+    if [[ -z "${DEHYDRATED_GROUP}" ]]; then
+      if [[ "${EUID}" != "${TARGET_UID}" ]]; then
+        echo "# INFO: Running $0 as ${DEHYDRATED_USER}"
+        exec sudo -u "${DEHYDRATED_USER}" "${0}" ${ORIGARGS}
+      fi
+    else
+      TARGET_GID="$(getent group "${DEHYDRATED_GROUP}" | cut -d':' -f3)"
+      if [[ -z "${EGID:-}" ]]; then
+        command -v id > /dev/null 2>&1 || _exiterr "DEHYDRATED_GROUP set, don't know current gid and 'id' not available... Please provide 'id' binary."
+        EGID="$(id -g)"
+      fi
+      if [[ "${EUID}" != "${TARGET_UID}" ]] || [[ "${EGID}" != "${TARGET_GID}" ]]; then
+        echo "# INFO: Running $0 as ${DEHYDRATED_USER}/${DEHYDRATED_GROUP}"
+        exec sudo -u "${DEHYDRATED_USER}" -g "${DEHYDRATED_GROUP}" "${0}" ${ORIGARGS}
+      fi
+    fi
+  elif [[ -n "${DEHYDRATED_GROUP}" ]]; then
+    _exiterr "DEHYDRATED_GROUP can only be used in combination with DEHYDRATED_USER."
   fi
 
   # Check for missing dependencies

@@ -10,6 +10,12 @@
 # Default values of this config are in comments        #
 ########################################################
 
+# Which user should dehydrated run as? This will be implictly enforced when running as root
+#DEHYDRATED_USER=
+
+# Which group should dehydrated run as? This will be implictly enforced when running as root
+#DEHYDRATED_GROUP=
+
 # Resolve names to addresses of IP version only. (curl)
 # supported values: 4, 6
 # default: <unset>
