@@ -1080,6 +1080,7 @@ command_sign_domains() {
       fi
     fi
   done
+  reset_configvars
 
   # remove temporary domains.txt file if used
   [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"
