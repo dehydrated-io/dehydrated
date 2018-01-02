@@ -42,7 +42,6 @@ def create_domain_string(domain, subdomain, new_treeish):
     else:
         flavor = "live"
 
-    new_treeish = new_treeish[0:7] # Short Sha
 
     s3 = S3Connection()
     s3_bucket = s3.get_bucket('presencelearning-devops')
@@ -55,11 +54,13 @@ def create_domain_string(domain, subdomain, new_treeish):
 
     deployed_set = set({})
 
-    if subdomain == 'test' or subdomain == 'live':
-        deployed_set.add("{treeish}.test.{domain}".format(treeish=new_treeish, domain=domain))
-        deployed_set.add("{treeish}.live.{domain}".format(treeish=new_treeish, domain=domain))
-    else:
-        deployed_set.add('{treeish}.{subdomain}.{domain}'.format(treeish=new_treeish, subdomain=subdomain, domain=domain))
+    if new_treeish:
+        new_treeish = new_treeish[0:7] # Short Sha
+        if subdomain == 'test' or subdomain == 'live':
+            deployed_set.add("{treeish}.test.{domain}".format(treeish=new_treeish, domain=domain))
+            deployed_set.add("{treeish}.live.{domain}".format(treeish=new_treeish, domain=domain))
+        else:
+            deployed_set.add('{treeish}.{subdomain}.{domain}'.format(treeish=new_treeish, subdomain=subdomain, domain=domain))
 
     for key in s3_bucket_list:
         key_list = key.name.split('/')
