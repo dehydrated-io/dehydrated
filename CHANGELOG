@@ -13,6 +13,7 @@ This file contains a log of major changes in dehydrated
 - Initial support for fetching OCSP status to be used for OCSP stapling (OCSP_FETCH)
 - Certificates can now have aliases to create multiple certificates with identical set of domains (see --alias and domains.txt documentation)
 - Allow dehydrated to run as specified user (/group)
+- Support for ACME v02
 
 ## [0.4.0] - 2017-02-05
 ## Changed
