@@ -513,7 +513,7 @@ signed_request() {
   if [[ ${API} -eq 1 ]]; then
     nonce="$(http_request head "${CA}" | grep Replay-Nonce: | awk -F ': ' '{print $2}' | tr -d '\n\r')"
   else
-    nonce="$(http_request head "${CA_NEW_NONCE}" | grep -i Replay-Nonce: | awk -F ': ' '{print $2}' | tr -d '\n\r')"
+    nonce="$(http_request head "${CA_NEW_NONCE}" | grep Replay-Nonce: | awk -F ': ' '{print $2}' | tr -d '\n\r')"
   fi
 
   # Build header with just our public key and algorithm information
@@ -658,7 +658,7 @@ sign_csr() {
     if [[ ${API} -eq 1 ]]; then
       challenge_uri="$(printf '%s' "${challenge}" | get_json_string_value uri)"
     else
-     challenge_uri="$(printf '%s' "${challenge}" | get_json_string_value url)"
+      challenge_uri="$(printf '%s' "${challenge}" | get_json_string_value url)"
    fi
 
     if [[ -z "${challenge_token}" ]] || [[ -z "${challenge_uri}" ]]; then
