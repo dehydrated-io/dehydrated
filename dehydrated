@@ -269,7 +269,6 @@ init_system() {
   else
     # shellcheck disable=SC2015
     CA_NEW_ORDER="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newOrder)" &&
-    CA_NEW_AUTHZ="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newAuthz)" &&
     CA_NEW_NONCE="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newNonce)" &&
     CA_NEW_ACCOUNT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newAccount)" &&
     CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revokeCert)" ||
