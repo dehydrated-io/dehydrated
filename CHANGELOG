@@ -1,7 +1,7 @@
 # Change Log
 This file contains a log of major changes in dehydrated
 
-## [x.x.x] - xxxx-xx-xx
+## [0.5.0] - 2018-01-13
 ## Changed
 - Certificate chain is now cached (CHAINCACHE)
 - OpenSSL binary path is now configurable (OPENSSL)
