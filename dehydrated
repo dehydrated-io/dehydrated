@@ -651,14 +651,14 @@ sign_csr() {
     fi
 
     challenges="$(printf '%s\n' "${response}" | sed -n 's/.*\("challenges":[^\[]*\[[^]]*]\).*/\1/p')"
-    repl=$'\n''{' # fix syntax highlighting in Vim
-    challenge="$(printf "%s" "${challenges//\{/${repl}}" | grep \""${CHALLENGETYPE}"\")"
+    challenge="$(<<<"${challenges}" _sed -e 's/^[^\[]+\[(.+)\]$/\1/' -e 's/\}(, (\{)|(\]))/}\'$'\n''\2/g' | grep \""${CHALLENGETYPE}"\")"
+
     challenge_token="$(printf '%s' "${challenge}" | get_json_string_value token | _sed 's/[^A-Za-z0-9_\-]/_/g')"
     if [[ ${API} -eq 1 ]]; then
       challenge_uri="$(printf '%s' "${challenge}" | get_json_string_value uri)"
     else
       challenge_uri="$(printf '%s' "${challenge}" | get_json_string_value url)"
-   fi
+    fi
 
     if [[ -z "${challenge_token}" ]] || [[ -z "${challenge_uri}" ]]; then
       _exiterr "Can't retrieve challenges (${response})"
