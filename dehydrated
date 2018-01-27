@@ -640,6 +640,7 @@ sign_csr() {
       echo " + Requesting challenge for ${altname}..."
       response="$(signed_request "${CA_NEW_AUTHZ}" '{"resource": "new-authz", "identifier": {"type": "dns", "value": "'"${altname}"'"}}' | clean_json)"
     else
+      echo " + Handling challenge for ${altname}..."
       uris="$(<<<"${authorization[${idy}]}" _sed -e 's/\"(.*)".*/\1/')"
       response="$(http_request get "${uris}" | clean_json)"
     fi
