@@ -61,3 +61,14 @@ HOOK: deploy_cert lukas.im /etc/dehydrated/certs/lukas.im/privkey.pem /etc/dehyd
  + Done!
 ```
 
+# Problem with wildcard certificates
+
+For wildcard certificates the upper level domain is used for verification, e.g.
+`*.foo.example.com` will be verified at `foo.example.com`.
+
+In cases where both `foo.example.com` and `*.foo.example.com` would have to be
+validated there would be a conflict since both will have different tokens but
+both are expected to be resolved under `_acme-challenge.foo.example.com`.
+
+If dehydrated detects this kind of configuration it will automatically fall back
+to non-chaining behaviour (until the next certificate).
