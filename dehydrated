@@ -675,7 +675,7 @@ sign_csr() {
     fi
 
     # Gather challenge information
-    challenge_identifier[${idx}]="${identifier}"
+    challenge_identifiers[${idx}]="${identifier}"
     challenge_tokens[${idx}]="$(echo "${challenge}" | get_json_string_value token)"
     if [[ ${API} -eq 2 ]]; then
       challenge_uris[${idx}]="$(echo "${challenge}" | get_json_string_value url)"
@@ -698,6 +698,7 @@ sign_csr() {
         keyauth_hook="$(printf '%s' "${keyauth}" | "${OPENSSL}" dgst -sha256 -binary | urlbase64)"
         ;;
     esac
+
     keyauths[${idx}]="${keyauth}"
     deploy_args[${idx}]="${identifier} ${challenge_tokens[${idx}]} ${keyauth_hook}"
 
@@ -706,30 +707,25 @@ sign_csr() {
   local num_pending_challenges=${idx}
   echo " + ${num_pending_challenges} pending challenge(s)"
 
-  # Detect duplicate challenge identifiers
-  if [ "${HOOK_CHAIN}" = "yes" ] && [ -n "$(tr ' ' '\n' <<< "${challenge_identifier[*]}" | sort | uniq -d)" ]; then
-    echo "!! Disabling HOOK_CHAIN for this certificate (see https://dehydrated.de/docs/hook_chain.md#problem-with-wildcard-certificates for more information)"
-    HOOK_CHAIN=no
-  fi
-
-  # Deploy challenge tokens using chained hook
+  # Deploy challenge tokens
   if [[ ${num_pending_challenges} -ne 0 ]]; then
-    # shellcheck disable=SC2068
+    echo " + Deploying challenge tokens..."
     if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]]; then
-      echo " + Deploying challenge tokens..."
       "${HOOK}" "deploy_challenge" ${deploy_args[@]}
+    elif [[ -n "${HOOK}" ]]; then
+      # Run hook script to deploy the challenge token
+      local idx=0
+      while [ ${idx} -lt ${num_pending_challenges} ]; do
+        "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]}
+        idx=$((idx+1))
+      done
     fi
   fi
 
   # Validate pending challenges
   local idx=0
   while [ ${idx} -lt ${num_pending_challenges} ]; do
-    echo " + Responding to challenge for ${challenge_identifier[${idx}]} authorization..."
-
-    # Run hook script to deploy the challenge token
-    if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]]; then
-      "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]}
-    fi
+    echo " + Responding to challenge for ${challenge_identifiers[${idx}]} authorization..."
 
     # Ask the acme-server to verify our challenge and wait until it is no longer pending
     if [[ ${API} -eq 1 ]]; then

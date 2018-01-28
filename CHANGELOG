@@ -3,7 +3,7 @@ This file contains a log of major changes in dehydrated
 
 ## [x.x.x] - xxxx-xx-xx
 ## Changed
-- ...
+- Challenge validation loop has been modified to loop over authorization identifiers instead of altnames (ACMEv2 + wildcard support)
 
 ## Added
 - Support for ACME v02 (including wildcard certificates!)
