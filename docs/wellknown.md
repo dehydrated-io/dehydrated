@@ -24,7 +24,7 @@ With Nginx you'll need to add this to any of your `server`/VHost config blocks:
 ```nginx
 server {
   [...]
-  location /.well-known/acme-challenge {
+  location ^~ /.well-known/acme-challenge {
     alias /var/www/dehydrated;
   }
   [...]
