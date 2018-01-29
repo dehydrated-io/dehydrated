@@ -49,7 +49,8 @@ Commands:
  --version (-v)                   Print version information
  --register                       Register account key
  --account                        Update account contact information
- --cron (-c)                      Sign/renew non-existent/changed/expiring certificates.
+ --check (-x)                     Check for certificate validity, no renewal is performed
+ --cron (-c)                      Sign/renew non-existent/changed/expiring certificates
  --signcsr (-s) path/to/csr.pem   Sign a given CSR, output CRT on stdout (advanced usage)
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
  --cleanup (-gc)                  Move unused certificate files to archive directory
