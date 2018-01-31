@@ -21,6 +21,8 @@ def subdomain_from_repo(repo):
         'techcheck': "setup",
         'pl-docs': "patterns",
         'api-workplace': "workplace",
+        'api-platform': "platform",
+        'api-misc': "misc",
         'api-princeton': "princeton",
         'etl-pipeline': "airflow",
         'api-techcheck': "techcheck",
@@ -48,7 +50,7 @@ def create_domain_string(domain, subdomain, new_treeish):
 
     s3_bucket_list = s3_bucket.list(prefix="deploy/" + flavor + "-app/deployed_hashes/")
 
-    deployed_list = [domain, 'www.' + domain, '2016.' + domain, 'assessmentmaterials.' + domain, 'catalog.' + domain, 'kidinsight.' + domain, 'room.' + domain, 'library.' + domain, 'store.' + domain, 'apps.' + domain, 'setup.' + domain, 'login.' + domain, 'test.' + domain, 'live.' + domain, 'kibana.' + domain, 'patterns.' + domain, 'schedule.' + domain, 'workplace.' + domain, 'user.' + domain, 'client.' + domain, 'billing.' + domain, 'ci.' + domain, 'princeton.' + domain, 'airflow.' + domain, 'metabase.' + domain, 'techcheck.' + domain]
+    deployed_list = [domain, 'www.' + domain, '2016.' + domain, 'assessmentmaterials.' + domain, 'catalog.' + domain, 'kidinsight.' + domain, 'room.' + domain, 'library.' + domain, 'store.' + domain, 'apps.' + domain, 'setup.' + domain, 'login.' + domain, 'test.' + domain, 'live.' + domain, 'kibana.' + domain, 'patterns.' + domain, 'schedule.' + domain, 'workplace.' + domain, 'user.' + domain, 'client.' + domain, 'billing.' + domain, 'ci.' + domain, 'princeton.' + domain, 'airflow.' + domain, 'metabase.' + domain, 'techcheck.' + domain, 'misc.' + domain, 'platform.' + domain]
 #    if flavor != 'stag':
 #        return " ".join(deployed_list)
 
