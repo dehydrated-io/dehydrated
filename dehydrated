@@ -576,8 +576,7 @@ extract_altnames() {
     fi
     # strip away the DNS: prefix
     altnames="$( <<<"${altnames}" _sed -e 's/^(DNS:|othername:<unsupported>)//' )"
-    echo "${altnames}"
-
+    echo "${altnames}" | tr '\n' ' '
   else
     # No SANs, extract CN
     altnames="$( <<<"${reqtext}" grep '^[[:space:]]*Subject:' | _sed -e 's/.* CN ?= ?([^ /,]*).*/\1/' )"
@@ -596,11 +595,7 @@ sign_csr() {
   fi
 
   shift 1 || true
-  altnames="${*:-}"
-  if [ -z "${altnames}" ]; then
-    altnames="$( extract_altnames "${csr}" )"
-  fi
-  export altnames
+  export altnames="${*}"
 
   if [[ ${API} -eq 1 ]]; then
     if [[ -z "${CA_NEW_AUTHZ}" ]] || [[ -z "${CA_NEW_CERT}" ]]; then
@@ -937,7 +932,7 @@ sign_domain() {
 
   crt_path="${certdir}/cert-${timestamp}.pem"
   # shellcheck disable=SC2086
-  sign_csr "$(< "${certdir}/cert-${timestamp}.csr" )" ${altnames} 3>"${crt_path}"
+  sign_csr "$(< "${certdir}/cert-${timestamp}.csr")" ${altnames} 3>"${crt_path}"
 
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
@@ -1253,14 +1248,19 @@ command_sign_csr() {
 
   init_system
 
+  # load csr
   csrfile="${1}"
   if [ ! -r "${csrfile}" ]; then
     _exiterr "Could not read certificate signing request ${csrfile}"
   fi
+  csr="$(cat "${csrfile}")"
+
+  # extract names
+  altnames="$(extract_altnames "${csr}")"
 
   # gen cert
   certfile="$(_mktemp)"
-  sign_csr "$(< "${csrfile}" )" 3> "${certfile}"
+  sign_csr "${csr}" ${altnames} 3> "${certfile}"
 
   # print cert
   echo "# CERT #" >&3
