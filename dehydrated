@@ -8,8 +8,8 @@
 set -e
 set -u
 set -o pipefail
-[[ -n "${ZSH_VERSION:-}" ]] && set -o SH_WORD_SPLIT && set +o FUNCTION_ARGZERO && set -o NULL_GLOB
-[[ -z "${ZSH_VERSION:-}" ]] && shopt -s nullglob
+[[ -n "${ZSH_VERSION:-}" ]] && set -o SH_WORD_SPLIT && set +o FUNCTION_ARGZERO && set -o NULL_GLOB && set -o noglob
+[[ -z "${ZSH_VERSION:-}" ]] && shopt -s nullglob && set -f
 
 umask 077 # paranoid umask, we're creating private keys
 
@@ -1087,9 +1087,7 @@ command_sign_domains() {
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
   ORIGIFS="${IFS}"
   IFS=$'\n'
-  [[ -n "${ZSH_VERSION:-}" ]] && set -o noglob || set -f
   for line in $(<"${DOMAINS_TXT}" tr -d '\r' | awk '{print tolower($0)}' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' -e 's/([^ ])>/\1 >/g' -e 's/> />/g' | (grep -vE '^(#|$)' || true)); do
-    [[ -n "${ZSH_VERSION:-}" ]] && set +o noglob || set +f
     reset_configvars
     IFS="${ORIGIFS}"
     alias="$(grep -Eo '>[^ ]+' <<< "${line}" || true)"
@@ -1201,14 +1199,12 @@ command_sign_domains() {
     # shellcheck disable=SC2086
     if [[ ! "${skip}" = "yes" ]]; then
       update_ocsp="yes"
-      [[ -n "${ZSH_VERSION:-}" ]] && set -o noglob || set -f
       if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
         sign_domain "${certdir}" ${domain} ${morenames} &
         wait $! || true
       else
         sign_domain "${certdir}" ${domain} ${morenames}
       fi
-      [[ -n "${ZSH_VERSION:-}" ]] && set +o noglob || set +f
     fi
 
     if [[ "${OCSP_FETCH}" = "yes" ]]; then
@@ -1235,7 +1231,6 @@ command_sign_domains() {
       fi
     fi
   done
-  [[ -n "${ZSH_VERSION:-}" ]] && set +o noglob || set +f
   reset_configvars
 
   # remove temporary domains.txt file if used
@@ -1343,6 +1338,9 @@ command_cleanup() {
   if [[ ! -e "${BASEDIR}/archive" ]]; then
     mkdir "${BASEDIR}/archive"
   fi
+
+  # Allow globbing
+  [[ -n "${ZSH_VERSION:-}" ]] && set +o noglob || set +f
 
   # Loop over all certificate directories
   for certdir in "${CERTDIR}/"*; do
