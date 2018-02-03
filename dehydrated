@@ -158,6 +158,9 @@ load_config() {
       _exiterr "The path ${CONFIG_D} specified for CONFIG_D does not point to a directory."
     fi
 
+    # Allow globbing
+    [[ -n "${ZSH_VERSION:-}" ]] && set +o noglob || set +f
+
     for check_config_d in "${CONFIG_D}"/*.sh; do
       if [[ -f "${check_config_d}" ]] && [[ -r "${check_config_d}" ]]; then
         echo "# INFO: Using additional config file ${check_config_d}"
@@ -166,7 +169,10 @@ load_config() {
       else
         _exiterr "Specified additional config ${check_config_d} is not readable or not a file at all."
       fi
-   done
+    done
+
+    # Disable globbing
+    [[ -n "${ZSH_VERSION:-}" ]] && set -o noglob || set -f
   fi
 
   # Check if we are running & are allowed to run as root
