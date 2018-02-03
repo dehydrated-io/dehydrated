@@ -3,6 +3,7 @@
 ![](docs/logo.jpg)
 
 This is a client for signing certificates with an ACME-server (currently only provided by Let's Encrypt) implemented as a relatively simple bash-script.
+Dehydrated supports both ACME v1 and the new ACME v2 including support for wildcard certificates!
 
 It uses the `openssl` utility for everything related to actually handling keys and certificates, so you need to have that installed.
 
