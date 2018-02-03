@@ -458,7 +458,7 @@ http_request() {
     statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
     curlret="${?}"
   elif [[ "${1}" = "get" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -s -w "%{http_code}" -o "${tempcont}" "${2}")"
+    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -L -s -w "%{http_code}" -o "${tempcont}" "${2}")"
     curlret="${?}"
   elif [[ "${1}" = "post" ]]; then
     statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -s -w "%{http_code}" -o "${tempcont}" "${2}" -d "${3}")"
