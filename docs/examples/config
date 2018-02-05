@@ -111,5 +111,5 @@
 # Automatic cleanup (default: no)
 #AUTO_CLEANUP="no"
 
-# ACME API version (default: 1)
-#API=1
+# ACME API version (default: auto)
+#API=auto

@@ -93,6 +93,7 @@ verify_config() {
   if [[ -n "${IP_VERSION}" ]]; then
     [[ "${IP_VERSION}" = "4" || "${IP_VERSION}" = "6" ]] || _exiterr "Unknown IP version ${IP_VERSION}... cannot continue."
   fi
+  [[ "${API}" == "auto" || "${API}" == "1" || "${API}" == "2" ]] || _exiterr "Unsupported API version defined in config: ${API}"
 }
 
 # Setup default config values, search for and load configuration files
@@ -138,7 +139,7 @@ load_config() {
   AUTO_CLEANUP="no"
   DEHYDRATED_USER=
   DEHYDRATED_GROUP=
-  API=1
+  API="auto"
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -263,6 +264,12 @@ init_system() {
 
   # Get CA URLs
   CA_DIRECTORY="$(http_request get "${CA}")"
+
+  # Automatic discovery of API version
+  if [[ "${API}" = "auto" ]]; then
+    grep -q newOrder <<< "${CA_DIRECTORY}" && API=2 || API=1
+  fi
+
   if [[ ${API} -eq 1 ]]; then
     # shellcheck disable=SC2015
     CA_NEW_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-cert)" &&
