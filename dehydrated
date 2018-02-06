@@ -450,6 +450,7 @@ _openssl() {
 # Send http(s) request with specified method
 http_request() {
   tempcont="$(_mktemp)"
+  tempheaders="$(_mktemp)"
 
   if [[ -n "${IP_VERSION:-}" ]]; then
       ip_version="-${IP_VERSION}"
@@ -458,12 +459,13 @@ http_request() {
   set +e
   if [[ "${1}" = "head" ]]; then
     statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
+    touch "${tempheaders}"
     curlret="${?}"
   elif [[ "${1}" = "get" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -L -s -w "%{http_code}" -o "${tempcont}" "${2}")"
+    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -L -s -w "%{http_code}" -o "${tempcont}" -D "${tempheaders}" "${2}")"
     curlret="${?}"
   elif [[ "${1}" = "post" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -s -w "%{http_code}" -o "${tempcont}" "${2}" -d "${3}")"
+    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -s -w "%{http_code}" -o "${tempcont}" "${2}" -D "${tempheaders}" -d "${3}")"
     curlret="${?}"
   else
     set -e
@@ -485,6 +487,7 @@ http_request() {
       echo "  + ERROR: An error occurred while sending ${1}-request to ${2} (Status ${statuscode})" >&2
       echo >&2
       echo "Details:" >&2
+      cat "${tempheaders}" >&2
       cat "${tempcont}" >&2
       echo >&2
       echo >&2
@@ -496,6 +499,7 @@ http_request() {
       fi
 
       rm -f "${tempcont}"
+      rm -f "${tempheaders}"
 
       # Wait for hook script to clean the challenge if used
       if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token:+set}" ]]; then
@@ -508,8 +512,12 @@ http_request() {
     fi
   fi
 
+  if { true >&4; } 2>/dev/null; then
+    cat "${tempheaders}" >&4
+  fi
   cat "${tempcont}"
   rm -f "${tempcont}"
+  rm -f "${tempheaders}"
 }
 
 # Send signed request
