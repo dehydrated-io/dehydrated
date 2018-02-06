@@ -880,60 +880,61 @@ sign_domain() {
     _exiterr "Certificate authority doesn't allow certificate signing"
   fi
 
+  local privkey="privkey.pem"
+  if [[ ! -e "${certdir}/cert-${timestamp}.csr" ]]; then
+    # generate a new private key if we need or want one
+    if [[ ! -r "${certdir}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
+      echo " + Generating private key..."
+      privkey="privkey-${timestamp}.pem"
+      case "${KEY_ALGO}" in
+        rsa) _openssl genrsa -out "${certdir}/privkey-${timestamp}.pem" "${KEYSIZE}";;
+        prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${certdir}/privkey-${timestamp}.pem";;
+      esac
+    fi
+    # move rolloverkey into position (if any)
+    if [[ -r "${certdir}/privkey.pem" && -r "${certdir}/privkey.roll.pem" && "${PRIVATE_KEY_RENEW}" = "yes" && "${PRIVATE_KEY_ROLLOVER}" = "yes" ]]; then
+      echo " + Moving Rolloverkey into position....  "
+      mv "${certdir}/privkey.roll.pem" "${certdir}/privkey-tmp.pem"
+      mv "${certdir}/privkey-${timestamp}.pem" "${certdir}/privkey.roll.pem"
+      mv "${certdir}/privkey-tmp.pem" "${certdir}/privkey-${timestamp}.pem"
+    fi
+    # generate a new private rollover key if we need or want one
+    if [[ ! -r "${certdir}/privkey.roll.pem" && "${PRIVATE_KEY_ROLLOVER}" = "yes" && "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
+      echo " + Generating private rollover key..."
+      case "${KEY_ALGO}" in
+        rsa) _openssl genrsa -out "${certdir}/privkey.roll.pem" "${KEYSIZE}";;
+        prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${certdir}/privkey.roll.pem";;
+      esac
+    fi
+    # delete rolloverkeys if disabled
+    if [[ -r "${certdir}/privkey.roll.pem" && ! "${PRIVATE_KEY_ROLLOVER}" = "yes" ]]; then
+      echo " + Removing Rolloverkey (feature disabled)..."
+      rm -f "${certdir}/privkey.roll.pem"
+    fi
 
-  privkey="privkey.pem"
-  # generate a new private key if we need or want one
-  if [[ ! -r "${certdir}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
-    echo " + Generating private key..."
-    privkey="privkey-${timestamp}.pem"
-    case "${KEY_ALGO}" in
-      rsa) _openssl genrsa -out "${certdir}/privkey-${timestamp}.pem" "${KEYSIZE}";;
-      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${certdir}/privkey-${timestamp}.pem";;
-    esac
+    # Generate signing request config and the actual signing request
+    echo " + Generating signing request..."
+    SAN=""
+    for altname in ${altnames}; do
+      SAN="${SAN}DNS:${altname}, "
+    done
+    SAN="${SAN%%, }"
+    local tmp_openssl_cnf
+    tmp_openssl_cnf="$(_mktemp)"
+    cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
+    printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
+    if [ "${OCSP_MUST_STAPLE}" = "yes" ]; then
+      printf "\n1.3.6.1.5.5.7.1.24=DER:30:03:02:01:05" >> "${tmp_openssl_cnf}"
+    fi
+    SUBJ="/CN=${domain}/"
+    if [[ "${OSTYPE:0:5}" = "MINGW" ]]; then
+      # The subject starts with a /, so MSYS will assume it's a path and convert
+      # it unless we escape it with another one:
+      SUBJ="/${SUBJ}"
+    fi
+    "${OPENSSL}" req -new -sha256 -key "${certdir}/${privkey}" -out "${certdir}/cert-${timestamp}.csr" -subj "${SUBJ}" -reqexts SAN -config "${tmp_openssl_cnf}"
+    rm -f "${tmp_openssl_cnf}"
   fi
-  # move rolloverkey into position (if any)
-  if [[ -r "${certdir}/privkey.pem" && -r "${certdir}/privkey.roll.pem" && "${PRIVATE_KEY_RENEW}" = "yes" && "${PRIVATE_KEY_ROLLOVER}" = "yes" ]]; then
-    echo " + Moving Rolloverkey into position....  "
-    mv "${certdir}/privkey.roll.pem" "${certdir}/privkey-tmp.pem"
-    mv "${certdir}/privkey-${timestamp}.pem" "${certdir}/privkey.roll.pem"
-    mv "${certdir}/privkey-tmp.pem" "${certdir}/privkey-${timestamp}.pem"
-  fi
-  # generate a new private rollover key if we need or want one
-  if [[ ! -r "${certdir}/privkey.roll.pem" && "${PRIVATE_KEY_ROLLOVER}" = "yes" && "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
-    echo " + Generating private rollover key..."
-    case "${KEY_ALGO}" in
-      rsa) _openssl genrsa -out "${certdir}/privkey.roll.pem" "${KEYSIZE}";;
-      prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${certdir}/privkey.roll.pem";;
-    esac
-  fi
-  # delete rolloverkeys if disabled
-  if [[ -r "${certdir}/privkey.roll.pem" && ! "${PRIVATE_KEY_ROLLOVER}" = "yes" ]]; then
-    echo " + Removing Rolloverkey (feature disabled)..."
-    rm -f "${certdir}/privkey.roll.pem"
-  fi
-
-  # Generate signing request config and the actual signing request
-  echo " + Generating signing request..."
-  SAN=""
-  for altname in ${altnames}; do
-    SAN="${SAN}DNS:${altname}, "
-  done
-  SAN="${SAN%%, }"
-  local tmp_openssl_cnf
-  tmp_openssl_cnf="$(_mktemp)"
-  cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
-  printf "[SAN]\nsubjectAltName=%s" "${SAN}" >> "${tmp_openssl_cnf}"
-  if [ "${OCSP_MUST_STAPLE}" = "yes" ]; then
-    printf "\n1.3.6.1.5.5.7.1.24=DER:30:03:02:01:05" >> "${tmp_openssl_cnf}"
-  fi
-  SUBJ="/CN=${domain}/"
-  if [[ "${OSTYPE:0:5}" = "MINGW" ]]; then
-    # The subject starts with a /, so MSYS will assume it's a path and convert
-    # it unless we escape it with another one:
-    SUBJ="/${SUBJ}"
-  fi
-  "${OPENSSL}" req -new -sha256 -key "${certdir}/${privkey}" -out "${certdir}/cert-${timestamp}.csr" -subj "${SUBJ}" -reqexts SAN -config "${tmp_openssl_cnf}"
-  rm -f "${tmp_openssl_cnf}"
 
   crt_path="${certdir}/cert-${timestamp}.pem"
   # shellcheck disable=SC2086
