@@ -105,6 +105,26 @@ request_failure() {
     #   The kind of request that was made (GET, POST...)
 }
 
+generate_csr() {
+    local DOMAIN="${1}" CERTDIR="${2}" ALTNAMES="${3}"
+
+    # This hook is called before any certificate signing operation takes place.
+    # It can be used to generate or fetch a certificate signing request with external
+    # tools.
+    # The output should be just the cerificate signing request formatted as PEM.
+    #
+    # Parameters:
+    # - DOMAIN
+    #   The primary domain as specified in domains.txt. This does not need to
+    #   match with the domains in the CSR, it's basically just the directory name.
+    # - CERTDIR
+    #   Certificate output directory for this particular certificate. Can be used
+    #   for storing additional files.
+    # - ALTNAMES
+    #   All domain names for the current certificate as specified in domains.txt.
+    #   Again, this doesn't need to match with the CSR, it's just there for convenience.
+}
+
 startup_hook() {
   # This hook is called before the cron command to do some initial tasks
   # (e.g. starting a webserver).
@@ -120,6 +140,6 @@ exit_hook() {
 }
 
 HANDLER="$1"; shift
-if [[ "${HANDLER}" =~ ^(deploy_challenge|clean_challenge|deploy_cert|unchanged_cert|invalid_challenge|request_failure|startup_hook|exit_hook)$ ]]; then
+if [[ "${HANDLER}" =~ ^(deploy_challenge|clean_challenge|deploy_cert|unchanged_cert|invalid_challenge|request_failure|generate_csr|startup_hook|exit_hook)$ ]]; then
   "$HANDLER" "$@"
 fi

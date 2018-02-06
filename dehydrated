@@ -1169,6 +1169,19 @@ command_sign_domains() {
 
     skip="no"
 
+    # Allow for external CSR generation
+    if [[ -n "${HOOK}" ]]; then
+      local csr="$("${HOOK}" "generate_csr" "${domain}" "${certdir}" "${domain} ${morenames}")"
+      if grep -q "\-----BEGIN CERTIFICATE REQUEST-----" <<< "${csr}"; then
+        altnames="$(extract_altnames "${csr}")"
+        domain="$(cut -d' ' -f1 <<< "${altnames}")"
+        morenames="$(cut -s -d' ' -f2- <<< "${altnames}")"
+        echo " + Using CSR from hook script (real names: ${altnames})"
+        printf "%s" "${csr}" > "${certdir}/cert-${timestamp}.csr"
+      fi
+    fi
+
+    # Check domain names of existing certificate
     if [[ -e "${cert}" ]]; then
       printf " + Checking domain name(s) of existing cert..."
 
