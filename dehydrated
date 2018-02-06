@@ -1092,7 +1092,7 @@ command_sign_domains() {
   init_system
 
   # Hook scripts should ignore any hooks they don't know.
-  # Calling a random hook to make this clear to the hook authors...
+  # Calling a random hook to make this clear to the hook script authors...
   [[ -n "${HOOK}" ]] && "${HOOK}" "$(openssl rand -base64 16)" "please ignore unknown hooks!!!"
 
   # Call startup hook

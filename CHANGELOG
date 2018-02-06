@@ -9,6 +9,7 @@ This file contains a log of major changes in dehydrated
 ## Added
 - Support for ACME v02 (including wildcard certificates!)
 - New hook: generate_csr (see example hook script for more information)
+- Calling random hook on startup to make it clear to hook script authors that unknown hooks should just be ignored...
 
 ## [0.5.0] - 2018-01-13
 ## Changed
