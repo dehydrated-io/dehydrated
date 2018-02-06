@@ -589,11 +589,11 @@ extract_altnames() {
     fi
     # strip away the DNS: prefix
     altnames="$( <<<"${altnames}" _sed -e 's/^(DNS:|othername:<unsupported>)//' )"
-    echo "${altnames}" | tr '\n' ' '
+    printf "%s" "${altnames}" | tr '\n' ' '
   else
     # No SANs, extract CN
     altnames="$( <<<"${reqtext}" grep '^[[:space:]]*Subject:' | _sed -e 's/.* CN ?= ?([^ /,]*).*/\1/' )"
-    echo "${altnames}"
+    printf "%s" "${altnames}"
   fi
 }
 
