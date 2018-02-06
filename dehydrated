@@ -522,7 +522,8 @@ http_request() {
       # An exclusive hook for the {1}-request error might be useful (e.g., for sending an e-mail to admins)
       if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]]; then
         errtxt="$(cat ${tempcont})"
-        "${HOOK}" "request_failure" "${statuscode}" "${errtxt}" "${1}"
+        errheaders="$(cat ${tempheaders})"
+        "${HOOK}" "request_failure" "${statuscode}" "${errtxt}" "${1}" "${errheaders}"
       fi
 
       rm -f "${tempcont}"

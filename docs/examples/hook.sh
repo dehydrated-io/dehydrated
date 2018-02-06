@@ -102,7 +102,7 @@ invalid_challenge() {
 }
 
 request_failure() {
-    local STATUSCODE="${1}" REASON="${2}" REQTYPE="${3}"
+    local STATUSCODE="${1}" REASON="${2}" REQTYPE="${3}" HEADERS="${4}"
 
     # This hook is called when an HTTP request fails (e.g., when the ACME
     # server is busy, returns an error, etc). It will be called upon any
