@@ -111,6 +111,7 @@ load_config() {
 
   # Default values
   CA="https://acme-v01.api.letsencrypt.org/directory"
+  OLDCA=
   CERTDIR=
   ACCOUNTDIR=
   CHALLENGETYPE="http-01"
@@ -209,9 +210,20 @@ load_config() {
   # Check BASEDIR and set default variables
   [[ -d "${BASEDIR}" ]] || _exiterr "BASEDIR does not exist: ${BASEDIR}"
 
+  # Create new account directory or symlink to account directory from old CA
   CAHASH="$(echo "${CA}" | urlbase64)"
   [[ -z "${ACCOUNTDIR}" ]] && ACCOUNTDIR="${BASEDIR}/accounts"
-  mkdir -p "${ACCOUNTDIR}/${CAHASH}"
+  if [[ ! -e "${ACCOUNTDIR}/${CAHASH}" ]]; then
+    OLDCAHASH="$(echo "${OLDCA}" | urlbase64)"
+    mkdir -p "${ACCOUNTDIR}"
+    if [[ -n "${OLDCA}" ]] && [[ -e "${ACCOUNTDIR}/${OLDCAHASH}" ]]; then
+      echo "! Reusing account from ${OLDCA}"
+      ln -s "${OLDCAHASH}" "${ACCOUNTDIR}/${CAHASH}"
+    else
+      mkdir "${ACCOUNTDIR}/${CAHASH}"
+    fi
+  fi
+
   [[ -f "${ACCOUNTDIR}/${CAHASH}/config" ]] && . "${ACCOUNTDIR}/${CAHASH}/config"
   ACCOUNT_KEY="${ACCOUNTDIR}/${CAHASH}/account_key.pem"
   ACCOUNT_KEY_JSON="${ACCOUNTDIR}/${CAHASH}/registration_info.json"
