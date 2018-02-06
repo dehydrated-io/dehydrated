@@ -1170,14 +1170,16 @@ command_sign_domains() {
     skip="no"
 
     # Allow for external CSR generation
+    local csr=""
     if [[ -n "${HOOK}" ]]; then
-      local csr="$("${HOOK}" "generate_csr" "${domain}" "${certdir}" "${domain} ${morenames}")"
+      csr="$("${HOOK}" "generate_csr" "${domain}" "${certdir}" "${domain} ${morenames}")"
       if grep -q "\-----BEGIN CERTIFICATE REQUEST-----" <<< "${csr}"; then
         altnames="$(extract_altnames "${csr}")"
         domain="$(cut -d' ' -f1 <<< "${altnames}")"
         morenames="$(cut -s -d' ' -f2- <<< "${altnames}")"
         echo " + Using CSR from hook script (real names: ${altnames})"
-        printf "%s" "${csr}" > "${certdir}/cert-${timestamp}.csr"
+      else
+        csr=""
       fi
     fi
 
@@ -1227,6 +1229,7 @@ command_sign_domains() {
     # Sign certificate for this domain
     if [[ ! "${skip}" = "yes" ]]; then
       update_ocsp="yes"
+      [[ -z "${csr}" ]] || printf "%s" "${csr}" > "${certdir}/cert-${timestamp}.csr"
       if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
         sign_domain "${certdir}" ${timestamp} ${domain} ${morenames} &
         wait $! || true
