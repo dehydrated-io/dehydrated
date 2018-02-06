@@ -1090,6 +1090,12 @@ command_account() {
 # Description: Sign/renew non-existent/changed/expiring certificates.
 command_sign_domains() {
   init_system
+
+  # Hook scripts should ignore any hooks they don't know.
+  # Calling a random hook to make this clear to the hook authors...
+  [[ -n "${HOOK}" ]] && "${HOOK}" "$(openssl rand -base64 16)" "please ignore unknown hooks!!!"
+
+  # Call startup hook
   [[ -n "${HOOK}" ]] && "${HOOK}" "startup_hook"
 
   if [ ! -d "${CHAINCACHE}" ]; then
