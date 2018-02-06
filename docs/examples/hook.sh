@@ -19,6 +19,9 @@ deploy_challenge() {
     #   validation, this is what you want to put in the _acme-challenge
     #   TXT record. For HTTP validation it is the value that is expected
     #   be found in the $TOKEN_FILENAME file.
+
+    # Simple example: Use nsupdate with local named
+    # printf 'server 127.0.0.1\nupdate add _acme-challenge.%s 300 IN TXT "%s"\nsend\n' "${DOMAIN}" "${TOKEN_VALUE}" | nsupdate -k /var/run/named/session.key
 }
 
 clean_challenge() {
@@ -29,6 +32,9 @@ clean_challenge() {
     # files or DNS records that are no longer needed.
     #
     # The parameters are the same as for deploy_challenge.
+
+    # Simple example: Use nsupdate with local named
+    # printf 'server 127.0.0.1\nupdate delete _acme-challenge.%s TXT "%s"\nsend\n' "${DOMAIN}" "${TOKEN_VALUE}" | nsupdate -k /var/run/named/session.key
 }
 
 deploy_cert() {
@@ -52,6 +58,10 @@ deploy_cert() {
     #   The path of the file containing the intermediate certificate(s).
     # - TIMESTAMP
     #   Timestamp when the specified certificate was created.
+
+    # Simple example: Copy file to nginx config
+    # cp "${KEYFILE}" "${FULLCHAINFILE}" /etc/nginx/ssl/; chown -R nginx: /etc/nginx/ssl
+    # systemctl reload nginx
 }
 
 unchanged_cert() {
@@ -86,6 +96,9 @@ invalid_challenge() {
     #   name (CN).
     # - RESPONSE
     #   The response that the verification server returned
+
+    # Simple example: Send mail to root
+    # printf "Subject: Validation of ${DOMAIN} failed!\n\nOh noez!" | sendmail root
 }
 
 request_failure() {
@@ -103,6 +116,9 @@ request_failure() {
     #   The specified reason for the error.
     # - REQTYPE
     #   The kind of request that was made (GET, POST...)
+
+    # Simple example: Send mail to root
+    # printf "Subject: HTTP request failed failed!\n\nA http request failed with status ${STATUSCODE}!" | sendmail root
 }
 
 generate_csr() {
@@ -123,6 +139,11 @@ generate_csr() {
     # - ALTNAMES
     #   All domain names for the current certificate as specified in domains.txt.
     #   Again, this doesn't need to match with the CSR, it's just there for convenience.
+
+    # Simple example: Look for pre-generated CSRs
+    # if [ -e "${CERTDIR}/pre-generated.csr" ]; then
+    #   cat "${CERTDIR}/pre-generated.csr"
+    # fi
 }
 
 startup_hook() {
