@@ -111,8 +111,6 @@ load_config() {
 
   # Default values
   CA="https://acme-v01.api.letsencrypt.org/directory"
-  CA_TERMS="https://acme-v01.api.letsencrypt.org/terms"
-  LICENSE=
   CERTDIR=
   ACCOUNTDIR=
   CHALLENGETYPE="http-01"
@@ -275,6 +273,7 @@ init_system() {
     CA_NEW_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-cert)" &&
     CA_NEW_AUTHZ="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-authz)" &&
     CA_NEW_REG="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-reg)" &&
+    CA_TERMS="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value terms-of-service)" &&
     CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revoke-cert)" ||
     _exiterr "Problem retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."
     # Since reg URI is missing from directory we will assume it is the same as CA_NEW_REG without the new part
@@ -284,6 +283,7 @@ init_system() {
     CA_NEW_ORDER="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newOrder)" &&
     CA_NEW_NONCE="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newNonce)" &&
     CA_NEW_ACCOUNT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newAccount)" &&
+    CA_TERMS="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value termsOfService)" &&
     CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revokeCert)" ||
     _exiterr "Problem retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."
     # Since acct URI is missing from directory we will assume it is the same as CA_NEW_ACCOUNT without the new part
@@ -303,22 +303,11 @@ init_system() {
   else
     # Check if private account key exists, if it doesn't exist yet generate a new one (rsa key)
     if [[ ! -e "${ACCOUNT_KEY}" ]]; then
-      REAL_LICENSE="$(http_request head "${CA_TERMS}" | (grep Location: || true) | awk -F ': ' '{print $2}' | tr -d '\n\r')"
-      if [[ -z "${REAL_LICENSE}" ]]; then
+      if [[ ! "${PARAM_ACCEPT_TERMS:-}" = "yes" ]]; then
         printf '\n' >&2
-        printf 'Error retrieving terms of service from certificate authority.\n' >&2
-        printf 'Please set LICENSE in config manually.\n' >&2
+        printf 'To use dehydrated with this certificate authority you have to agree to their terms of service which you can find here: %s\n\n' "${CA_TERMS}" >&2
+        printf 'To accept these terms of service run `%s --register --accept-terms`.\n' "${0}" >&2
         exit 1
-      fi
-      if [[ ! "${LICENSE}" = "${REAL_LICENSE}" ]]; then
-        if [[ "${PARAM_ACCEPT_TERMS:-}" = "yes" ]]; then
-          LICENSE="${REAL_LICENSE}"
-        else
-          printf '\n' >&2
-          printf 'To use dehydrated with this certificate authority you have to agree to their terms of service which you can find here: %s\n\n' "${REAL_LICENSE}" >&2
-          printf 'To accept these terms of service run `%s --register --accept-terms`.\n' "${0}" >&2
-          exit 1
-        fi
       fi
 
       echo "+ Generating account key..."
@@ -348,9 +337,9 @@ init_system() {
     if [[ "${FAILED}" = "false" ]]; then
       if [[ ${API} -eq 1 ]]; then
         if [[ -n "${CONTACT_EMAIL}" ]]; then
-          (signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"$LICENSE"'"}' > "${ACCOUNT_KEY_JSON}") || FAILED=true
+          (signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "contact":["mailto:'"${CONTACT_EMAIL}"'"], "agreement": "'"${CA_TERMS}"'"}' > "${ACCOUNT_KEY_JSON}") || FAILED=true
         else
-          (signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "agreement": "'"$LICENSE"'"}' > "${ACCOUNT_KEY_JSON}") || FAILED=true
+          (signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "agreement": "'"${CA_TERMS}"'"}' > "${ACCOUNT_KEY_JSON}") || FAILED=true
         fi
       else
         if [[ -n "${CONTACT_EMAIL}" ]]; then
@@ -1445,7 +1434,7 @@ command_help() {
 command_env() {
   echo "# dehydrated configuration"
   load_config
-  typeset -p CA LICENSE CERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
+  typeset -p CA CERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
 # Main method (parses script arguments and calls command_* methods)

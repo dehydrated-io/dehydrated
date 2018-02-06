@@ -24,12 +24,6 @@
 # Path to certificate authority (default: https://acme-v01.api.letsencrypt.org/directory)
 #CA="https://acme-v01.api.letsencrypt.org/directory"
 
-# Path to certificate authority license terms redirect (default: https://acme-v01.api.letsencrypt.org/terms)
-#CA_TERMS="https://acme-v01.api.letsencrypt.org/terms"
-
-# Path to license agreement (default: <unset>)
-#LICENSE=""
-
 # Which challenge should be used? Currently http-01 and dns-01 are supported
 #CHALLENGETYPE="http-01"
 
