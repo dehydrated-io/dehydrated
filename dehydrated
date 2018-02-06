@@ -864,9 +864,10 @@ walk_chain() {
 sign_domain() {
   local certdir="${1}"
   shift
+  timestamp="${1}"
+  shift
   domain="${1}"
   altnames="${*}"
-  timestamp="$(date +%s)"
 
   export altnames
 
@@ -1114,6 +1115,8 @@ command_sign_domains() {
 
     force_renew="${PARAM_FORCE:-no}"
 
+    timestamp="$(date +%s)"
+
     if [[ -z "${morenames}" ]];then
       echo "Processing ${domain}"
     else
@@ -1181,6 +1184,7 @@ command_sign_domains() {
       fi
     fi
 
+    # Check expire date of existing certificate
     if [[ -e "${cert}" ]]; then
       echo " + Checking expire date of existing cert..."
       valid="$("${OPENSSL}" x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
@@ -1204,14 +1208,14 @@ command_sign_domains() {
     local update_ocsp
     update_ocsp="no"
 
-    # shellcheck disable=SC2086
+    # Sign certificate for this domain
     if [[ ! "${skip}" = "yes" ]]; then
       update_ocsp="yes"
       if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
-        sign_domain "${certdir}" ${domain} ${morenames} &
+        sign_domain "${certdir}" ${timestamp} ${domain} ${morenames} &
         wait $! || true
       else
-        sign_domain "${certdir}" ${domain} ${morenames}
+        sign_domain "${certdir}" ${timestamp} ${domain} ${morenames}
       fi
     fi
 
