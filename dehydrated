@@ -80,6 +80,12 @@ reset_configvars() {
   IP_VERSION="${__IP_VERSION}"
 }
 
+hookscript_bricker_hook() {
+  # Hook scripts should ignore any hooks they don't know.
+  # Calling a random hook to make this clear to the hook script authors...
+  [[ -n "${HOOK}" ]] && "${HOOK}" "$(openssl rand -base64 16)_this_hookscript_is_broken__dehydrated_is_working_fine__please_ignore_unknown_hooks_in_your_script"
+}
+
 # verify configuration values
 verify_config() {
   [[ "${CHALLENGETYPE}" == "http-01" || "${CHALLENGETYPE}" == "dns-01" ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... cannot continue."
@@ -1103,10 +1109,7 @@ command_account() {
 # Description: Sign/renew non-existent/changed/expiring certificates.
 command_sign_domains() {
   init_system
-
-  # Hook scripts should ignore any hooks they don't know.
-  # Calling a random hook to make this clear to the hook script authors...
-  [[ -n "${HOOK}" ]] && "${HOOK}" "$(openssl rand -base64 16)_this_hookscript_is_broken__dehydrated_is_working_fine__please_ignore_unknown_hooks_in_your_script"
+  hookscript_bricker_hook
 
   # Call startup hook
   [[ -n "${HOOK}" ]] && "${HOOK}" "startup_hook"
@@ -1206,6 +1209,7 @@ command_sign_domains() {
       IFS="${ORIGIFS}"
     fi
     verify_config
+    hookscript_bricker_hook
     export WELLKNOWN CHALLENGETYPE KEY_ALGO PRIVATE_KEY_ROLLOVER
 
     skip="no"
