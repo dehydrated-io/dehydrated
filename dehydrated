@@ -83,7 +83,7 @@ reset_configvars() {
 hookscript_bricker_hook() {
   # Hook scripts should ignore any hooks they don't know.
   # Calling a random hook to make this clear to the hook script authors...
-  [[ -n "${HOOK}" ]] && "${HOOK}" "$(openssl rand -base64 16)_this_hookscript_is_broken__dehydrated_is_working_fine__please_ignore_unknown_hooks_in_your_script"
+  [[ -n "${HOOK}" ]] && "${HOOK}" "this_hookscript_is_broken__dehydrated_is_working_fine__please_ignore_unknown_hooks_in_your_script"
 }
 
 # verify configuration values
