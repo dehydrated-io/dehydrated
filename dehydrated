@@ -83,7 +83,9 @@ reset_configvars() {
 hookscript_bricker_hook() {
   # Hook scripts should ignore any hooks they don't know.
   # Calling a random hook to make this clear to the hook script authors...
-  [[ -n "${HOOK}" ]] && "${HOOK}" "this_hookscript_is_broken__dehydrated_is_working_fine__please_ignore_unknown_hooks_in_your_script"
+  if [[ -n "${HOOK}" ]]; then
+    "${HOOK}" "this_hookscript_is_broken__dehydrated_is_working_fine__please_ignore_unknown_hooks_in_your_script"
+  fi
 }
 
 # verify configuration values
