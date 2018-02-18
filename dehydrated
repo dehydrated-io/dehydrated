@@ -415,7 +415,7 @@ _sed() {
 
 # Print error message and exit with error
 _exiterr() {
-  echo "ERROR: ${1}" >&2
+  echo "$0: ERROR: ${1}" >&2
   exit 1
 }
 
