@@ -713,7 +713,7 @@ sign_csr() {
     fi
 
     # Check if authorization has already been validated
-    if [ "$(echo "${response}" | sed -E 's/"challenges": \[\{.*\}\]//' | get_json_string_value status)" = "valid" ] && [ ! "${PARAM_FORCE:-no}" = "yes" ]; then
+    if [ "$(echo "${response}" | _sed 's/"challenges": \[\{.*\}\]//' | get_json_string_value status)" = "valid" ] && [ ! "${PARAM_FORCE:-no}" = "yes" ]; then
       echo " + Found valid authorization for ${identifier}"
       continue
     fi
