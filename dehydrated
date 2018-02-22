@@ -520,7 +520,7 @@ http_request() {
 
   if [[ ! "${statuscode:0:1}" = "2" ]]; then
     # check for existing registration warning
-    if [[ ${API} -eq 1 ]] && [[ -n "${CA_NEW_REG:-}" ]] && [[ "${2}" = "${CA_NEW_REG:-}" ]] && [[ "${statuscode}" = "409" ]] && grep -q "Registration key is already in use" "${tempcont}"; then
+    if [[ "${API}" = "1" ]] && [[ -n "${CA_NEW_REG:-}" ]] && [[ "${2}" = "${CA_NEW_REG:-}" ]] && [[ "${statuscode}" = "409" ]] && grep -q "Registration key is already in use" "${tempcont}"; then
       # do nothing
       :
     # check for already-revoked warning
