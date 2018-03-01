@@ -44,7 +44,7 @@ check_dependencies() {
 
   # curl returns with an error code in some ancient versions so we have to catch that
   set +e
-  curl -V > /dev/null 2>&1
+  CURL_VERSION="$(curl -V 2>&1 | head -n1 | awk '{print $2}')"
   retcode="$?"
   set -e
   if [[ ! "${retcode}" = "0" ]] && [[ ! "${retcode}" = "2" ]]; then
@@ -499,14 +499,14 @@ http_request() {
 
   set +e
   if [[ "${1}" = "head" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
+    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydr4ted/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
     touch "${tempheaders}"
     curlret="${?}"
   elif [[ "${1}" = "get" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -L -s -w "%{http_code}" -o "${tempcont}" -D "${tempheaders}" "${2}")"
+    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydr4ted/${VERSION} curl/${CURL_VERSION}" -L -s -w "%{http_code}" -o "${tempcont}" -D "${tempheaders}" "${2}")"
     curlret="${?}"
   elif [[ "${1}" = "post" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -s -w "%{http_code}" -o "${tempcont}" "${2}" -D "${tempheaders}" -d "${3}")"
+    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydr4ted/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" "${2}" -D "${tempheaders}" -d "${3}")"
     curlret="${?}"
   else
     set -e
