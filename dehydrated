@@ -1152,6 +1152,16 @@ command_sign_domains() {
     [ ${aliascount} -lt 1 ] && alias="${domain}" || alias="${alias#>}"
     export alias
 
+    if [[ -z "${morenames}" ]];then
+      echo "Processing ${domain}"
+    else
+      echo "Processing ${domain} with alternative names: ${morenames}"
+    fi
+
+    if [ "${alias:0:2}" = "*." ]; then
+      _exiterr "Please define a valid alias for your ${domain} wildcard-certificate. See domains.txt-documentation for more details."
+    fi
+
     local certdir="${CERTDIR}/${alias}"
     cert="${certdir}/cert.pem"
     chain="${certdir}/chain.pem"
@@ -1159,12 +1169,6 @@ command_sign_domains() {
     force_renew="${PARAM_FORCE:-no}"
 
     timestamp="$(date +%s)"
-
-    if [[ -z "${morenames}" ]];then
-      echo "Processing ${domain}"
-    else
-      echo "Processing ${domain} with alternative names: ${morenames}"
-    fi
 
     # If there is no existing certificate directory => make it
     if [[ ! -e "${certdir}" ]]; then

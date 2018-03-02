@@ -17,3 +17,6 @@ You can define an alias for your certificate which will (instead of the primary 
 used as directory name under your certdir and for a per-certificate lookup.
 This allows multiple certificates with identical sets of domains but different configuration
 to exist.
+
+Certificates with a wildcard domain as first (or only) name require an alias to be set.
+Aliases can't start with `*.`.
