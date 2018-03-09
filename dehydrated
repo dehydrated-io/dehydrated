@@ -506,7 +506,7 @@ http_request() {
     statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydr4ted/${VERSION} curl/${CURL_VERSION}" -L -s -w "%{http_code}" -o "${tempcont}" -D "${tempheaders}" "${2}")"
     curlret="${?}"
   elif [[ "${1}" = "post" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydr4ted/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" "${2}" -D "${tempheaders}" -d "${3}")"
+    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydr4ted/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" "${2}" -D "${tempheaders}" -H 'Content-Type: application/jose+json' -d "${3}")"
     curlret="${?}"
   else
     set -e
