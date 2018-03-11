@@ -1,6 +1,13 @@
 # Change Log
 This file contains a log of major changes in dehydrated
 
+## [x.x.x] - xxxx-xx-xx
+## Changed
+- ??
+
+## Added
+- ??
+
 ## [0.6.0] - 2018-03-11
 ## Changed
 - Challenge validation loop has been modified to loop over authorization identifiers instead of altnames (ACMEv2 + wildcard support)
