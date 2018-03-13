@@ -1,6 +1,13 @@
 # Change Log
 This file contains a log of major changes in dehydrated
 
+## [x.x.x] - xxxx-xx-xx
+## Changed
+- ??
+
+## Added
+- ??
+
 ## [0.6.1] - 2018-03-13
 ## Changed
 - Use new ACME v2 endpoint by default
