@@ -3,7 +3,7 @@ This file contains a log of major changes in dehydrated
 
 ## [x.x.x] - xxxx-xx-xx
 ## Changed
-- ??
+- Use new ACME v2 endpoint by default
 
 ## Added
 - ??

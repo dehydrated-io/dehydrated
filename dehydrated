@@ -118,7 +118,7 @@ load_config() {
   fi
 
   # Default values
-  CA="https://acme-v01.api.letsencrypt.org/directory"
+  CA="https://acme-v02.api.letsencrypt.org/directory"
   OLDCA=
   CERTDIR=
   ACCOUNTDIR=
@@ -217,6 +217,10 @@ load_config() {
 
   # Check BASEDIR and set default variables
   [[ -d "${BASEDIR}" ]] || _exiterr "BASEDIR does not exist: ${BASEDIR}"
+
+  if [[ -z "${OLDCA}" ]] && [[ "${CA}" = "https://acme-v02.api.letsencrypt.org/directory" ]]; then
+    OLDCA="https://acme-v01.api.letsencrypt.org/directory"
+  fi
 
   # Create new account directory or symlink to account directory from old CA
   CAHASH="$(echo "${CA}" | urlbase64)"
