@@ -21,15 +21,15 @@
 # default: <unset>
 #IP_VERSION=
 
-# Path to certificate authority (default: https://acme-v01.api.letsencrypt.org/directory)
-#CA="https://acme-v01.api.letsencrypt.org/directory"
+# Path to certificate authority (default: https://acme-v02.api.letsencrypt.org/directory)
+#CA="https://acme-v02.api.letsencrypt.org/directory"
 
 # Path to old certificate authority
 # Set this value to your old CA value when upgrading from ACMEv1 to ACMEv2 under a different endpoint.
 # If dehydrated detects an account-key for the old CA it will automatically reuse that key
 # instead of registering a new one.
-# default: <unset>
-#OLDCA=
+# default: https://acme-v01.api.letsencrypt.org/directory
+#OLDCA="https://acme-v01.api.letsencrypt.org/directory"
 
 # Which challenge should be used? Currently http-01 and dns-01 are supported
 #CHALLENGETYPE="http-01"
