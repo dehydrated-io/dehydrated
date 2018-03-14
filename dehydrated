@@ -990,20 +990,29 @@ sign_domain() {
 
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
-  cat "${crt_path}" > "${certdir}/fullchain-${timestamp}.pem"
-  local issuer_hash
-  issuer_hash="$(get_issuer_hash "${crt_path}")"
-  if [ -e "${CHAINCACHE}/${issuer_hash}.chain" ]; then
-    echo " + Using cached chain!"
-    cat "${CHAINCACHE}/${issuer_hash}.chain" > "${certdir}/chain-${timestamp}.pem"
+  if [[ ${API} -eq 1 ]]; then
+    cat "${crt_path}" > "${certdir}/fullchain-${timestamp}.pem"
+    local issuer_hash
+    issuer_hash="$(get_issuer_hash "${crt_path}")"
+    if [ -e "${CHAINCACHE}/${issuer_hash}.chain" ]; then
+      echo " + Using cached chain!"
+      cat "${CHAINCACHE}/${issuer_hash}.chain" > "${certdir}/chain-${timestamp}.pem"
+    else
+      echo " + Walking chain..."
+      local issuer_cert_uri
+      issuer_cert_uri="$(get_issuer_cert_uri "${crt_path}" || echo "unknown")"
+      (walk_chain "${crt_path}" > "${certdir}/chain-${timestamp}.pem") || _exiterr "Walking chain has failed, your certificate has been created and can be found at ${crt_path}, the corresponding private key at ${privkey}. If you want you can manually continue on creating and linking all necessary files. If this error occurs again you should manually generate the certificate chain and place it under ${CHAINCACHE}/${issuer_hash}.chain (see ${issuer_cert_uri})"
+      cat "${certdir}/chain-${timestamp}.pem" > "${CHAINCACHE}/${issuer_hash}.chain"
+    fi
+    cat "${certdir}/chain-${timestamp}.pem" >> "${certdir}/fullchain-${timestamp}.pem"
   else
-    echo " + Walking chain..."
-    local issuer_cert_uri
-    issuer_cert_uri="$(get_issuer_cert_uri "${crt_path}" || echo "unknown")"
-    (walk_chain "${crt_path}" > "${certdir}/chain-${timestamp}.pem") || _exiterr "Walking chain has failed, your certificate has been created and can be found at ${crt_path}, the corresponding private key at ${privkey}. If you want you can manually continue on creating and linking all necessary files. If this error occurs again you should manually generate the certificate chain and place it under ${CHAINCACHE}/${issuer_hash}.chain (see ${issuer_cert_uri})"
-    cat "${certdir}/chain-${timestamp}.pem" > "${CHAINCACHE}/${issuer_hash}.chain"
+    tmpcert="$(_mktemp)"
+    tmpchain="$(_mktemp)"
+    awk '{print >out}; /----END CERTIFICATE-----/{out=tmpchain}' out="${tmpcert}" tmpchain="${tmpchain}" "${certdir}/cert-${timestamp}.pem"
+    mv "${certdir}/cert-${timestamp}.pem" "${certdir}/fullchain-${timestamp}.pem"
+    mv "${tmpcert}" "${certdir}/cert-${timestamp}.pem"
+    mv "${tmpchain}" "${certdir}/chain-${timestamp}.pem"
   fi
-  cat "${certdir}/chain-${timestamp}.pem" >> "${certdir}/fullchain-${timestamp}.pem"
 
   # Update symlinks
   [[ "${privkey}" = "privkey.pem" ]] || ln -sf "privkey-${timestamp}.pem" "${certdir}/privkey.pem"

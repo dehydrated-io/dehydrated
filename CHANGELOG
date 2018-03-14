@@ -3,7 +3,7 @@ This file contains a log of major changes in dehydrated
 
 ## [x.x.x] - xxxx-xx-xx
 ## Changed
-- ??
+- Don't walk certificate chain for ACMEv2 (certificate contains chain by default)
 
 ## Added
 - ??
