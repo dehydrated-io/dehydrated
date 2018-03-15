@@ -13,6 +13,10 @@ set -o pipefail
 
 umask 077 # paranoid umask, we're creating private keys
 
+# Close weird external file descriptors
+exec 3>&-
+exec 4>&-
+
 VERSION="git-master-after-0.6.1"
 
 # Find directory in which this script is stored by traversing all symbolic links
