@@ -530,10 +530,6 @@ http_request() {
     # check for already-revoked warning
     elif [[ -n "${CA_REVOKE_CERT:-}" ]] && [[ "${2}" = "${CA_REVOKE_CERT:-}" ]] && [[ "${statuscode}" = "409" ]]; then
       grep -q "Certificate already revoked" "${tempcont}" && return
-    # check for redirects on license
-    elif [[ -n "${CA_TERMS:-}" ]] && [[ "${2}" = "${CA_TERMS:-}" ]] && [[ "${statuscode:0:1}" = "3" ]]; then
-      # do nothing
-      :
     else
       echo "  + ERROR: An error occurred while sending ${1}-request to ${2} (Status ${statuscode})" >&2
       echo >&2
