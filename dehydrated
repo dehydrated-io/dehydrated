@@ -667,14 +667,15 @@ sign_csr() {
   fi
 
   if [[ -n "${ZSH_VERSION:-}" ]]; then
-    local -A challenge_identifiers challenge_uris challenge_tokens authorizations keyauths deploy_args
+    local -A challenge_names challenge_uris challenge_tokens authorizations keyauths deploy_args
   else
-    local -a challenge_identifiers challenge_uris challenge_tokens authorizations keyauths deploy_args
+    local -a challenge_names challenge_uris challenge_tokens authorizations keyauths deploy_args
   fi
 
   # Initial step: Find which authorizations we're dealing with
   if [[ ${API} -eq 2 ]]; then
     # Request new order and store authorization URIs
+    local challenge_identifiers=""
     for altname in ${altnames}; do
       challenge_identifiers+="$(printf '{"type": "dns", "value": "%s"}, ' "${altname}")"
     done
@@ -731,7 +732,7 @@ sign_csr() {
     fi
 
     # Gather challenge information
-    challenge_identifiers[${idx}]="${identifier}"
+    challenge_names[${idx}]="${identifier}"
     challenge_tokens[${idx}]="$(echo "${challenge}" | get_json_string_value token)"
     if [[ ${API} -eq 2 ]]; then
       challenge_uris[${idx}]="$(echo "${challenge}" | get_json_string_value url)"
@@ -781,7 +782,7 @@ sign_csr() {
   # Validate pending challenges
   local idx=0
   while [ ${idx} -lt ${num_pending_challenges} ]; do
-    echo " + Responding to challenge for ${challenge_identifiers[${idx}]} authorization..."
+    echo " + Responding to challenge for ${challenge_names[${idx}]} authorization..."
 
     # Ask the acme-server to verify our challenge and wait until it is no longer pending
     if [[ ${API} -eq 1 ]]; then
