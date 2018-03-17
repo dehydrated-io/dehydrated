@@ -1322,6 +1322,7 @@ command_sign_domains() {
           ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
         fi
         ln -sf "ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
+        [[ -n "${HOOK}" ]] && "${HOOK}" "ocsp_update" "${domain}" "${certdir}/ocsp.der"
       else
         echo " + OSCP stapling file is still valid (skipping update)"
       fi
