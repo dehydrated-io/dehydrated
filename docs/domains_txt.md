@@ -20,3 +20,7 @@ to exist.
 
 Certificates with a wildcard domain as first (or only) name require an alias to be set.
 Aliases can't start with `*.`.
+
+```text
+*.example.com > example.com
+```
