@@ -1238,7 +1238,7 @@ command_sign_domains() {
     local csr=""
     if [[ -n "${HOOK}" ]]; then
       csr="$("${HOOK}" "generate_csr" "${domain}" "${certdir}" "${domain} ${morenames}")"
-      if grep -q "\-----BEGIN CERTIFICATE REQUEST-----" <<< "${csr}"; then
+      if grep -qE "\-----BEGIN (NEW )?CERTIFICATE REQUEST-----" <<< "${csr}"; then
         altnames="$(extract_altnames "${csr}")"
         domain="$(cut -d' ' -f1 <<< "${altnames}")"
         morenames="$(cut -s -d' ' -f2- <<< "${altnames}")"
