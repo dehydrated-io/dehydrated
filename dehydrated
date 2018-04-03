@@ -1015,6 +1015,10 @@ sign_domain() {
     mv "${tmpchain}" "${certdir}/chain-${timestamp}.pem"
   fi
 
+  # Create fullkeyandchain.pem
+  echo " + Creating fullkeyandchain.pem..."
+  cat "${certdir}/fullchain-${timestamp}.pem" "${certdir}/privkey-${timestamp}.pem" > "${certdir}/fullkeyandchain-${timestamp}.pem"
+
   # Update symlinks
   [[ "${privkey}" = "privkey.pem" ]] || ln -sf "privkey-${timestamp}.pem" "${certdir}/privkey.pem"
 
@@ -1022,6 +1026,7 @@ sign_domain() {
   ln -sf "fullchain-${timestamp}.pem" "${certdir}/fullchain.pem"
   ln -sf "cert-${timestamp}.csr" "${certdir}/cert.csr"
   ln -sf "cert-${timestamp}.pem" "${certdir}/cert.pem"
+  ln -sf "fullkeyandchain-${timestamp}.pem" "${certdir}/fullkeyandchain.pem"
 
   # Wait for hook script to clean the challenge and to deploy cert if used
   [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${domain}" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem" "${timestamp}"
@@ -1458,7 +1463,7 @@ command_cleanup() {
     fi
 
     # Loop over file-types (certificates, keys, signing-requests, ...)
-    for filetype in cert.csr cert.pem chain.pem fullchain.pem privkey.pem ocsp.der; do
+    for filetype in cert.csr cert.pem chain.pem fullchain.pem fullkeyandchain.pem privkey.pem ocsp.der; do
       # Skip if symlink is broken
       [[ -r "${certdir}/${filetype}" ]] || continue
 
