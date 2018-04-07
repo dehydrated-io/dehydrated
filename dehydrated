@@ -544,7 +544,7 @@ http_request() {
       echo >&2
 
       # An exclusive hook for the {1}-request error might be useful (e.g., for sending an e-mail to admins)
-      if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]]; then
+      if [[ -n "${HOOK}" ]] ]]; then
         errtxt="$(cat ${tempcont})"
         errheaders="$(cat ${tempheaders})"
         "${HOOK}" "request_failure" "${statuscode}" "${errtxt}" "${1}" "${errheaders}"
@@ -554,7 +554,7 @@ http_request() {
       rm -f "${tempheaders}"
 
       # Wait for hook script to clean the challenge if used
-      if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token:+set}" ]]; then
+      if [[ -n "${HOOK}" ]] && [[ -n "${challenge_token:+set}" ]]; then
         "${HOOK}" "clean_challenge" '' "${challenge_token}" "${keyauth}"
       fi
 
@@ -802,7 +802,7 @@ sign_csr() {
     [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_tokens[${idx}]}"
 
     # Run hook script to clean the challenge token
-    if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]]; then
+    if [[ -n "${HOOK}" ]]; then
       # shellcheck disable=SC2086
       "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
     fi
@@ -811,7 +811,7 @@ sign_csr() {
     if [[ "${reqstatus}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
-      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "invalid_challenge" "${altname}" "${result}"
+      [[ -n "${HOOK}" ]] && "${HOOK}" "invalid_challenge" "${altname}" "${result}"
       break
     fi
   done
