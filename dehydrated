@@ -553,11 +553,6 @@ http_request() {
       rm -f "${tempcont}"
       rm -f "${tempheaders}"
 
-      # Wait for hook script to clean the challenge if used
-      if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ -n "${challenge_token:+set}" ]]; then
-        "${HOOK}" "clean_challenge" '' "${challenge_token}" "${keyauth}"
-      fi
-
       # remove temporary domains.txt file if used
       [[ -n "${PARAM_DOMAIN:-}" && -n "${DOMAINS_TXT:-}" ]] && rm "${DOMAINS_TXT}"
       exit 1
@@ -801,34 +796,33 @@ sign_csr() {
 
     [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_tokens[${idx}]}"
 
-    # Run hook script to clean the challenge token
-    if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]]; then
-      # shellcheck disable=SC2086
-      "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
-    fi
-    idx=$((idx+1))
-
     if [[ "${reqstatus}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
       [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "invalid_challenge" "${altname}" "${result}"
       break
     fi
+    idx=$((idx+1))
   done
 
   if [[ ${num_pending_challenges} -ne 0 ]]; then
+    echo " + Cleaning challenge tokens..."
+
     # Clean challenge tokens using chained hook
     [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "clean_challenge" ${deploy_args[@]}
 
     # Clean remaining challenge tokens if validation has failed
-    if [[ "${reqstatus}" != "valid" ]]; then
-      if [[ "${CHALLENGETYPE}" = "http-01" ]] && [[ ${num_pending_challenges} -ne 0 ]]; then
-        while [ ${idx} -lt ${num_pending_challenges} ]; do
-          rm -f "${WELLKNOWN}/${challenge_tokens[${idx}]}"
-          idx=$((idx+1))
-        done
-      fi
+    local idx=0
+    while [ ${idx} -lt ${num_pending_challenges} ]; do
+      # Delete challenge file
+      [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_tokens[${idx}]}"
+      # Clean challenge token using non-chained hook
+      [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
+      idx=$((idx+1))
+    done
 
+    if [[ "${reqstatus}" != "valid" ]]; then
+      echo " + Challenge validation has failed :("
       _exiterr "Challenge is invalid! (returned: ${reqstatus}) (result: ${result})"
     fi
   fi
