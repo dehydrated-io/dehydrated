@@ -544,7 +544,7 @@ http_request() {
       echo >&2
 
       # An exclusive hook for the {1}-request error might be useful (e.g., for sending an e-mail to admins)
-      if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]]; then
+      if [[ -n "${HOOK}" ]]; then
         errtxt="$(cat ${tempcont})"
         errheaders="$(cat ${tempheaders})"
         "${HOOK}" "request_failure" "${statuscode}" "${errtxt}" "${1}" "${errheaders}"
@@ -799,7 +799,7 @@ sign_csr() {
     if [[ "${reqstatus}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
-      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "invalid_challenge" "${altname}" "${result}"
+      [[ -n "${HOOK}" ]] && "${HOOK}" "invalid_challenge" "${altname}" "${result}"
       break
     fi
     idx=$((idx+1))
