@@ -64,6 +64,28 @@ deploy_cert() {
     # systemctl reload nginx
 }
 
+deploy_ocsp() {
+    local DOMAIN="${1}" OCSPFILE="${2}" TIMESTAMP="${6}"
+
+    # This hook is called once for each updated ocsp stapling file that has
+    # been produced. Here you might, for instance, copy your new ocsp stapling
+    # files to service-specific locations and reload the service.
+    #
+    # Parameters:
+    # - DOMAIN
+    #   The primary domain name, i.e. the certificate common
+    #   name (CN).
+    # - OCSPFILE
+    #   The path of the ocsp stapling file
+    # - TIMESTAMP
+    #   Timestamp when the specified ocsp stapling file was created.
+
+    # Simple example: Copy file to nginx config
+    # cp "${OCSPFILE}" /etc/nginx/ssl/; chown -R nginx: /etc/nginx/ssl
+    # systemctl reload nginx
+}
+
+
 unchanged_cert() {
     local DOMAIN="${1}" KEYFILE="${2}" CERTFILE="${3}" FULLCHAINFILE="${4}" CHAINFILE="${5}"
 
@@ -161,6 +183,6 @@ exit_hook() {
 }
 
 HANDLER="$1"; shift
-if [[ "${HANDLER}" =~ ^(deploy_challenge|clean_challenge|deploy_cert|unchanged_cert|invalid_challenge|request_failure|generate_csr|startup_hook|exit_hook)$ ]]; then
+if [[ "${HANDLER}" =~ ^(deploy_challenge|clean_challenge|deploy_cert|deploy_ocsp|unchanged_cert|invalid_challenge|request_failure|generate_csr|startup_hook|exit_hook)$ ]]; then
   "$HANDLER" "$@"
 fi
