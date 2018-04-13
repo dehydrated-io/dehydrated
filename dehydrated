@@ -817,7 +817,7 @@ sign_csr() {
       # Delete challenge file
       [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_tokens[${idx}]}"
       # Clean challenge token using non-chained hook
-      [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
+      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
       idx=$((idx+1))
     done
 
