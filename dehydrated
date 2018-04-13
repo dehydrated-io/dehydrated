@@ -402,10 +402,9 @@ init_system() {
   else
     echo "Fetching missing account information from CA..."
     if [[ ${API} -eq 1 ]]; then
-      ACCOUNT_URL="$(signed_request "${CA_NEW_REG}" '{"resource": "new-reg", "onlyReturnExisting": true}' 4>&1 | grep ^Location: | awk '{print $2}' | tr -d '\r\n')"
-      ACCOUNT_INFO="$(signed_request "${ACCOUNT_URL}" '{"resource": "reg"}')"
+      _exiterr "This is not implemented for ACMEv1! Consider switching to ACMEv2 :)"
     else
-      ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"only-return-existing": true}' 4>&1 | grep ^Location: | awk '{print $2}' | tr -d '\r\n')"
+      ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"onlyReturnExisting": true}' 4>&1 | grep ^Location: | awk '{print $2}' | tr -d '\r\n')"
       ACCOUNT_INFO="$(signed_request "${ACCOUNT_URL}" '{}')"
     fi
     ACCOUNT_ID="${ACCOUNT_URL##*/}"
