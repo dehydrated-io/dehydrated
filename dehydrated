@@ -328,6 +328,7 @@ init_system() {
     echo "Using private key ${PARAM_ACCOUNT_KEY} instead of account key"
     ACCOUNT_KEY="${PARAM_ACCOUNT_KEY}"
     ACCOUNT_KEY_JSON="${PARAM_ACCOUNT_KEY}.json"
+    [ "${COMMAND:-}" = "register" ] && register_new_key="yes"
   else
     # Check if private account key exists, if it doesn't exist yet generate a new one (rsa key)
     if [[ ! -e "${ACCOUNT_KEY}" ]]; then
