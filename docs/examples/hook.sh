@@ -65,7 +65,7 @@ deploy_cert() {
 }
 
 deploy_ocsp() {
-    local DOMAIN="${1}" OCSPFILE="${2}" TIMESTAMP="${6}"
+    local DOMAIN="${1}" OCSPFILE="${2}" TIMESTAMP="${3}"
 
     # This hook is called once for each updated ocsp stapling file that has
     # been produced. Here you might, for instance, copy your new ocsp stapling
