@@ -87,7 +87,7 @@ Without those hobbies I probably would never have started working on dehydrated 
 I'd really appreciate if you could [donate a bit of money](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=23P9DSJBTY7C8)
 so I can buy cool stuff (while still being able to afford food :D).  
 
-If you have hardware laying around that you think I'd enjoy playing with (e.g. decomissioned but still modern-ish servers,
+If you have hardware laying around that you think I'd enjoy playing with (e.g. decommissioned but still modern-ish servers,
 10G networking hardware, enterprise grade routers or APs, interesting ARM/MIPS boards, etc.) and that you would be willing
 to ship to me please contact me at `donations@dehydrated.de` or on Twitter [@lukas2511](https://twitter.com/lukas2511).
 
