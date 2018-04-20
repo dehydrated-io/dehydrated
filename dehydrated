@@ -340,7 +340,10 @@ init_system() {
       fi
 
       echo "+ Generating account key..."
-      _openssl genrsa -out "${ACCOUNT_KEY}" "${KEYSIZE}"
+      local tmp_account_key="$(_mktemp)"
+      _openssl genrsa -out "${tmp_account_key}" "${KEYSIZE}"
+      cat "${tmp_account_key}" > "${ACCOUNT_KEY}"
+      rm "${tmp_account_key}"
       register_new_key="yes"
     fi
   fi
@@ -929,10 +932,13 @@ sign_domain() {
     if [[ ! -r "${certdir}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
       echo " + Generating private key..."
       privkey="privkey-${timestamp}.pem"
+      local tmp_privkey="$(_mktemp)"
       case "${KEY_ALGO}" in
-        rsa) _openssl genrsa -out "${certdir}/privkey-${timestamp}.pem" "${KEYSIZE}";;
-        prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${certdir}/privkey-${timestamp}.pem";;
+        rsa) _openssl genrsa -out "${tmp_privkey}" "${KEYSIZE}";;
+        prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${tmp_privkey}";;
       esac
+      cat "${tmp_privkey}" > "${certdir}/privkey-${timestamp}.pem"
+      rm "${tmp_privkey}"
     fi
     # move rolloverkey into position (if any)
     if [[ -r "${certdir}/privkey.pem" && -r "${certdir}/privkey.roll.pem" && "${PRIVATE_KEY_RENEW}" = "yes" && "${PRIVATE_KEY_ROLLOVER}" = "yes" ]]; then
@@ -1005,8 +1011,9 @@ sign_domain() {
     tmpchain="$(_mktemp)"
     awk '{print >out}; /----END CERTIFICATE-----/{out=tmpchain}' out="${tmpcert}" tmpchain="${tmpchain}" "${certdir}/cert-${timestamp}.pem"
     mv "${certdir}/cert-${timestamp}.pem" "${certdir}/fullchain-${timestamp}.pem"
-    mv "${tmpcert}" "${certdir}/cert-${timestamp}.pem"
-    mv "${tmpchain}" "${certdir}/chain-${timestamp}.pem"
+    cat "${tmpcert}" > "${certdir}/cert-${timestamp}.pem"
+    cat "${tmpchain}" > "${certdir}/chain-${timestamp}.pem"
+    rm "${tmpcert}" "${tmpchain}"
   fi
 
   # Update symlinks
