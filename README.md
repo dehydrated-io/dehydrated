@@ -1,6 +1,6 @@
 # dehydrated [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=23P9DSJBTY7C8)
 
-![](docs/logo.jpg)
+![](docs/logo.png)
 
 This is a client for signing certificates with an ACME-server (currently only provided by Let's Encrypt) implemented as a relatively simple bash-script.
 Dehydrated supports both ACME v1 and the new ACME v2 including support for wildcard certificates!
