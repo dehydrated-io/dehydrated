@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # dehydrated by lukas2511
-# Source: https://dehydrated.de
+# Source: https://dehydrated.io
 #
 # This script is licensed under The MIT License (see LICENSE for more information).
 
@@ -17,7 +17,7 @@ umask 077 # paranoid umask, we're creating private keys
 exec 3>&-
 exec 4>&-
 
-VERSION="git-master-after-0.6.1"
+VERSION="0.6.2"
 
 # Find directory in which this script is stored by traversing all symbolic links
 SOURCE="${0}"
@@ -1037,7 +1037,7 @@ command_version() {
   load_config noverify
 
   echo "Dehydrated by Lukas Schauer"
-  echo "https://dehydrated.de"
+  echo "https://dehydrated.io"
   echo ""
   echo "Dehydrated version: ${VERSION}"
   revision="$(cd "${SCRIPTDIR}"; git rev-parse HEAD 2>/dev/null || echo "unknown")"

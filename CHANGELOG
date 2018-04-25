@@ -1,12 +1,21 @@
 # Change Log
 This file contains a log of major changes in dehydrated
 
-## [x.x.x] - xxxx-xx-xx
+## [0.6.2] - 2018-04-25
+## Added
+- New deploy_ocsp hook
+- Allow account registration with custom key
+
 ## Changed
 - Don't walk certificate chain for ACMEv2 (certificate contains chain by default)
+- Improved documentation on wildcards
 
-## Added
-- ??
+## Fixes
+- Added workaround for compatibility with filesystem ACLs
+- Close unwanted external file-descriptors
+- Fixed JSON parsing on force-renewal
+- Fixed cleanup of challenge files/dns-entries on validation errors
+- A few more minor fixes
 
 ## [0.6.1] - 2018-03-13
 ## Changed
