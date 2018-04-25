@@ -138,6 +138,8 @@ request_failure() {
     #   The specified reason for the error.
     # - REQTYPE
     #   The kind of request that was made (GET, POST...)
+    # - HEADERS
+    #   HTTP headers returned by the CA
 
     # Simple example: Send mail to root
     # printf "Subject: HTTP request failed failed!\n\nA http request failed with status ${STATUSCODE}!" | sendmail root
