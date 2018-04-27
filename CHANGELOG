@@ -1,6 +1,13 @@
 # Change Log
 This file contains a log of major changes in dehydrated
 
+## [x.x.x] - xxxx-xx-xx
+## Changed
+- ??
+
+## Added
+- ??
+
 ## [0.6.2] - 2018-04-25
 ## Added
 - New deploy_ocsp hook
