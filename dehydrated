@@ -777,6 +777,9 @@ sign_csr() {
     fi
   fi
 
+  # Call hook before challenge validation
+  [[ -n "${HOOK}" ]] && "${HOOK}" "before_challenge_validation"
+
   # Validate pending challenges
   local idx=0
   while [ ${idx} -lt ${num_pending_challenges} ]; do
