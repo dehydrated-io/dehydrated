@@ -777,6 +777,19 @@ sign_csr() {
     fi
   fi
 
+  # Call hook before challenge validation
+  if [[ ${num_pending_challenges} -ne 0 ]]; then
+    if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]]; then
+      "${HOOK}" "before_challenge_validation" ${deploy_args[@]}
+    elif [[ -n "${HOOK}" ]]; then
+      local idx=0
+      while [ ${idx} -lt ${num_pending_challenges} ]; do
+        "${HOOK}" "before_challenge_validation" ${deploy_args[${idx}]}
+        idx=$((idx+1))
+      done
+    fi
+  fi
+
   # Validate pending challenges
   local idx=0
   while [ ${idx} -lt ${num_pending_challenges} ]; do
