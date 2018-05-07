@@ -3,7 +3,7 @@ This file contains a log of major changes in dehydrated
 
 ## [x.x.x] - xxxx-xx-xx
 ## Changed
-- ??
+- OCSP refresh interval is now configurable
 
 ## Added
 - ??

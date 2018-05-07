@@ -106,6 +106,7 @@ verify_config() {
     [[ "${IP_VERSION}" = "4" || "${IP_VERSION}" = "6" ]] || _exiterr "Unknown IP version ${IP_VERSION}... cannot continue."
   fi
   [[ "${API}" == "auto" || "${API}" == "1" || "${API}" == "2" ]] || _exiterr "Unsupported API version defined in config: ${API}"
+  [[ "${OCSP_DAYS}" =~ ^[0-9]+$ ]] || _exiterr "OCSP_DAYS must be a number"
 }
 
 # Setup default config values, search for and load configuration files
@@ -145,6 +146,7 @@ load_config() {
   LOCKFILE=
   OCSP_MUST_STAPLE="no"
   OCSP_FETCH="no"
+  OCSP_DAYS=5
   IP_VERSION=
   CHAINCACHE=
   AUTO_CLEANUP="no"
@@ -1310,7 +1312,7 @@ command_sign_domains() {
 
       if [[ ! -e "${certdir}/ocsp.der" ]]; then
         update_ocsp="yes"
-      elif ! ("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respin "${certdir}/ocsp.der" -status_age 432000 2>&1 | grep -q "${cert}: good"); then
+      elif ! ("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respin "${certdir}/ocsp.der" -status_age $((OCSP_DAYS*24*3600)) 2>&1 | grep -q "${cert}: good"); then
         update_ocsp="yes"
       fi
 
