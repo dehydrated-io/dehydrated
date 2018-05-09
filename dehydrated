@@ -409,7 +409,7 @@ init_system() {
     if [[ ${API} -eq 1 ]]; then
       _exiterr "This is not implemented for ACMEv1! Consider switching to ACMEv2 :)"
     else
-      ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"onlyReturnExisting": true}' 4>&1 | grep ^Location: | awk '{print $2}' | tr -d '\r\n')"
+      ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"onlyReturnExisting": true}' 4>&1 | grep -i ^Location: | awk '{print $2}' | tr -d '\r\n')"
       ACCOUNT_INFO="$(signed_request "${ACCOUNT_URL}" '{}')"
     fi
     ACCOUNT_ID="${ACCOUNT_URL##*/}"
@@ -579,9 +579,9 @@ signed_request() {
 
   # Retrieve nonce from acme-server
   if [[ ${API} -eq 1 ]]; then
-    nonce="$(http_request head "${CA}" | grep Replay-Nonce: | awk -F ': ' '{print $2}' | tr -d '\n\r')"
+    nonce="$(http_request head "${CA}" | grep -i Replay-Nonce: | awk -F ': ' '{print $2}' | tr -d '\n\r')"
   else
-    nonce="$(http_request head "${CA_NEW_NONCE}" | grep Replay-Nonce: | awk -F ': ' '{print $2}' | tr -d '\n\r')"
+    nonce="$(http_request head "${CA_NEW_NONCE}" | grep -i Replay-Nonce: | awk -F ': ' '{print $2}' | tr -d '\n\r')"
   fi
 
   # Build header with just our public key and algorithm information
