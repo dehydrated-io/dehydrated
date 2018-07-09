@@ -117,3 +117,6 @@
 
 # ACME API version (default: auto)
 #API=auto
+
+# Keep going after encountering an error while creating/renewing multiple certificates in cron mode
+#PARAM_KEEP_GOING="yes"
