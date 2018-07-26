@@ -31,7 +31,7 @@
 # default: https://acme-v01.api.letsencrypt.org/directory
 #OLDCA="https://acme-v01.api.letsencrypt.org/directory"
 
-# Which challenge should be used? Currently http-01 and dns-01 are supported
+# Which challenge should be used? Currently http-01, dns-01 and tls-alpn-01 are supported
 #CHALLENGETYPE="http-01"
 
 # Path to a directory containing additional config files, allowing to override
@@ -48,6 +48,9 @@
 
 # Output directory for generated certificates
 #CERTDIR="${BASEDIR}/certs"
+
+# Output directory for alpn verification certificates
+#ALPNCERTDIR="${BASEDIR}/alpn-certs"
 
 # Directory for account keys and registration information
 #ACCOUNTDIR="${BASEDIR}/accounts"

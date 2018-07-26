@@ -6,7 +6,7 @@ This file contains a log of major changes in dehydrated
 - OCSP refresh interval is now configurable
 
 ## Added
-- ??
+- Initial support for tls-alpn-01 validation
 
 ## [0.6.2] - 2018-04-25
 ## Added
