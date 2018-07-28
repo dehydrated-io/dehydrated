@@ -49,6 +49,9 @@
 # Output directory for generated certificates
 #CERTDIR="${BASEDIR}/certs"
 
+# Directory for per-domain configuration files.  If not set, per-domain configurations are found in each certificate's output directory
+#DOMAINS_D="${BASEDIR}/domains.d"
+
 # Output directory for alpn verification certificates
 #ALPNCERTDIR="${BASEDIR}/alpn-certs"
 
