@@ -1855,9 +1855,11 @@ command_cleanup() {
     load_config
   fi
 
-  # Create global archive directory if not existent
-  if [[ ! -e "${BASEDIR}/archive" ]]; then
-    mkdir "${BASEDIR}/archive"
+  if [[ ! "${PARAM_CLEANUPDELETE:-}" = "yes" ]]; then
+    # Create global archive directory if not existent
+    if [[ ! -e "${BASEDIR}/archive" ]]; then
+      mkdir "${BASEDIR}/archive"
+    fi
   fi
 
   # Allow globbing
@@ -1872,9 +1874,11 @@ command_cleanup() {
     certname="$(basename "${certdir}")"
 
     # Create certificates archive directory if not existent
-    archivedir="${BASEDIR}/archive/${certname}"
-    if [[ ! -e "${archivedir}" ]]; then
-      mkdir "${archivedir}"
+    if [[ ! "${PARAM_CLEANUPDELETE:-}" = "yes" ]]; then
+      archivedir="${BASEDIR}/archive/${certname}"
+      if [[ ! -e "${archivedir}" ]]; then
+        mkdir "${archivedir}"
+      fi
     fi
 
     # Loop over file-types (certificates, keys, signing-requests, ...)
@@ -1899,9 +1903,15 @@ command_cleanup() {
       for file in "${certdir}/${filebase}-"*".${fileext}" "${certdir}/${filebase}-"*".${fileext}-revoked"; do
         # Check if current file is in use, if unused move to archive directory
         filename="$(basename "${file}")"
-        if [[ ! "${filename}" = "${current}" ]]; then
-          echo "Moving unused file to archive directory: ${certname}/${filename}"
-          mv "${certdir}/${filename}" "${archivedir}/${filename}"
+        if [[ ! "${filename}" = "${current}" ]] && [[ -f "${certdir}/${filename}" ]]; then
+          echo "${filename}"
+          if [[ "${PARAM_CLEANUPDELETE:-}" = "yes" ]]; then
+            echo "Deleting unused file: ${certname}/${filename}"
+            rm "${certdir}/${filename}"
+          else
+            echo "Moving unused file to archive directory: ${certname}/${filename}"
+            mv "${certdir}/${filename}" "${archivedir}/${filename}"
+          fi
         fi
       done
     done
@@ -1909,6 +1919,13 @@ command_cleanup() {
 
   exit "${exit_with_errorcode}"
 }
+
+# Usage: --cleanup-delete (-gcd)
+# Description: Deletes (!) unused certificate files
+command_cleanupdelete() {
+  command_cleanup
+}
+
 
 # Usage: --help (-h)
 # Description: Show help text
@@ -2020,6 +2037,11 @@ main() {
 
       --cleanup|-gc)
         set_command cleanup
+        ;;
+
+      --cleanup-delete|-gcd)
+        set_command cleanupdelete
+        PARAM_CLEANUPDELETE="yes"
         ;;
 
       # PARAM_Usage: --full-chain (-fc)
@@ -2186,6 +2208,7 @@ main() {
     deactivate) command_deactivate;;
     cleanup) command_cleanup;;
     terms) command_terms;;
+    cleanupdelete) command_cleanupdelete;;
     version) command_version;;
     *) command_help; exit 1;;
   esac
