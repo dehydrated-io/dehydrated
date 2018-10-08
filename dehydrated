@@ -1252,7 +1252,7 @@ command_sign_domains() {
         config_var="$(echo "${cfgline:1}" | cut -d'=' -f1)"
         config_value="$(echo "${cfgline:1}" | cut -d'=' -f2-)"
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
+          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
             echo "   + ${config_var} = ${config_value}"
             declare -- "${config_var}=${config_value}"
             ;;
