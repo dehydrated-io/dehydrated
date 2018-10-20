@@ -40,6 +40,11 @@
 # default: <unset>
 #CONFIG_D=
 
+# Directory for per-domain configuration files.
+# If not set, per-domain configurations are sourced from each certificates output directory.
+# default: <unset>
+#DOMAINS_D=
+
 # Base directory for account key, generated certificates and list of domains (default: $SCRIPTDIR -- uses config directory if undefined)
 #BASEDIR=$SCRIPTDIR
 
