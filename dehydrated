@@ -562,7 +562,7 @@ http_request() {
       rm -f "${tempheaders}"
 
       # remove temporary domains.txt file if used
-      [[ -n "${PARAM_DOMAIN:-}" && -n "${DOMAINS_TXT:-}" ]] && rm "${DOMAINS_TXT}"
+      [[ "${COMMAND:-}" = "sign_domains" && -n "${PARAM_DOMAIN:-}" && -n "${DOMAINS_TXT:-}" ]] && rm "${DOMAINS_TXT}"
       exit 1
     fi
   fi
