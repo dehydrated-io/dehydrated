@@ -1049,6 +1049,9 @@ sign_domain() {
     rm "${tmpcert}" "${tmpchain}"
   fi
 
+  # Wait for hook script to sync the files before creating the symlinks
+  [[ -n "${HOOK}" ]] && "${HOOK}" "sync_cert" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem" "${certdir}/cert.csr"
+
   # Update symlinks
   [[ "${privkey}" = "privkey.pem" ]] || ln -sf "privkey-${timestamp}.pem" "${certdir}/privkey.pem"
 
