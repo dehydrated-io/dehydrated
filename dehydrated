@@ -93,15 +93,22 @@ hookscript_bricker_hook() {
 }
 
 # verify configuration values
+# Pass "nodomains" as argument #1 to skip verifying options that may appear in a
+# domain-specific configuration file
 verify_config() {
-  [[ "${CHALLENGETYPE}" == "http-01" || "${CHALLENGETYPE}" == "dns-01" || "${CHALLENGETYPE}" == "tls-alpn-01" ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... cannot continue."
-  if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
-    _exiterr "Challenge type dns-01 needs a hook script for deployment... cannot continue."
+  # CHALLENGETYPE, HOOK, WELLKNOWN and KEY_ALGO can all appear in domain-specific
+  # configuration files:
+  if [[ ! "${1:-}" = "nodomains" ]]; then
+    [[ "${CHALLENGETYPE}" == "http-01" || "${CHALLENGETYPE}" == "dns-01" || "${CHALLENGETYPE}" == "tls-alpn-01" ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... cannot continue."
+    if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
+      _exiterr "Challenge type dns-01 needs a hook script for deployment... cannot continue."
+    fi
+    if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" && ! "${COMMAND:-}" = "register" ]]; then
+      _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
+    fi
+    [[ "${KEY_ALGO}" == "rsa" || "${KEY_ALGO}" == "prime256v1" || "${KEY_ALGO}" == "secp384r1" ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... cannot continue."
   fi
-  if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" && ! "${COMMAND:-}" = "register" ]]; then
-    _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
-  fi
-  [[ "${KEY_ALGO}" == "rsa" || "${KEY_ALGO}" == "prime256v1" || "${KEY_ALGO}" == "secp384r1" ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... cannot continue."
+
   if [[ -n "${IP_VERSION}" ]]; then
     [[ "${IP_VERSION}" = "4" || "${IP_VERSION}" = "6" ]] || _exiterr "Unknown IP version ${IP_VERSION}... cannot continue."
   fi
@@ -110,6 +117,8 @@ verify_config() {
 }
 
 # Setup default config values, search for and load configuration files
+# Pass "noverifydomains" as argument #1 to skip verifying options in the global
+# configuration file that may also appear in a domain-specific configuration file
 load_config() {
   # Check for config in various locations
   if [[ -z "${CONFIG:-}" ]]; then
@@ -275,14 +284,24 @@ load_config() {
   [[ -n "${PARAM_IP_VERSION:-}" ]] && IP_VERSION="${PARAM_IP_VERSION}"
 
   if [ ! "${1:-}" = "noverify" ]; then
-    verify_config
+    if [ "${1:-}" = "noverifydomains" ]; then
+      verify_config nodomains
+    else
+      verify_config
+    fi
   fi
   store_configvars
 }
 
 # Initialize system
+# Pass "noverifydomains" as argument #1 to skip verifying options in the global
+# configuration file that may also appear in a domain-specific configuration file
 init_system() {
-  load_config
+  if [ "${1:-}" = "noverifydomains" ]; then
+    load_config noverifydomains
+  else
+    load_config
+  fi
 
   # Lockfile handling (prevents concurrent access)
   if [[ -n "${LOCKFILE}" ]]; then
@@ -1158,7 +1177,10 @@ command_account() {
 # Usage: --cron (-c)
 # Description: Sign/renew non-existent/changed/expiring certificates.
 command_sign_domains() {
-  init_system
+  # Only verify configuration options that may only be defined globally at this
+  # point: wait until after any domain-specific configuration file has been read
+  # before verifying domain-specific options
+  init_system noverifydomains
   hookscript_bricker_hook
 
   # Call startup hook
@@ -1262,7 +1284,10 @@ command_sign_domains() {
       done
       IFS="${ORIGIFS}"
     fi
+    # Now that a domain-specific configuration file has possibly been read,
+    # verify and store all options
     verify_config
+    store_configvars
     hookscript_bricker_hook
     export WELLKNOWN CHALLENGETYPE KEY_ALGO PRIVATE_KEY_ROLLOVER
 
