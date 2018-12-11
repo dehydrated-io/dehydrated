@@ -7,6 +7,7 @@ This file contains a log of major changes in dehydrated
 
 ## Added
 - Initial support for tls-alpn-01 validation
+- Optional sleep timer when using dns-01 to allow DNS to propagate
 
 ## [0.6.2] - 2018-04-25
 ## Added

@@ -34,6 +34,10 @@
 # Which challenge should be used? Currently http-01, dns-01 and tls-alpn-01 are supported
 #CHALLENGETYPE="http-01"
 
+# How long to sleep before validating challenges
+# Only used if CHALLENGETYPE="dns-01"
+#SLEEPTIME=300
+
 # Path to a directory containing additional config files, allowing to override
 # the defaults found in the main configuration file. Additional config files
 # in this directory needs to be named with a '.sh' ending.
