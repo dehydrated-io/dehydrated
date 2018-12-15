@@ -324,7 +324,7 @@ init_system() {
   fi
 
   # Export some environment variables to be used in hook script
-  export WELLKNOWN BASEDIR CERTDIR ALPNCERTDIR CONFIG COMMAND
+  export WELLKNOWN BASEDIR CERTDIR ALPNCERTDIR CONFIG COMMAND HOOK_CHAIN
 
   # Checking for private key ...
   register_new_key="no"
@@ -1264,7 +1264,7 @@ command_sign_domains() {
     fi
     verify_config
     hookscript_bricker_hook
-    export WELLKNOWN CHALLENGETYPE KEY_ALGO PRIVATE_KEY_ROLLOVER
+    export WELLKNOWN CHALLENGETYPE KEY_ALGO PRIVATE_KEY_ROLLOVER HOOK_CHAIN
 
     skip="no"
 
