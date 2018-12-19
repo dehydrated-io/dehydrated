@@ -8,8 +8,12 @@
 set -e
 set -u
 set -o pipefail
+if test -n "${KSH_VERSION:-}"; then
+	set -f
+else
 [[ -n "${ZSH_VERSION:-}" ]] && set -o SH_WORD_SPLIT && set +o FUNCTION_ARGZERO && set -o NULL_GLOB && set -o noglob
 [[ -z "${ZSH_VERSION:-}" ]] && shopt -s nullglob && set -f
+fi
 
 umask 077 # paranoid umask, we're creating private keys
 
@@ -1407,7 +1411,7 @@ command_revoke() {
     # follow symlink and use real certificate name (so we move the real file and not the symlink at the end)
     local link_target
     link_target="$(readlink -n "${cert}")"
-    if [[ "${link_target}" =~ ^/ ]]; then
+    if [[ "${link_target}" = /* ]]; then
       cert="${link_target}"
     else
       cert="$(dirname "${cert}")/${link_target}"
@@ -1493,14 +1497,14 @@ command_help() {
   printf "Default command: help\n\n"
   echo "Commands:"
   grep -e '^[[:space:]]*# Usage:' -e '^[[:space:]]*# Description:' -e '^command_.*()[[:space:]]*{' "${0}" | while read -r usage; read -r description; read -r command; do
-    if [[ ! "${usage}" =~ Usage ]] || [[ ! "${description}" =~ Description ]] || [[ ! "${command}" =~ ^command_ ]]; then
+    if [[ ! "${usage}" = *Usage* ]] || [[ ! "${description}" = *Description* ]] || [[ ! "${command}" = command_* ]]; then
       _exiterr "Error generating help text."
     fi
     printf " %-32s %s\n" "${usage##"# Usage: "}" "${description##"# Description: "}"
   done
   printf -- "\nParameters:\n"
   grep -E -e '^[[:space:]]*# PARAM_Usage:' -e '^[[:space:]]*# PARAM_Description:' "${0}" | while read -r usage; read -r description; do
-    if [[ ! "${usage}" =~ Usage ]] || [[ ! "${description}" =~ Description ]]; then
+    if [[ ! "${usage}" = *Usage* ]] || [[ ! "${description}" = *Description* ]]; then
       _exiterr "Error generating help text."
     fi
     printf " %-32s %s\n" "${usage##"# PARAM_Usage: "}" "${description##"# PARAM_Description: "}"
