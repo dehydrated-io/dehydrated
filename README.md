@@ -28,6 +28,22 @@ Generally you want to set up your WELLKNOWN path first, and then fill in domains
 
 If you have any problems take a look at our [Troubleshooting](docs/troubleshooting.md) guide.
 
+### Generated files
+
+`$BASEDIR/certs/`_domain_`/` will contain the following files (symlinks, actually):
+
+- `cert.csr` — the CSR, not that you’ll need it
+- `cert.pem` — the certificate
+- `chain.pem` — the certificate chain
+- `fullchain.pem` — the certificate followed by the chain
+- `privkey.pem` — the private key
+
+To actually meaningfully do something with the certificate after update, place a daily run of `dehydrated -c | logger -t dehydrated` into your crontab, and set `HOOK` in the configuration to an executable file that takes the following arguments:
+
+    $HOOK `deploy_cert` _domain_ _path-to_/`privkey.pem` _path-to_/`cert.pem` _path-to_/`fullchain.pem` _path-to_/`chain.pem` _timestamp_
+
+The hook script **must** be written in a way to silently ignore (print nothing, exit 0) any other `$1` value.
+
 ## Config
 
 dehydrated is looking for a config file in a few different places, it will use the first one it can find in this order:
@@ -86,7 +102,7 @@ I'm really having fun playing around with hard- and software and I'm steadily le
 Without those hobbies I probably would never have started working on dehydrated to begin with :)
 
 I'd really appreciate if you could [donate a bit of money](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=23P9DSJBTY7C8)
-so I can buy cool stuff (while still being able to afford food :D).  
+so I can buy cool stuff (while still being able to afford food :D).
 
 If you have hardware laying around that you think I'd enjoy playing with (e.g. decommissioned but still modern-ish servers,
 10G networking hardware, enterprise grade routers or APs, interesting ARM/MIPS boards, etc.) and that you would be willing
