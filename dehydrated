@@ -45,7 +45,6 @@ _mktemp() {
 check_dependencies() {
   # just execute some dummy and/or version commands to see if required tools exist and are actually usable
   "${OPENSSL}" version > /dev/null 2>&1 || _exiterr "This script requires an openssl binary."
-  _sed "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requires sed with support for extended (modern) regular expressions."
   command -v grep > /dev/null 2>&1 || _exiterr "This script requires grep."
   command -v mktemp > /dev/null 2>&1 || _exiterr "This script requires mktemp."
   command -v diff > /dev/null 2>&1 || _exiterr "This script requires diff."
@@ -419,15 +418,6 @@ init_system() {
   fi
 }
 
-# Different sed version for different os types...
-_sed() {
-  if [[ "${OSTYPE}" = "Linux" || "${OSTYPE:0:5}" = "MINGW" ]]; then
-    sed -r "${@}"
-  else
-    sed -E "${@}"
-  fi
-}
-
 # Print error message and exit with error
 _exiterr() {
   echo "ERROR: ${1}" >&2
@@ -436,46 +426,46 @@ _exiterr() {
 
 # Remove newlines and whitespace from json
 clean_json() {
-  tr -d '\r\n' | _sed -e 's/ +/ /g' -e 's/\{ /{/g' -e 's/ \}/}/g' -e 's/\[ /[/g' -e 's/ \]/]/g'
+  tr -d '\r\n' | sed -e 's/ \{2,\}/ /g' -e 's/\([[{]\) /\1/g' -e 's/ \([]}]\)/\1/g'
 }
 
 # Encode data as url-safe formatted base64
 urlbase64() {
   # urlbase64: base64 encoded string with '+' replaced with '-' and '/' replaced with '_'
-  "${OPENSSL}" base64 -e | tr -d '\n\r' | _sed -e 's:=*$::g' -e 'y:+/:-_:'
+  "${OPENSSL}" base64 -e | tr -d '\n\r' | sed -e 's:=*$::' -e 'y:+/:-_:'
 }
 
 # Convert hex string to binary data
 hex2bin() {
   # Remove spaces, add leading zero, escape as hex string and parse with printf
-  printf -- "$(cat | _sed -e 's/[[:space:]]//g' -e 's/^(.(.{2})*)$/0\1/' -e 's/(.{2})/\\x\1/g')"
+  printf -- "$(sed -e 's/[	- ]//g' -e 's/^\(.\(.\{2\}\)*\)$/0\1/' -e 's/\(.\{2\}\)/\\x\1/g')"
 }
 
 # Get string value from json dictionary
 get_json_string_value() {
   local filter
-  filter=$(printf 's/.*"%s": *"\([^"]*\)".*/\\1/p' "$1")
+  filter=$(printf 's/.*"%s": *"\\([^"]*\\)".*/\\1/p' "$1")
   sed -n "${filter}"
 }
 
 # Get array value from json dictionary
 get_json_array_value() {
   local filter
-  filter=$(printf 's/.*"%s": *\\[\([^]]*\)\\].*/\\1/p' "$1")
+  filter=$(printf 's/.*"%s": *\\[\\([^]]*\\)\\].*/\\1/p' "$1")
   sed -n "${filter}"
 }
 
 # Get sub-dictionary from json
 get_json_dict_value() {
   local filter
-  filter=$(printf 's/.*"%s": *{\([^}]*\)}.*/\\1/p' "$1")
+  filter=$(printf 's/.*"%s": *{\\([^}]*\\)}.*/\\1/p' "$1")
   sed -n "${filter}"
 }
 
 # Get integer value from json
 get_json_int_value() {
   local filter
-  filter=$(printf 's/.*"%s": *\([0-9]*\).*/\\1/p' "$1")
+  filter=$(printf 's/.*"%s": *\\([0-9]*\\).*/\\1/p' "$1")
   sed -n "${filter}"
 }
 
@@ -627,22 +617,22 @@ extract_altnames() {
   fi
 
   reqtext="$( <<<"${csr}" "${OPENSSL}" req -noout -text )"
-  if <<<"${reqtext}" grep -q '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$'; then
+  if <<<"${reqtext}" grep -q '^[	- ]*X509v3 Subject Alternative Name:[	- ]*$'; then
     # SANs used, extract these
     altnames="$( <<<"${reqtext}" awk '/X509v3 Subject Alternative Name:/{print;getline;print;}' | tail -n1 )"
     # split to one per line:
     # shellcheck disable=SC1003
-    altnames="$( <<<"${altnames}" _sed -e 's/^[[:space:]]*//; s/, /\'$'\n''/g' )"
+    altnames="$( <<<"${altnames}" sed -e 's/^[	- ]*//; s/, /\'$'\n''/g' )"
     # we can only get DNS: ones signed
     if grep -qEv '^(DNS|othername):' <<<"${altnames}"; then
       _exiterr "Certificate signing request contains non-DNS Subject Alternative Names"
     fi
     # strip away the DNS: prefix
-    altnames="$( <<<"${altnames}" _sed -e 's/^(DNS:|othername:<unsupported>)//' )"
+    altnames="$( <<<"${altnames}" sed -e 's/^DNS://' -e 's/^othername:<unsupported>//')"
     printf "%s" "${altnames}" | tr '\n' ' '
   else
     # No SANs, extract CN
-    altnames="$( <<<"${reqtext}" grep '^[[:space:]]*Subject:' | _sed -e 's/.* CN ?= ?([^ /,]*).*/\1/' )"
+    altnames="$( <<<"${reqtext}" grep '^[	- ]*Subject:' | sed -e 's/.* CN \{0,1\}= \{0,1\}\([^ /,]*\).*/\1/' )"
     printf "%s" "${altnames}"
   fi
 }
@@ -691,7 +681,7 @@ sign_csr() {
 
     local idx=0
     for uri in ${order_authorizations}; do
-      authorizations[${idx}]="$(echo "${uri}" | _sed -e 's/\"(.*)".*/\1/')"
+      authorizations[${idx}]="$(echo "${uri}" | sed -e 's/"\(.*\)".*/\1/')"
       idx=$((idx+1))
     done
     echo " + Received ${idx} authorizations URLs from the CA"
@@ -709,7 +699,7 @@ sign_csr() {
   for authorization in ${authorizations[*]}; do
     if [[ "${API}" -eq 2 ]]; then
       # Receive authorization ($authorization is authz uri)
-      response="$(http_request get "$(echo "${authorization}" | _sed -e 's/\"(.*)".*/\1/')" | clean_json)"
+      response="$(http_request get "$(echo "${authorization}" | sed -e 's/"\(.*\)".*/\1/')" | clean_json)"
       identifier="$(echo "${response}" | get_json_dict_value identifier | get_json_string_value value)"
       echo " + Handling authorization for ${identifier}"
     else
@@ -720,16 +710,17 @@ sign_csr() {
     fi
 
     # Check if authorization has already been validated
-    if [ "$(echo "${response}" | _sed 's/"challenges": \[\{.*\}\]//' | get_json_string_value status)" = "valid" ] && [ ! "${PARAM_FORCE:-no}" = "yes" ]; then
+    if [ "$(echo "${response}" | sed 's/"challenges": \[{.*}\]//' | get_json_string_value status)" = "valid" ] && [ ! "${PARAM_FORCE:-no}" = "yes" ]; then
       echo " + Found valid authorization for ${identifier}"
       continue
     fi
 
     # Find challenge in authorization
-    challenges="$(echo "${response}" | _sed 's/.*"challenges": \[(\{.*\})\].*/\1/')"
-    challenge="$(<<<"${challenges}" _sed -e 's/^[^\[]+\[(.+)\]$/\1/' -e 's/\}(, (\{)|(\]))/}\'$'\n''\2/g' | grep \""${CHALLENGETYPE}"\" || true)"
+    challenges="$(echo "${response}" | sed 's/.*"challenges": \[\({.*}\)\].*/\1/')"
+    challenge="$(<<<"${challenges}" sed -e 's/^[^\[]\{1,\}\[\(..*\)\]$/\1/' -e 's/}, {/}\'$'\n''{/g' -e 's/}]/}\'$'\n'']/g' | grep \""${CHALLENGETYPE}"\" || true)"
     if [ -z "${challenge}" ]; then
-      allowed_validations="$(grep -Eo '"type": "[^"]+"' <<< "${challenges}" | grep -Eo ' "[^"]+"' | _sed -e 's/"//g' -e 's/^ //g')"
+      allowed_validations="$(grep -Eo '"type": "[^"]+"' <<< "${challenges}" | grep -Eo ' "[^"]+"' | sed -e 's/"//g' -e 's/^ //g')"
+#'
       _exiterr "Validating this certificate is not possible using ${CHALLENGETYPE}. Possible validation methods are: ${allowed_validations}"
     fi
 
@@ -737,9 +728,9 @@ sign_csr() {
     challenge_names[${idx}]="${identifier}"
     challenge_tokens[${idx}]="$(echo "${challenge}" | get_json_string_value token)"
     if [[ ${API} -eq 2 ]]; then
-      challenge_uris[${idx}]="$(echo "${challenge}" | _sed 's/"validationRecord": ?\[[^]]+\]//g' | get_json_string_value url)"
+      challenge_uris[${idx}]="$(echo "${challenge}" | sed 's/"validationRecord": \{0,1\}\[[^]]\{1,\}\]//g' | get_json_string_value url)"
     else
-      challenge_uris[${idx}]="$(echo "${challenge}" | _sed 's/"validationRecord": ?\[[^]]+\]//g' | get_json_string_value uri)"
+      challenge_uris[${idx}]="$(echo "${challenge}" | sed 's/"validationRecord": \{0,1\}\[[^]]\{1,\}\]//g' | get_json_string_value uri)"
     fi
 
     # Prepare challenge tokens and deployment parameters
@@ -1050,7 +1041,7 @@ command_version() {
   if [[ "${OSTYPE}" = "FreeBSD" ]]; then
     echo "OS: $(uname -sr)"
   else
-    echo "OS: $(cat /etc/issue | grep -v ^$ | head -n1 | _sed 's/\\(r|n|l) .*//g')"
+    echo "OS: $(cat /etc/issue | grep -v ^$ | head -n1 | sed 's/\\[rnl] .*//g')"
   fi
   echo "Used software:"
   [[ -n "${BASH_VERSION:-}" ]] && echo " bash: ${BASH_VERSION}"
@@ -1158,11 +1149,11 @@ command_sign_domains() {
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
   ORIGIFS="${IFS}"
   IFS=$'\n'
-  for line in $(<"${DOMAINS_TXT}" tr -d '\r' | awk '{print tolower($0)}' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' -e 's/([^ ])>/\1 >/g' -e 's/> />/g' | (grep -vE '^(#|$)' || true)); do
+  for line in $(<"${DOMAINS_TXT}" tr -d '\r' | awk '{print tolower($0)}' | sed -e 's/^[	- ]*//g' -e 's/[	- ]*$//g' -e 's/[	- ]\{1,\}/ /g' -e 's/\([^ ]\)>/\1 >/g' -e 's/> />/g' | (grep -vE '^(#|$)' || true)); do
     reset_configvars
     IFS="${ORIGIFS}"
     alias="$(grep -Eo '>[^ ]+' <<< "${line}" || true)"
-    line="$(_sed -e 's/>[^ ]+[ ]*//g' <<< "${line}")"
+    line="$(sed -e 's/>[^ ]\{1,\}[ ]*//g' <<< "${line}")"
     aliascount="$(grep -Eo '>' <<< "${alias}" | awk 'END {print NR}' || true )"
     [ ${aliascount} -gt 1 ] && _exiterr "Only one alias per line is allowed in domains.txt!"
 
@@ -1257,8 +1248,8 @@ command_sign_domains() {
     if [[ -e "${cert}" ]]; then
       printf " + Checking domain name(s) of existing cert..."
 
-      certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep DNS: | _sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//')"
-      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | _sed 's/^ //')"
+      certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep DNS: | sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')"
+      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | sed -e 's/ $//' -e 's/^ //')"
 
       if [[ "${certnames}" = "${givennames}" ]]; then
         echo " unchanged."
@@ -1322,7 +1313,7 @@ command_sign_domains() {
         echo " + Updating OCSP stapling file"
         ocsp_timestamp="$(date +%s)"
         if grep -qE "^(0|(1\.0))\." <<< "$(${OPENSSL} version | awk '{print $2}')"; then
-          ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" -header "HOST" "$(echo "${ocsp_url}" | _sed -e 's/^http(s?):\/\///' -e 's/\/.*$//g')" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
+          ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" -header "HOST" "$(echo "${ocsp_url}" | sed -e 's/^https\{0,1\}:\/\///' -e 's/\/.*$//g')" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
         else
           ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
         fi
@@ -1496,14 +1487,14 @@ command_help() {
   printf "Usage: %s [-h] [command [argument]] [parameter [argument]] [parameter [argument]] ...\n\n" "${0}"
   printf "Default command: help\n\n"
   echo "Commands:"
-  grep -e '^[[:space:]]*# Usage:' -e '^[[:space:]]*# Description:' -e '^command_.*()[[:space:]]*{' "${0}" | while read -r usage; read -r description; read -r command; do
+  grep -e '^[	- ]*# Usage:' -e '^[	- ]*# Description:' -e '^command_.*()[	- ]*{' "${0}" | while read -r usage; read -r description; read -r command; do
     if [[ ! "${usage}" = *Usage* ]] || [[ ! "${description}" = *Description* ]] || [[ ! "${command}" = command_* ]]; then
       _exiterr "Error generating help text."
     fi
     printf " %-32s %s\n" "${usage##"# Usage: "}" "${description##"# Description: "}"
   done
   printf -- "\nParameters:\n"
-  grep -E -e '^[[:space:]]*# PARAM_Usage:' -e '^[[:space:]]*# PARAM_Description:' "${0}" | while read -r usage; read -r description; do
+  grep -E -e '^[	- ]*# PARAM_Usage:' -e '^[	- ]*# PARAM_Description:' "${0}" | while read -r usage; read -r description; do
     if [[ ! "${usage}" = *Usage* ]] || [[ ! "${description}" = *Description* ]]; then
       _exiterr "Error generating help text."
     fi
