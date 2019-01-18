@@ -933,7 +933,7 @@ generate_alpn_certificate() {
   tmp_openssl_cnf="$(_mktemp)"
   cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
   printf "[SAN]\nsubjectAltName=DNS:%s\n" "${altname}" >> "${tmp_openssl_cnf}"
-  printf "1.3.6.1.5.5.7.1.30.1=critical,DER:04:20:${acmevalidation}\n" >> "${tmp_openssl_cnf}"
+  printf "1.3.6.1.5.5.7.1.31=critical,DER:04:20:${acmevalidation}\n" >> "${tmp_openssl_cnf}"
   SUBJ="/CN=${altname}/"
   [[ "${OSTYPE:0:5}" = "MINGW" ]] && SUBJ="/${SUBJ}"
   _openssl req -x509 -new -sha256 -nodes -newkey rsa:2048 -keyout "${alpncertdir}/${altname}.key.pem" -out "${alpncertdir}/${altname}.crt.pem" -subj "${SUBJ}" -extensions SAN -config "${tmp_openssl_cnf}"
