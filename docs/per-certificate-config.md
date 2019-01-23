@@ -16,3 +16,10 @@ Currently supported options:
 - WELLKNOWN
 - OPENSSL_CNF
 - RENEW_DAYS
+
+## DOMAINS_D
+
+If `DOMAINS_D` is set, dehydrated will use it for your per-certificate configurations.
+Instead of `certs/example.org/config` it will look for a configuration under `DOMAINS_D/example.org`.
+
+If an alias is set, it will be used instead of the primary domain name.

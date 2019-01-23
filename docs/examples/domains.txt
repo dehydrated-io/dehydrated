@@ -1,2 +1,30 @@
+# Create certificate for 'example.org' with an alternative name of
+# 'www.example.org'. It will be stored in the directory ${CERT_DIR}/example.org
 example.org www.example.org
+
+# Create certificate for 'example.com' with alternative names of
+# 'www.example.com' & 'wiki.example.com'. It will be stored in the directory
+# ${CERT_DIR}/example.com
 example.com www.example.com wiki.example.com
+
+# Using the alias 'certalias' create certificate for 'example.net' with
+# alternate name 'www.example.net' and store it in the directory
+# ${CERTDIR}/certalias
+example.net www.example.net > certalias
+
+# Using the alias 'service_example_com' create a wildcard certificate for
+# '*.service.example.com' and store it in the directory
+# ${CERTDIR}/service_example_com
+# NOTE: It is NOT a certificate for 'service.example.com'
+*.service.example.com > service_example_com
+
+# Using the alias 'star_service_example_org' create a wildcard certificate for
+# '*.service.example.org' with an alternative name of `service.example.org'
+# and store it in the directory ${CERTDIR}/star_service_example_org
+# NOTE: It is a certificate for 'service.example.org'
+*.service.example.org service.example.org  > star_service_example_org
+
+# Create a certificate for 'service.example.net' with an alternative name of
+# '*.service.example.net' (which is a wildcard domain) and store it in the
+# directory ${CERTDIR}/service.example.net
+service.example.net *.service.example.net
