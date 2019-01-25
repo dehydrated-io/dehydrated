@@ -1,0 +1,155 @@
+.TH DEHYDRATED 1 2018-01-13 "Dehydrated ACME Client"
+.SH NAME
+dehydrated \- ACME client implemented as a shell-script
+.SH SYNOPSIS
+.B dehydrated
+[\fBcommand\fR [\fBargument\fR]]
+[\fBargument\fR [\fBargument\fR]]
+.IR ...
+.SH DESCRIPTION
+A client for ACME-based Certificate Authorities, such as LetsEncrypt.  It can
+be used to request and obtain TLS certificates from an ACME-based
+certificate authority.
+
+Before any certificates can be requested, Dehydrated needs
+to acquire an account with the Certificate Authorities. Optionally, an email
+address can be provided.  It will be used to e.g. notify about expiring
+certificates. You will usually need to accept the Terms of Service of the CA.
+Dehydrated will notify if no account is configured. Run with \fB--register
+--accept-terms\fR to create a new account.
+
+Next, all domain names must be provided in domains.txt. The format is line
+based: If the file contains two lines "example.com" and "example.net",
+Dehydrated will request two certificate, one for "example.com" and the other
+for "example.net". A single line while "example.com example.net" will request a
+single certificate valid for both "example.net" and "example.com" through the \fISubject
+Alternative Name\fR (SAN) field.
+
+For the next step, one way of verifying domain name ownership needs to be
+configured.  Dehydrated implements \fIhttp-01\fR and \fIdns-01\fR verification. 
+
+The \fIhttp-01\fR verification provides proof of ownership by providing a
+challenge token. In order to do that, the directory referenced in the
+\fIWELLKNOWN\fR config variable needs to be exposed at
+\fIhttp://{domain}/.well-known/acme-challenge/\fR, where {domain} is every
+domain name specified in \fIdomains.txt\fR.  Dehydrated does not provide its
+own challenge responder, but relies on an existing web server to provide the
+challenge response.  See \fIwellknown.md\fR for configuration examples of
+popular web servers.
+
+The \fIdns-01\fR verification works by providing a challenge token through DNS.
+This is especially interesting for hosts that cannot be exposed to the public
+Internet.  Because adding records to DNS zones is oftentimes highly specific to
+the software or the DNS provider at hand, there are many third party hooks
+available for dehydrated.  See \fIdns-verification.md\fR for hooks for popular
+DNS servers and DNS hosters.
+
+Finally, the certificates need to be requested and updated on a regular basis.
+This can happen through a cron job or a timer. Initially, you may enforce this
+by invoking \fIdehydrated -c\fR manually.
+
+After a successful run, certificates are stored in
+\fI/etc/dehydrated/certs/{domain}\fR, where {domain} is the domain name in the
+first column of \fIdomains.txt\fR.
+
+.SH OPTIONS
+
+.BR Commands
+.TP
+.BR \-\-version ", " \-v
+Print version information
+.TP
+.BR \-\-register
+Register account key
+.TP
+.BR \-\-account
+Update account contact information
+.TP
+.BR \-\-cron ", " \-c
+Sign/renew non\-existent/changed/expiring certificates.
+.TP
+.BR \-\-signcsr ", " \-s " " \fIpath/to/csr.pem\fR
+Sign a given CSR, output CRT on stdout (advanced usage)
+.TP
+.BR \-\-revoke ", " \-r " " \fIpath/to/cert.pem\fR
+Revoke specified certificate
+.TP
+.BR \-\-cleanup ", " \-gc
+Move unused certificate files to archive directory
+.TP
+.BR \-\-help ", " \-h
+Show help text
+.TP
+.BR \-\-env ", " \-e
+Output configuration variables for use in other scripts
+
+.PP
+.BR Parameters
+.TP
+.BR \-\-accept\-terms
+Accept CAs terms of service
+.TP
+.BR \-\-full\-chain ", " \-fc
+Print full chain when using \fB\-\-signcsr\fR
+.TP
+.BR \-\-ipv4 ", " \-4
+Resolve names to IPv4 addresses only
+.TP
+.BR \-\-ipv6 ", " \-6
+Resolve names to IPv6 addresses only
+.TP
+.BR \-\-domain ", " \-d " " \fIdomain.tld\fR
+Use specified domain name(s) instead of domains.txt entry (one certificate!)
+.TP
+.BR \-\-keep\-going ", " \-g
+Keep going after encountering an error while creating/renewing multiple
+certificates in cron mode
+.TP
+.BR \-\-force ", " \-x
+Force renew of certificate even if it is longer valid than value in RENEW_DAYS
+.TP
+.BR \-\-no\-lock ", " \-n
+Don't use lockfile (potentially dangerous!)
+.TP
+.BR \-\-lock\-suffix " " \fIexample.com\fR
+Suffix lockfile name with a string (useful for use with \-d)
+.TP
+.BR \-\-ocsp
+Sets option in CSR indicating OCSP stapling to be mandatory
+.TP
+.BR \-\-privkey ", " \-p " " \fIpath/to/key.pem\fR
+Use specified private key instead of account key (useful for revocation)
+.TP
+.BR \-\-config ", " \-f " " \fIpath/to/config\fR
+Use specified config file
+.TP
+.BR \-\-hook ", " \-k " " \fIpath/to/hook.sh\fR
+Use specified script for hooks
+.TP
+.BR \-\-out ", " \-o " " \fIcerts/directory\fR
+Output certificates into the specified directory
+.TP
+.BR \-\-challenge ", " \-t " " \fI[http\-01|dns\-01]\fR
+Which challenge should be used? Currently http\-01 and dns\-01 are supported
+.TP
+.BR \-\-algo ", " \-a " " \fI[rsa|prime256v1|secp384r1]\fR
+Which public key algorithm should be used? Supported: rsa, prime256v1 and
+secp384r1
+.SH DIAGNOSTICS
+The program exits 0 if everything was fine, 1 if an error occurred.
+.SH BUGS
+Please report any bugs that you may encounter at the project web site
+.UR https://github.com/lukas2511/dehydrated/issues
+.UE .
+.SH AUTHOR
+Dehydrated was written by Lukas Schauer. This man page was contributed by
+Daniel Molkentin.
+.SH COPYRIGHT
+Copyright 2015-2018 by Lukas Schauer and the respective contributors.
+Provided under the MIT License. See the LICENSE file that accompanies the
+distribution for licensing information.
+.SH SEE ALSO
+Full documentation along with configuration examples are provided in the \fIdocs\fR
+directory of the distribution, or at
+.UR https://github.com/lukas2511/dehydrated/tree/master/docs
+.UE .
