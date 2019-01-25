@@ -1,3 +1,11 @@
+dehydrated (0.6.2-byte1) xenial; urgency=medium
+
+  [ Philip van Reeuwijk ]
+  * pull upstream 0.6.2
+  * tag 0.6.2-byte1
+
+ -- Philip van Reeuwijk <phvr@phvr>  Fri, 25 Jan 2019 10:41:05 +0100
+
 dehydrated (0.3.1-byte1) xenial; urgency=medium
 
   [ Ingrid ]
