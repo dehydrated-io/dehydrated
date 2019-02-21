@@ -69,6 +69,7 @@ store_configvars() {
   __RENEW_DAYS="${RENEW_DAYS}"
   __IP_VERSION="${IP_VERSION}"
   __CREATE_DIRS="${CREATE_DIRS}"
+  __ACCOUNTDIR="${ACCOUNTDIR}"
 }
 
 reset_configvars() {
@@ -84,6 +85,7 @@ reset_configvars() {
   RENEW_DAYS="${__RENEW_DAYS}"
   IP_VERSION="${__IP_VERSION}"
   CREATE_DIRS="${__CREATE_DIRS}"
+  ACCOUNTDIR="${__ACCOUNTDIR}"
 }
 
 hookscript_bricker_hook() {
@@ -234,6 +236,7 @@ load_config() {
 
   # Create new account directory or symlink to account directory from old CA
   CAHASH="$(echo "${CA}" | urlbase64)"
+  [[ -n "${PARAM_ACCOUNTDIR:-}" ]] && ACCOUNTDIR="${PARAM_ACCOUNTDIR}"
   [[ -z "${ACCOUNTDIR}" ]] && ACCOUNTDIR="${BASEDIR}/accounts"
   if [[ ! -e "${ACCOUNTDIR}/${CAHASH}" ]]; then
     OLDCAHASH="$(echo "${OLDCA}" | urlbase64)"
@@ -1653,6 +1656,18 @@ main() {
           PARAM_DOMAIN="${1}"
         else
           PARAM_DOMAIN="${PARAM_DOMAIN} ${1}"
+         fi
+        ;;
+
+      # PARAM_Usage: --account-dir path/to/directory 
+      # PARAM_Description: Use specified directory instead of /data/web/.dehydrated/accounts/
+      --account-dir)
+        shift 1
+        check_parameters "${1:-}"
+        if [[ -z "${PARAM_ACCOUNTDIR:-}" ]]; then
+          PARAM_ACCOUNTDIR="${1}"
+        else
+          PARAM_ACCOUNTDIR="${PARAM_ACCOUNTDIR} ${1}"
          fi
         ;;
 
