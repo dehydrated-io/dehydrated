@@ -1,3 +1,13 @@
+dehydrated (0.6.2-byte2) xenial; urgency=medium
+
+  [ Philip van Reeuwijk ]
+  * add --account-dir param and build scripts
+
+  [ Rick van de Loo ]
+  * remove not working buildscript
+
+ -- Rick van de Loo <vdloo@workstation4>  Thu, 21 Feb 2019 11:47:47 +0100
+
 dehydrated (0.6.2-byte1) xenial; urgency=medium
 
   [ Philip van Reeuwijk ]
