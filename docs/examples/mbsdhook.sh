@@ -25,6 +25,8 @@
 #-
 # Example hook for deployment on MirBSD, with mbsdcert.sh from this
 # directory serving as a filter for the incoming data.
+# - crontab:
+#  15 8 * * * /bin/mksh /home/acme/repo/dehydrated/dehydrated -c | /usr/bin/logger -t dehydrated
 
 print -nr -- "D: mbsdhook.sh invoked with: "
 for i in "$@"; do
