@@ -978,7 +978,7 @@ command_version() {
   revision="$(cd "${SCRIPTDIR}"; git rev-parse HEAD 2>/dev/null || echo "unknown")"
   echo "GIT-Revision: ${revision}"
   echo ""
-  if [[ "${OSTYPE}" = "FreeBSD" ]]; then
+  if [[ "${OSTYPE}" =~ "BSD" ]]; then
     echo "OS: $(uname -sr)"
   else
     echo "OS: $(cat /etc/issue | grep -v ^$ | head -n1 | _sed 's/\\(r|n|l) .*//g')"
@@ -987,15 +987,15 @@ command_version() {
   [[ -n "${BASH_VERSION:-}" ]] && echo " bash: ${BASH_VERSION}"
   [[ -n "${ZSH_VERSION:-}" ]] && echo " zsh: ${ZSH_VERSION}"
   echo " curl: $(curl --version 2>&1 | head -n1 | cut -d" " -f1-2)"
-  if [[ "${OSTYPE}" = "FreeBSD" ]]; then
-    echo " awk, sed, mktemp: FreeBSD base system versions"
+  if [[ "${OSTYPE}" =~ "BSD" ]]; then
+    echo " awk, sed, mktemp, grep, diff: BSD base system versions"
   else
     echo " awk: $(awk -W version 2>&1 | head -n1)"
     echo " sed: $(sed --version 2>&1 | head -n1)"
     echo " mktemp: $(mktemp --version 2>&1 | head -n1)"
+    echo " grep: $(grep --version 2>&1 | head -n1)"
+    echo " diff: $(diff --version 2>&1 | head -n1)"
   fi
-  echo " grep: $(grep --version 2>&1 | head -n1)"
-  echo " diff: $(diff --version 2>&1 | head -n1)"
   echo " openssl: $("${OPENSSL}" version 2>&1)"
 
   exit 0
