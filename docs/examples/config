@@ -23,6 +23,8 @@
 
 # Path to certificate authority (default: https://acme-v02.api.letsencrypt.org/directory)
 #CA="https://acme-v02.api.letsencrypt.org/directory"
+# v2 staging CA, for testing the setup before going productive
+#CA="https://acme-staging-v02.api.letsencrypt.org/directory"
 
 # Path to old certificate authority
 # Set this value to your old CA value when upgrading from ACMEv1 to ACMEv2 under a different endpoint.
