@@ -178,10 +178,14 @@ startup_hook() {
 }
 
 exit_hook() {
+  local ERROR="${1:-}"
+
   # This hook is called at the end of the cron command and can be used to
   # do some final (cleanup or other) tasks.
-
-  :
+  #
+  # Parameters:
+  # - ERROR
+  #   Contains error message if dehydrated exits with error
 }
 
 HANDLER="$1"; shift

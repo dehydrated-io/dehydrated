@@ -5,6 +5,7 @@ This file contains a log of major changes in dehydrated
 ## Changed
 - OCSP refresh interval is now configurable
 - Implemented POST-as-GET
+- Call exit_hook on errors (with error-message as first parameter)
 
 ## Added
 - Initial support for tls-alpn-01 validation
