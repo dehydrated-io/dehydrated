@@ -26,7 +26,7 @@
 # Example hook for deployment on MirBSD, with mbsdcert.sh from this
 # directory serving as a filter for the incoming data.
 # - crontab:
-#  15 8 * * * /bin/mksh /home/acme/repo/dehydrated/dehydrated -c | /usr/bin/logger -t dehydrated
+#  15 8 * * 0 /bin/mksh /home/acme/repo/dehydrated/dehydrated -c | /usr/bin/logger -t dehydrated
 # - config (/home/acme/config@ -> /home/acme/certbot/config)
 #  BASEDIR=/home/acme/certbot
 #  WELLKNOWN=/var/www/htdocs/.well-known/acme-challenge
