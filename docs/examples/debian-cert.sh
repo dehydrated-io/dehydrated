@@ -163,6 +163,7 @@ function svr {
 	else
 		print -ru1 "W: errorlevel $rv trying to $*"
 	fi
+	#(( rv )) || print -ru1 "I: ok trying to $*"
 }
 
 # restart affected services
