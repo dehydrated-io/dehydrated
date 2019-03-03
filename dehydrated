@@ -710,7 +710,7 @@ sign_csr() {
   for authorization in ${authorizations[*]}; do
     if [[ "${API}" -eq 2 ]]; then
       # Receive authorization ($authorization is authz uri)
-      response="$(http_request get "$(echo "${authorization}" | _sed -e 's/\"(.*)".*/\1/')" | clean_json)"
+      response="$(signed_request "$(echo "${authorization}" | _sed -e 's/\"(.*)".*/\1/')" "" | clean_json)"
       identifier="$(echo "${response}" | get_json_dict_value identifier | get_json_string_value value)"
       echo " + Handling authorization for ${identifier}"
     else
@@ -802,7 +802,11 @@ sign_csr() {
 
     while [[ "${reqstatus}" = "pending" ]]; do
       sleep 1
-      result="$(http_request get "${challenge_uris[${idx}]}")"
+      if [[ "${API}" -eq 2 ]]; then
+        result="$(signed_request "${challenge_uris[${idx}]}" "")"
+      else
+        result="$(http_request get "${challenge_uris[${idx}]}")"
+      fi
       reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
     done
 
@@ -850,7 +854,7 @@ sign_csr() {
     crt="$( printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" )"
   else
     result="$(signed_request "${finalize}" '{"csr": "'"${csr64}"'"}' | clean_json | get_json_string_value certificate)"
-    crt="$(http_request get "${result}")"
+    crt="$(signed_request "${result}" "")"
   fi
 
   # Try to load the certificate to detect corruption
