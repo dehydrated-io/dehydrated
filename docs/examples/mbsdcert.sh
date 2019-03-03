@@ -1,7 +1,7 @@
 #!/bin/mksh
 # -*- mode: sh -*-
 #-
-# Copyright © 2018
+# Copyright © 2018, 2019
 #	mirabilos <mirabilos@evolvis.org>
 #
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -155,6 +155,36 @@ if ! ln /etc/ssl/private/default.key /etc/ssl/private/imapd.pem; then
 	print -ru2 "E: could not hardlink /etc/ssl/private/imapd.pem"
 	exit 3
 fi
+
+readonly p=/sbin:/bin:/usr/sbin:/usr/bin
+rc=0
+function svr {
+	local rv iserr=$1; shift
+	/usr/bin/env -i PATH=$p HOME=/ "$@" 2>&1
+	rv=$?
+	(( rv )) && if (( iserr )); then
+		print -ru2 "E: errorlevel $rv trying to $*"
+		rc=1
+	else
+		print -ru1 "W: errorlevel $rv trying to $*"
+	fi
+	#(( rv )) || print -ru1 "I: ok trying to $*"
+}
+
+function tkill {
+	local x=$*
+
+	[[ -n $x ]] && kill $x
+}
+
+# restart affected services
+#pid= cmd=
+#{ read pid; IFS= read -r cmd; } </var/run/sendmail.pid
+#tkill $pid $(cat /var/www/logs/httpd.pid 2>/dev/null)
+#sleep 1
+#svr 1 /usr/sbin/httpd -u -DSSL
+#[[ -n $cmd ]] && svr 1 $cmd
+#exit $rc
 
 # ideally one would only restart affected services here
 print -ru2 "W: reboot this system within the next four weeks!"
