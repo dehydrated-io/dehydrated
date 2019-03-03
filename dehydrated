@@ -38,7 +38,7 @@ ORIGARGS="$@"
 # Create (identifiable) temporary files
 _mktemp() {
   # shellcheck disable=SC2068
-  mktemp ${@:-} "${TMPDIR:-/tmp}/dehydrated-XXXXXX"
+  mktemp "$@" "${TMPDIR:-/tmp}/dehydrated-XXXXXX"
 }
 
 # Check for script dependencies
@@ -1740,5 +1740,5 @@ OSTYPE="$(uname)"
 
 if [[ ! "${DEHYDRATED_NOOP:-}" = "NOOP" ]]; then
   # Run script
-  main "${@:-}"
+  main "$@"
 fi
