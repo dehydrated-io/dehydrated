@@ -9,6 +9,7 @@ This file contains a log of major changes in dehydrated
 
 ## Added
 - Initial support for tls-alpn-01 validation
+- New hook: sync_cert (for syncing certificate files to disk, see example hook description)
 
 ## [0.6.2] - 2018-04-25
 ## Added
