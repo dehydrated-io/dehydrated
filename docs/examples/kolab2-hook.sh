@@ -27,6 +27,11 @@
 # directory serving as a filter for the incoming data.
 # - crontab:
 #  15 8 * * * /bin/mksh /home/acme/repo/dehydrated/dehydrated -c | /usr/bin/logger -t dehydrated
+# - config (/home/acme/config@ -> /home/acme/certbot/config)
+#  BASEDIR=/home/acme/certbot
+#  WELLKNOWN=/kolab/var/kolab/www/.well-known/acme-challenge
+#  HOOK=/home/acme/repo/dehydrated/docs/examples/kolab2-hook.sh
+# and set CONTACT_EMAIL and create /home/acme/certbot/domains.txt
 
 print -nr -- "D: kolab2-hook.sh invoked with: "
 for i in "$@"; do

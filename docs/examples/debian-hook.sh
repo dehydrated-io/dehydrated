@@ -1,7 +1,7 @@
 #!/bin/mksh
 # -*- mode: sh -*-
 #-
-# Copyright © 2018
+# Copyright © 2018, 2019
 #	mirabilos <mirabilos@evolvis.org>
 #
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -23,17 +23,17 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #-
-# Example hook for deployment on MirBSD, with mbsdcert.sh from this
+# Example hook for deployment on Debian, with debian-cert.sh from this
 # directory serving as a filter for the incoming data.
 # - crontab:
 #  15 8 * * * /bin/mksh /home/acme/repo/dehydrated/dehydrated -c | /usr/bin/logger -t dehydrated
 # - config (/home/acme/config@ -> /home/acme/certbot/config)
 #  BASEDIR=/home/acme/certbot
-#  WELLKNOWN=/var/www/htdocs/.well-known/acme-challenge
-#  HOOK=/home/acme/repo/dehydrated/docs/examples/mbsdhook.sh
+#  WELLKNOWN=/var/www/html/.well-known/acme-challenge
+#  HOOK=/home/acme/repo/dehydrated/docs/examples/debian-hook.sh
 # and set CONTACT_EMAIL and create /home/acme/certbot/domains.txt
 
-print -nr -- "D: mbsdhook.sh invoked with: "
+print -nr -- "D: debian-hook.sh invoked with: "
 for i in "$@"; do
 	print -nr -- "${i@Q} "
 done
@@ -44,7 +44,7 @@ case $1 {
 	# handled below
 	;;
 (startup_hook)
-	if (( (${EPOCHREALTIME%.*} - $(stat -f %m /etc/ssl/default.cer)) > \
+	if (( (${EPOCHREALTIME%.*} - $(stat -c %Y /etc/ssl/default.cer)) > \
 	    (66 * 86400) )); then
 		print -ru2 'E: /etc/ssl/default.cer is older than 66 days, smells fishy'
 	fi
@@ -57,7 +57,7 @@ case $1 {
 }
 
 # 1=deploy_cert 2=domain 3=privkey 4=cert 5=cert+chain 6=chain 7=timestamp
-print '# from mbsdhook.sh' | \
+print '# from debian-hook.sh' | \
     cat - "$3" "$4" "$6" | \
-    sudo /usr/local/libexec/mbsdcert.sh
+    sudo /usr/local/libexec/debian-cert.sh
 # see there for the rest
