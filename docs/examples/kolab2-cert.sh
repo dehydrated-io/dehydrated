@@ -158,5 +158,6 @@ while (( nrenames-- )); do
 	fi
 done
 
+# ideally one would only restart affected services here
 print -ru2 "W: reboot this system within the next four weeks!"
 exit 0

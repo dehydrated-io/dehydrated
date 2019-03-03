@@ -156,5 +156,6 @@ if ! ln /etc/ssl/private/default.key /etc/ssl/private/imapd.pem; then
 	exit 3
 fi
 
+# ideally one would only restart affected services here
 print -ru2 "W: reboot this system within the next four weeks!"
 exit 0
