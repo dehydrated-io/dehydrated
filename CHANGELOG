@@ -2,9 +2,6 @@
 This file contains a log of major changes in dehydrated
 
 ## [x.x.x] - xxxx-xx-xx
-## Removed
-- Removed API version 1 support
-
 ## Changed
 - OCSP refresh interval is now configurable
 - Implemented POST-as-GET
