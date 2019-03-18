@@ -54,42 +54,6 @@ deploy_cert() {
     #   Timestamp when the specified certificate was created.
 
 
-	### Below is the script to generate certificate pinning files.
-	### To do that properly you MUST have any CSR generated for given $DOMAIN in associated folder.
-	### The first "if" checks allows to include domains which do not require certificate pinning.
-	### To completely bypass pinning generator script replace the first string with
-	### 
-	### if [[ ! ${DOMAIN} == *"..."* ]]; then
-	###
-	### that "if" will always give "false" as domain name cannot contain triple dots "..."
-	###
-	
-	if [[ ! ${DOMAIN} == *"SPECIAL.COM"* ]]; then
-
-		echo " + Generating HPKP information..."
-
-		case "${KEY_ALGO}" in
-			rsa) hpkp="$(openssl rsa -in ${BASEDIR}/certs/${DOMAIN}/privkey.pem -outform der -pubout 2>/dev/null | openssl dgst -sha256 -binary | openssl enc -base64)";;
-			prime256v1|secp384r1) hpkp="$(openssl ec -in ${BASEDIR}/certs/${DOMAIN}/privkey.pem -outform der -pubout 2>/dev/null | openssl dgst -sha256 -binary | openssl enc -base64)";;
-		esac
-
-		hpbkp="$(openssl req -pubkey < ${BASEDIR}/certs/${DOMAIN}/backup.csr | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64)"
-
-		thekey="pin-sha256="\""$hpkp"\""; "
-		thekey2="pin-sha256="\""$hpbkp"\""; "
-		tmpa="add_header public-key-pins '"$thekey$thekey2
-		tmpb="max-age=2678400; includeSubDomains;';"
-
-		tmpc=$tmpa$tmpb
-
-		echo $tmpc > "${BASEDIR}/certs/${DOMAIN}/hpkp-${TIMESTAMP}.txt"
-		ln -sf "${BASEDIR}/certs/${DOMAIN}/hpkp-${TIMESTAMP}.txt" "${BASEDIR}/certs/${DOMAIN}/hpkp.txt"
-	else
-		echo "nothing yet"
-	fi
-
-	### END of Certificate pinning script
-	
 # Testing Nginx config and reloading after new certificate issued
 /usr/sbin/nginx -t && /usr/sbin/nginx -s reload || echo "NGINX CONFIG WRONG!"
 
