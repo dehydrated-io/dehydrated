@@ -3,6 +3,46 @@ This file contains a log of major changes in dehydrated
 
 ## [x.x.x] - xxxx-xx-xx
 ## Changed
+- OCSP refresh interval is now configurable
+- Implemented POST-as-GET
+- Call exit_hook on errors (with error-message as first parameter)
+
+## Added
+- Initial support for tls-alpn-01 validation
+- New hook: sync_cert (for syncing certificate files to disk, see example hook description)
+
+## [0.6.2] - 2018-04-25
+## Added
+- New deploy_ocsp hook
+- Allow account registration with custom key
+
+## Changed
+- Don't walk certificate chain for ACMEv2 (certificate contains chain by default)
+- Improved documentation on wildcards
+
+## Fixes
+- Added workaround for compatibility with filesystem ACLs
+- Close unwanted external file-descriptors
+- Fixed JSON parsing on force-renewal
+- Fixed cleanup of challenge files/dns-entries on validation errors
+- A few more minor fixes
+
+## [0.6.1] - 2018-03-13
+## Changed
+- Use new ACME v2 endpoint by default
+
+## [0.6.0] - 2018-03-11
+## Changed
+- Challenge validation loop has been modified to loop over authorization identifiers instead of altnames (ACMEv2 + wildcard support)
+- Removed LICENSE parameter from config (terms of service is now acquired directly from the CA directory)
+
+## Added
+- Support for ACME v02 (including wildcard certificates!)
+- New hook: generate_csr (see example hook script for more information)
+- Calling random hook on startup to make it clear to hook script authors that unknown hooks should just be ignored...
+
+## [0.5.0] - 2018-01-13
+## Changed
 - Certificate chain is now cached (CHAINCACHE)
 - OpenSSL binary path is now configurable (OPENSSL)
 - Cleanup now also moves revoked certificates
@@ -11,6 +51,8 @@ This file contains a log of major changes in dehydrated
 - New feature for updating contact information (--account)
 - Allow automatic cleanup on exit (AUTO_CLEANUP)
 - Initial support for fetching OCSP status to be used for OCSP stapling (OCSP_FETCH)
+- Certificates can now have aliases to create multiple certificates with identical set of domains (see --alias and domains.txt documentation)
+- Allow dehydrated to run as specified user (/group)
 
 ## [0.4.0] - 2017-02-05
 ## Changed

@@ -9,5 +9,9 @@ To avoid this, please set the CA property to the Let’s Encrypt staging server 
 
 ```bash
 CA="https://acme-staging.api.letsencrypt.org/directory"
-CA_TERMS="https://acme-staging.api.letsencrypt.org/terms"
 ```
+
+# ACMEv2 staging
+
+You can use `CA="https://acme-staging-v02.api.letsencrypt.org/directory"` to test dehydrated with
+the ACMEv2 staging endpoint.

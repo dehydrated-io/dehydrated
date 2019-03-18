@@ -60,4 +60,3 @@ HOOK: clean_challenge lukas.im blablabla blablabla.supersecure www.lukas.im blub
 HOOK: deploy_cert lukas.im /etc/dehydrated/certs/lukas.im/privkey.pem /etc/dehydrated/certs/lukas.im/cert.pem /etc/dehydrated/certs/lukas.im/fullchain.pem /etc/dehydrated/certs/lukas.im/chain.pem 1460152408
  + Done!
 ```
-
