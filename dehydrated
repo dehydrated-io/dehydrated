@@ -564,6 +564,7 @@ http_request() {
 
       # remove temporary domains.txt file if used
       [[ "${COMMAND:-}" = "sign_domains" && -n "${PARAM_DOMAIN:-}" && -n "${DOMAINS_TXT:-}" ]] && rm "${DOMAINS_TXT}"
+      [[ "${COMMAND:-}" = "sign_domains" && -n "${PARAM_SINGLE:-}" && -n "${DOMAINS_TXT:-}" ]] && rm "${DOMAINS_TXT}"
       exit 1
     fi
   fi
@@ -1177,6 +1178,10 @@ command_sign_domains() {
     mkdir "${CHAINCACHE}"
   fi
 
+  if [[ -n "${PARAM_DOMAIN:-}" && -n "${PARAM_SINGLE:-}" ]]; then
+    _exiterr "--single and --domain cannot be used at the same time"
+  fi
+
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
     DOMAINS_TXT="$(_mktemp)"
     if [[ -n "${PARAM_ALIAS:-}" ]]; then
@@ -1190,6 +1195,13 @@ command_sign_domains() {
     fi
   else
     _exiterr "domains.txt not found and --domain not given"
+  fi
+
+  if [[ -n "${PARAM_SINGLE:-}" ]]; then
+    local actual_domains_txt=${DOMAINS_TXT}
+    DOMAINS_TXT="$(_mktemp)"
+    grep -E "^${PARAM_SINGLE}( |$)" ${actual_domains_txt} > ${DOMAINS_TXT}
+    unset actual_domains_txt
   fi
 
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
@@ -1374,6 +1386,7 @@ command_sign_domains() {
 
   # remove temporary domains.txt file if used
   [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"
+  [[ -n "${PARAM_SINGLE:-}" ]] && rm -f "${DOMAINS_TXT}"
 
   [[ -n "${HOOK}" ]] && "${HOOK}" "exit_hook"
   if [[ "${AUTO_CLEANUP}" == "yes" ]]; then
@@ -1754,6 +1767,14 @@ main() {
         shift 1
         check_parameters "${1:-}"
         PARAM_KEY_ALGO="${1}"
+        ;;
+
+      # PARAM_Usage: --single domain.tld
+      # PARAM_Description: Only process a single domain from domains.txt (to be used with -c)
+      --single)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_SINGLE="${1}"
         ;;
 
       *)
