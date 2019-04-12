@@ -164,6 +164,11 @@ load_config() {
     BASEDIR="$(dirname "${CONFIG}")"
     # shellcheck disable=SC1090
     . "${CONFIG}"
+  elif [[ -e /usr/bin/dehydrated ]]; then
+    BASEDIR=/etc/dehydrated
+    echo "#" >&2
+    echo "# !! WARNING !! No main config file found, using default config!" >&2
+    echo "#" >&2
   else
     _exiterr "Specified config file doesn't exist."
   fi
