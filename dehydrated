@@ -848,13 +848,26 @@ sign_csr() {
   fi
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
-  echo " + Requesting certificate..."
   csr64="$( <<<"${csr}" "${OPENSSL}" req -config "${OPENSSL_CNF}" -outform DER | urlbase64)"
   if [[ ${API} -eq 1 ]]; then
+    echo " + Requesting certificate..."
     crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | "${OPENSSL}" base64 -e)"
     crt="$( printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" )"
   else
-    result="$(signed_request "${finalize}" '{"csr": "'"${csr64}"'"}' | clean_json | get_json_string_value certificate)"
+    echo " + Finalizing order..."
+    order="$(echo ${finalize} | sed 's,/*[^/]\+/*$,,')"
+    result="$(signed_request "${finalize}" '{"csr": "'"${csr64}"'"}' | clean_json)"
+    reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
+
+    while [[ "${reqstatus}" = "processing" ]]; do
+      echo " + Waiting for certificate processing..."
+      sleep 1
+      result="$(signed_request "${order}" '{}' | clean_json)"
+      reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
+    done
+
+    echo " + Requesting certificate..."
+    result="$(printf "${result}" | get_json_string_value certificate)"
     crt="$(signed_request "${result}" "")"
   fi
 
