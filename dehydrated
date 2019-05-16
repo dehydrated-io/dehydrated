@@ -1195,7 +1195,14 @@ command_sign_domains() {
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
   ORIGIFS="${IFS}"
   IFS=$'\n'
-  for line in $(<"${DOMAINS_TXT}" tr -d '\r' | awk '{print tolower($0)}' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' -e 's/([^ ])>/\1 >/g' -e 's/> />/g' | (grep -vE '^(#|$)' || true)); do
+  line=''
+  for part in $(<"${DOMAINS_TXT}" tr -d '\r' | awk '{print tolower($0)}' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' -e 's/([^ ])>/\1 >/g' -e 's/> />/g' | (grep -vE '^(#|$)' || true)); do
+    if [[ "${part: -1}" == '\' ]]; then
+      line="${line}${part:0:-1}"
+      continue
+    else
+      line="${line}${part}"
+    fi
     reset_configvars
     IFS="${ORIGIFS}"
     alias="$(grep -Eo '>[^ ]+' <<< "${line}" || true)"
@@ -1206,6 +1213,7 @@ command_sign_domains() {
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
     morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
     [ ${aliascount} -lt 1 ] && alias="${domain}" || alias="${alias#>}"
+    line=''
     export alias
 
     if [[ -z "${morenames}" ]];then
