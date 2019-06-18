@@ -402,6 +402,8 @@ init_system() {
   # Read account information or request from CA if missing
   if [[ -e "${ACCOUNT_KEY_JSON}" ]]; then
     ACCOUNT_ID="$(cat "${ACCOUNT_KEY_JSON}" | get_json_int_value id)"
+  fi
+  if [ -n "${ACCOUNT_ID:-}" ]; then
     if [[ ${API} -eq 1 ]]; then
       ACCOUNT_URL="${CA_REG}/${ACCOUNT_ID}"
     else
