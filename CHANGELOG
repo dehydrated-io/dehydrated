@@ -1,6 +1,10 @@
 # Change Log
 This file contains a log of major changes in dehydrated
 
+## [0.6.4] - 2019-06-25
+## Changed
+- Fetch account ID from Location header instead of account json
+
 ## [0.6.3] - 2019-06-25
 ## Changed
 - OCSP refresh interval is now configurable
