@@ -401,7 +401,16 @@ init_system() {
 
   # Read account information or request from CA if missing
   if [[ -e "${ACCOUNT_KEY_JSON}" ]]; then
+    if [[ -z "$(cat "${ACCOUNT_KEY_JSON}" | get_json_int_value id)" ]]; then
+      echo "+ Fetching account information..."
+      ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"onlyReturnExisting": true}' 4>&1 | grep -i ^Location: | awk '{print $2}' | tr -d '\r\n')"
+      ACCOUNT_INFO="$(signed_request "${ACCOUNT_URL}" '{}')"
+      echo "${ACCOUNT_INFO}" > "${ACCOUNT_KEY_JSON}"
+    fi
     ACCOUNT_ID="$(cat "${ACCOUNT_KEY_JSON}" | get_json_int_value id)"
+    if [[ -z "${ACCOUNT_ID}" ]]; then
+      _exiterr "Unknown error on fetching account information"
+    fi
     if [[ ${API} -eq 1 ]]; then
       ACCOUNT_URL="${CA_REG}/${ACCOUNT_ID}"
     else
