@@ -1,6 +1,10 @@
 # Change Log
 This file contains a log of major changes in dehydrated
 
+## [0.6.5] - 2019-06-26
+## Fixed
+- Fixed broken APIv1 compatibility from last update
+
 ## [0.6.4] - 2019-06-25
 ## Changed
 - Fetch account ID from Location header instead of account json
