@@ -17,7 +17,7 @@ umask 077 # paranoid umask, we're creating private keys
 exec 3>&-
 exec 4>&-
 
-VERSION="0.6.4"
+VERSION="0.6.5"
 
 # Find directory in which this script is stored by traversing all symbolic links
 SOURCE="${0}"
@@ -403,20 +403,21 @@ init_system() {
 
   # Read account information or request from CA if missing
   if [[ -e "${ACCOUNT_KEY_JSON}" ]]; then
-    if [[ ! -e "${ACCOUNT_ID_JSON}" ]]; then
-      echo "+ Fetching account ID..."
-      ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"onlyReturnExisting": true}' 4>&1 | grep -i ^Location: | awk '{print $2}' | tr -d '\r\n')"
-      ACCOUNT_ID="${ACCOUNT_URL##*/}"
-      echo '{"id": "'"${ACCOUNT_ID}"'"}' > "${ACCOUNT_ID_JSON}"
-    else
-      ACCOUNT_ID="$(cat "${ACCOUNT_ID_JSON}" | get_json_string_value id)"
-    fi
-    if [[ -z "${ACCOUNT_ID}" ]]; then
-      _exiterr "Unknown error on fetching account information"
-    fi
     if [[ ${API} -eq 1 ]]; then
+      ACCOUNT_ID="$(cat "${ACCOUNT_KEY_JSON}" | get_json_int_value id)"
       ACCOUNT_URL="${CA_REG}/${ACCOUNT_ID}"
     else
+      if [[ ! -e "${ACCOUNT_ID_JSON}" ]]; then
+        echo "+ Fetching account ID..."
+        ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"onlyReturnExisting": true}' 4>&1 | grep -i ^Location: | awk '{print $2}' | tr -d '\r\n')"
+        ACCOUNT_ID="${ACCOUNT_URL##*/}"
+        echo '{"id": "'"${ACCOUNT_ID}"'"}' > "${ACCOUNT_ID_JSON}"
+      else
+        ACCOUNT_ID="$(cat "${ACCOUNT_ID_JSON}" | get_json_string_value id)"
+      fi
+      if [[ -z "${ACCOUNT_ID}" ]]; then
+        _exiterr "Unknown error on fetching account information"
+      fi
       ACCOUNT_URL="${CA_ACCOUNT}/${ACCOUNT_ID}"
     fi
   else
