@@ -407,16 +407,16 @@ init_system() {
       ACCOUNT_ID="$(cat "${ACCOUNT_KEY_JSON}" | get_json_int_value id)"
       ACCOUNT_URL="${CA_REG}/${ACCOUNT_ID}"
     else
-      if [[ ! -e "${ACCOUNT_ID_JSON}" ]]; then
+      if [[ -e "${ACCOUNT_ID_JSON}" ]]; then
+        ACCOUNT_ID="$(cat "${ACCOUNT_ID_JSON}" | get_json_string_value id)"
+      else
         echo "+ Fetching account ID..."
         ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"onlyReturnExisting": true}' 4>&1 | grep -i ^Location: | awk '{print $2}' | tr -d '\r\n')"
         ACCOUNT_ID="${ACCOUNT_URL##*/}"
+        if [[ -z "${ACCOUNT_ID}" ]]; then
+          _exiterr "Unknown error on fetching account information"
+        fi
         echo '{"id": "'"${ACCOUNT_ID}"'"}' > "${ACCOUNT_ID_JSON}"
-      else
-        ACCOUNT_ID="$(cat "${ACCOUNT_ID_JSON}" | get_json_string_value id)"
-      fi
-      if [[ -z "${ACCOUNT_ID}" ]]; then
-        _exiterr "Unknown error on fetching account information"
       fi
       ACCOUNT_URL="${CA_ACCOUNT}/${ACCOUNT_ID}"
     fi
