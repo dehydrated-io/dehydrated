@@ -1371,7 +1371,7 @@ command_sign_domains() {
       if [[ "${update_ocsp}" = "yes" ]]; then
         echo " + Updating OCSP stapling file"
         ocsp_timestamp="$(date +%s)"
-        if grep -qE "^(0|(1\.0))\." <<< "$(${OPENSSL} version | awk '{print $2}')"; then
+        if grep -qE "^(OpenSSL (0|(1\.0))\.)|LibreSSL" <<< "$(${OPENSSL} version)"; then
           ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" -header "HOST" "$(echo "${ocsp_url}" | _sed -e 's/^http(s?):\/\///' -e 's/\/.*$//g')" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
         else
           ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
