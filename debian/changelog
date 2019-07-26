@@ -1,3 +1,11 @@
+dehydrated (0.6.5) xenial; urgency=medium
+
+  [ Alexander Grooff ]
+  * pull upstream 0.6.5
+  * tag 0.6.5-byte1
+
+ -- Alexander Grooff <alex@alex-pc>  Fri, 26 Jul 2019 14:02:47 +0200
+
 dehydrated (0.6.2-byte2) xenial; urgency=medium
 
   [ Philip van Reeuwijk ]
