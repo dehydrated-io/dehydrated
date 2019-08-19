@@ -5,6 +5,9 @@
 #
 # This script is licensed under The MIT License (see LICENSE for more information).
 
+# Globally silence SC2119: Use foo "$@" if function's $1 should mean script's $1.
+# shellcheck disable=SC2119
+
 set -e
 set -u
 set -o pipefail
@@ -29,12 +32,12 @@ done
 SCRIPTDIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 BASEDIR="${SCRIPTDIR}"
-ORIGARGS="$@"
+ORIGARGS=("$@")
 
 # Create (identifiable) temporary files
+# shellcheck disable=SC2120
 _mktemp() {
-  # shellcheck disable=SC2068
-  mktemp ${@:-} "${TMPDIR:-/tmp}/dehydrated-XXXXXX"
+  mktemp "$@" "${TMPDIR:-/tmp}/dehydrated-XXXXXX"
 }
 
 # Check for script dependencies
@@ -174,7 +177,11 @@ load_config() {
     fi
 
     # Allow globbing
-    [[ -n "${ZSH_VERSION:-}" ]] && set +o noglob || set +f
+    if [[ -n "${ZSH_VERSION:-}" ]]; then
+      set +o noglob
+    else
+      set +f
+    fi
 
     for check_config_d in "${CONFIG_D}"/*.sh; do
       if [[ -f "${check_config_d}" ]] && [[ -r "${check_config_d}" ]]; then
@@ -187,7 +194,11 @@ load_config() {
     done
 
     # Disable globbing
-    [[ -n "${ZSH_VERSION:-}" ]] && set -o noglob || set -f
+    if [[ -n "${ZSH_VERSION:-}" ]]; then
+      set -o noglob
+    else
+      set -f
+    fi
   fi
 
   # Check if we are running & are allowed to run as root
@@ -199,7 +210,7 @@ load_config() {
     if [[ -z "${DEHYDRATED_GROUP}" ]]; then
       if [[ "${EUID}" != "${TARGET_UID}" ]]; then
         echo "# INFO: Running $0 as ${DEHYDRATED_USER}"
-        exec sudo -u "${DEHYDRATED_USER}" "${0}" ${ORIGARGS}
+        exec sudo -u "${DEHYDRATED_USER}" "${0}" ${ORIGARGS[@]+"${ORIGARGS[@]}"}
       fi
     else
       TARGET_GID="$(getent group "${DEHYDRATED_GROUP}" | cut -d':' -f3)"
@@ -209,7 +220,7 @@ load_config() {
       fi
       if [[ "${EUID}" != "${TARGET_UID}" ]] || [[ "${EGID}" != "${TARGET_GID}" ]]; then
         echo "# INFO: Running $0 as ${DEHYDRATED_USER}/${DEHYDRATED_GROUP}"
-        exec sudo -u "${DEHYDRATED_USER}" -g "${DEHYDRATED_GROUP}" "${0}" ${ORIGARGS}
+        exec sudo -u "${DEHYDRATED_USER}" -g "${DEHYDRATED_GROUP}" "${0}" ${ORIGARGS[@]+"${ORIGARGS[@]}"}
       fi
     fi
   elif [[ -n "${DEHYDRATED_GROUP}" ]]; then
@@ -243,6 +254,7 @@ load_config() {
     fi
   fi
 
+  # shellcheck disable=SC1090
   [[ -f "${ACCOUNTDIR}/${CAHASH}/config" ]] && . "${ACCOUNTDIR}/${CAHASH}/config"
   ACCOUNT_KEY="${ACCOUNTDIR}/${CAHASH}/account_key.pem"
   ACCOUNT_KEY_JSON="${ACCOUNTDIR}/${CAHASH}/registration_info.json"
@@ -303,22 +315,20 @@ init_system() {
   fi
 
   if [[ ${API} -eq 1 ]]; then
-    # shellcheck disable=SC2015
-    CA_NEW_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-cert)" &&
-    CA_NEW_AUTHZ="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-authz)" &&
-    CA_NEW_REG="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-reg)" &&
-    CA_TERMS="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value terms-of-service)" &&
-    CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revoke-cert)" ||
+    { CA_NEW_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-cert)" &&
+      CA_NEW_AUTHZ="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-authz)" &&
+      CA_NEW_REG="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-reg)" &&
+      CA_TERMS="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value terms-of-service)" &&
+      CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revoke-cert)"; } ||
     _exiterr "Problem retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."
     # Since reg URI is missing from directory we will assume it is the same as CA_NEW_REG without the new part
     CA_REG=${CA_NEW_REG/new-reg/reg}
   else
-    # shellcheck disable=SC2015
-    CA_NEW_ORDER="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newOrder)" &&
-    CA_NEW_NONCE="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newNonce)" &&
-    CA_NEW_ACCOUNT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newAccount)" &&
-    CA_TERMS="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value termsOfService)" &&
-    CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revokeCert)" ||
+    { CA_NEW_ORDER="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newOrder)" &&
+      CA_NEW_NONCE="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newNonce)" &&
+      CA_NEW_ACCOUNT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newAccount)" &&
+      CA_TERMS="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value termsOfService)" &&
+      CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revokeCert)"; } ||
     _exiterr "Problem retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."
     # Since acct URI is missing from directory we will assume it is the same as CA_NEW_ACCOUNT without the new part
     CA_ACCOUNT=${CA_NEW_ACCOUNT/new-acct/acct}
@@ -342,12 +352,14 @@ init_system() {
       if [[ ! "${PARAM_ACCEPT_TERMS:-}" = "yes" ]]; then
         printf '\n' >&2
         printf 'To use dehydrated with this certificate authority you have to agree to their terms of service which you can find here: %s\n\n' "${CA_TERMS}" >&2
+        # shellcheck disable=SC2016
         printf 'To accept these terms of service run `%s --register --accept-terms`.\n' "${0}" >&2
         exit 1
       fi
 
       echo "+ Generating account key..."
-      local tmp_account_key="$(_mktemp)"
+      local tmp_account_key
+      tmp_account_key="$(_mktemp)"
       _openssl genrsa -out "${tmp_account_key}" "${KEYSIZE}"
       cat "${tmp_account_key}" > "${ACCOUNT_KEY}"
       rm "${tmp_account_key}"
@@ -404,11 +416,11 @@ init_system() {
   # Read account information or request from CA if missing
   if [[ -e "${ACCOUNT_KEY_JSON}" ]]; then
     if [[ ${API} -eq 1 ]]; then
-      ACCOUNT_ID="$(cat "${ACCOUNT_KEY_JSON}" | get_json_int_value id)"
+      ACCOUNT_ID="$(get_json_int_value id < "${ACCOUNT_KEY_JSON}")"
       ACCOUNT_URL="${CA_REG}/${ACCOUNT_ID}"
     else
       if [[ -e "${ACCOUNT_ID_JSON}" ]]; then
-        ACCOUNT_ID="$(cat "${ACCOUNT_ID_JSON}" | get_json_string_value id)"
+        ACCOUNT_ID="$(get_json_string_value id < "${ACCOUNT_ID_JSON}")"
       else
         echo "+ Fetching account ID..."
         ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"onlyReturnExisting": true}' 4>&1 | grep -i ^Location: | awk '{print $2}' | tr -d '\r\n')"
@@ -445,7 +457,9 @@ _sed() {
 # Print error message and exit with error
 _exiterr() {
   echo "ERROR: ${1}" >&2
-  [[ -n "${HOOK:-}" ]] && "${HOOK}" "exit_hook" "${1}" || true
+  if [[ -n "${HOOK:-}" ]]; then
+    "${HOOK}" "exit_hook" "${1}" || true
+  fi
   exit 1
 }
 
@@ -463,7 +477,7 @@ urlbase64() {
 # Convert hex string to binary data
 hex2bin() {
   # Remove spaces, add leading zero, escape as hex string and parse with printf
-  printf -- "$(cat | _sed -e 's/[[:space:]]//g' -e 's/^(.(.{2})*)$/0\1/' -e 's/(.{2})/\\x\1/g')"
+  printf -- '%b' "$(_sed -e 's/[[:space:]]//g' -e 's/^(.(.{2})*)$/0\1/' -e 's/(.{2})/\\x\1/g')"
 }
 
 # Get string value from json dictionary
@@ -523,20 +537,16 @@ http_request() {
   tempcont="$(_mktemp)"
   tempheaders="$(_mktemp)"
 
-  if [[ -n "${IP_VERSION:-}" ]]; then
-      ip_version="-${IP_VERSION}"
-  fi
-
   set +e
   if [[ "${1}" = "head" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
+    statuscode="$(curl ${IP_VERSION:+"-${IP_VERSION}"} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
     touch "${tempheaders}"
     curlret="${?}"
   elif [[ "${1}" = "get" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -L -s -w "%{http_code}" -o "${tempcont}" -D "${tempheaders}" "${2}")"
+    statuscode="$(curl ${IP_VERSION:+"-${IP_VERSION}"} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -L -s -w "%{http_code}" -o "${tempcont}" -D "${tempheaders}" "${2}")"
     curlret="${?}"
   elif [[ "${1}" = "post" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" "${2}" -D "${tempheaders}" -H 'Content-Type: application/jose+json' -d "${3}")"
+    statuscode="$(curl ${IP_VERSION:+"-${IP_VERSION}"} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" "${2}" -D "${tempheaders}" -H 'Content-Type: application/jose+json' -d "${3}")"
     curlret="${?}"
   else
     set -e
@@ -567,8 +577,8 @@ http_request() {
 
       # An exclusive hook for the {1}-request error might be useful (e.g., for sending an e-mail to admins)
       if [[ -n "${HOOK}" ]]; then
-        errtxt="$(cat ${tempcont})"
-        errheaders="$(cat ${tempheaders})"
+        errtxt="$(cat "${tempcont}")"
+        errheaders="$(cat "${tempheaders}")"
         "${HOOK}" "request_failure" "${statuscode}" "${errtxt}" "${1}" "${errheaders}"
       fi
 
@@ -701,7 +711,7 @@ sign_csr() {
     echo " + Requesting new certificate order from CA..."
     result="$(signed_request "${CA_NEW_ORDER}" '{"identifiers": '"${challenge_identifiers}"'}')"
 
-    order_authorizations="$(echo ${result} | get_json_array_value authorizations)"
+    order_authorizations="$(echo "${result}" | get_json_array_value authorizations)"
     finalize="$(echo "${result}" | get_json_string_value finalize)"
 
     local idx=0
@@ -742,6 +752,7 @@ sign_csr() {
 
     # Find challenge in authorization
     challenges="$(echo "${response}" | _sed 's/.*"challenges": \[(\{.*\})\].*/\1/')"
+    # shellcheck disable=SC1003
     challenge="$(<<<"${challenges}" _sed -e 's/^[^\[]+\[(.+)\]$/\1/' -e 's/\}(, (\{)|(\]))/}\'$'\n''\2/g' | grep \""${CHALLENGETYPE}"\" || true)"
     if [ -z "${challenge}" ]; then
       allowed_validations="$(grep -Eo '"type": "[^"]+"' <<< "${challenges}" | grep -Eo ' "[^"]+"' | _sed -e 's/"//g' -e 's/^ //g')"
@@ -789,12 +800,12 @@ sign_csr() {
   if [[ ${num_pending_challenges} -ne 0 ]]; then
     echo " + Deploying challenge tokens..."
     if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]]; then
-      "${HOOK}" "deploy_challenge" ${deploy_args[@]}
+      "${HOOK}" "deploy_challenge" "${deploy_args[@]}"
     elif [[ -n "${HOOK}" ]]; then
       # Run hook script to deploy the challenge token
       local idx=0
       while [ ${idx} -lt ${num_pending_challenges} ]; do
-        "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]}
+        "${HOOK}" "deploy_challenge" "${deploy_args[${idx}]}"
         idx=$((idx+1))
       done
     fi
@@ -840,7 +851,7 @@ sign_csr() {
     echo " + Cleaning challenge tokens..."
 
     # Clean challenge tokens using chained hook
-    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "clean_challenge" ${deploy_args[@]}
+    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "clean_challenge" "${deploy_args[@]}"
 
     # Clean remaining challenge tokens if validation has failed
     local idx=0
@@ -850,7 +861,7 @@ sign_csr() {
       # Delete alpn verification certificates
       [[ "${CHALLENGETYPE}" = "tls-alpn-01" ]] && rm -f "${ALPNCERTDIR}/${challenge_names[${idx}]}.crt.pem" "${ALPNCERTDIR}/${challenge_names[${idx}]}.key.pem"
       # Clean challenge token using non-chained hook
-      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
+      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "clean_challenge" "${deploy_args[${idx}]}"
       idx=$((idx+1))
     done
 
@@ -951,7 +962,7 @@ generate_alpn_certificate() {
   tmp_openssl_cnf="$(_mktemp)"
   cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
   printf "[SAN]\nsubjectAltName=DNS:%s\n" "${altname}" >> "${tmp_openssl_cnf}"
-  printf "1.3.6.1.5.5.7.1.31=critical,DER:04:20:${acmevalidation}\n" >> "${tmp_openssl_cnf}"
+  printf "1.3.6.1.5.5.7.1.31=critical,DER:04:20:%s\n" "${acmevalidation}" >> "${tmp_openssl_cnf}"
   SUBJ="/CN=${altname}/"
   [[ "${OSTYPE:0:5}" = "MINGW" ]] && SUBJ="/${SUBJ}"
   _openssl req -x509 -new -sha256 -nodes -newkey rsa:2048 -keyout "${alpncertdir}/${altname}.key.pem" -out "${alpncertdir}/${altname}.crt.pem" -subj "${SUBJ}" -extensions SAN -config "${tmp_openssl_cnf}"
@@ -983,7 +994,8 @@ sign_domain() {
     if [[ ! -r "${certdir}/privkey.pem" ]] || [[ "${PRIVATE_KEY_RENEW}" = "yes" ]]; then
       echo " + Generating private key..."
       privkey="privkey-${timestamp}.pem"
-      local tmp_privkey="$(_mktemp)"
+      local tmp_privkey
+      tmp_privkey="$(_mktemp)"
       case "${KEY_ALGO}" in
         rsa) _openssl genrsa -out "${tmp_privkey}" "${KEYSIZE}";;
         prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${tmp_privkey}";;
@@ -1100,7 +1112,7 @@ command_version() {
   if [[ "${OSTYPE}" =~ "BSD" ]]; then
     echo "OS: $(uname -sr)"
   else
-    echo "OS: $(cat /etc/issue | grep -v ^$ | head -n1 | _sed 's/\\(r|n|l) .*//g')"
+    echo "OS: $(grep -v ^$ /etc/issue | head -n1 | _sed 's/\\(r|n|l) .*//g')"
   fi
   echo "Used software:"
   [[ -n "${BASH_VERSION:-}" ]] && echo " bash: ${BASH_VERSION}"
@@ -1193,9 +1205,9 @@ command_sign_domains() {
   if [[ -n "${PARAM_DOMAIN:-}" ]]; then
     DOMAINS_TXT="$(_mktemp)"
     if [[ -n "${PARAM_ALIAS:-}" ]]; then
-      printf -- "${PARAM_DOMAIN} > ${PARAM_ALIAS}" > "${DOMAINS_TXT}"
+      printf -- '%s' "${PARAM_DOMAIN} > ${PARAM_ALIAS}" > "${DOMAINS_TXT}"
     else
-      printf -- "${PARAM_DOMAIN}" > "${DOMAINS_TXT}"
+      printf -- '%s' "${PARAM_DOMAIN}" > "${DOMAINS_TXT}"
     fi
   elif [[ -e "${DOMAINS_TXT}" ]]; then
     if [[ ! -r "${DOMAINS_TXT}" ]]; then
@@ -1214,17 +1226,17 @@ command_sign_domains() {
     alias="$(grep -Eo '>[^ ]+' <<< "${line}" || true)"
     line="$(_sed -e 's/>[^ ]+[ ]*//g' <<< "${line}")"
     aliascount="$(grep -Eo '>' <<< "${alias}" | awk 'END {print NR}' || true )"
-    [ ${aliascount} -gt 1 ] && _exiterr "Only one alias per line is allowed in domains.txt!"
+    [ "${aliascount}" -gt 1 ] && _exiterr "Only one alias per line is allowed in domains.txt!"
 
     domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
-    morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
-    [ ${aliascount} -lt 1 ] && alias="${domain}" || alias="${alias#>}"
+    read -r -a morenames <<< "$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
+    [ "${aliascount}" -lt 1 ] && alias="${domain}" || alias="${alias#>}"
     export alias
 
-    if [[ -z "${morenames}" ]];then
+    if [[ "${#morenames}" -eq 0 ]];then
       echo "Processing ${domain}"
     else
-      echo "Processing ${domain} with alternative names: ${morenames}"
+      echo "Processing ${domain} with alternative names: ${morenames[*]}"
     fi
 
     if [ "${alias:0:2}" = "*." ]; then
@@ -1292,11 +1304,11 @@ command_sign_domains() {
     # Allow for external CSR generation
     local csr=""
     if [[ -n "${HOOK}" ]]; then
-      csr="$("${HOOK}" "generate_csr" "${domain}" "${certdir}" "${domain} ${morenames}")"
+      csr="$("${HOOK}" "generate_csr" "${domain}" "${certdir}" "${domain} ${morenames[*]-}")"
       if grep -qE "\-----BEGIN (NEW )?CERTIFICATE REQUEST-----" <<< "${csr}"; then
         altnames="$(extract_altnames "${csr}")"
         domain="$(cut -d' ' -f1 <<< "${altnames}")"
-        morenames="$(cut -s -d' ' -f2- <<< "${altnames}")"
+        read -r -a morenames <<< "$(cut -s -d' ' -f2- <<< "${altnames}")"
         echo " + Using CSR from hook script (real names: ${altnames})"
       else
         csr=""
@@ -1308,7 +1320,7 @@ command_sign_domains() {
       printf " + Checking domain name(s) of existing cert..."
 
       certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep DNS: | _sed 's/DNS://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//')"
-      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | _sed 's/^ //')"
+      givennames="$(echo "${domain} ${morenames[*]-}" | tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | _sed 's/^ //')"
 
       if [[ "${certnames}" = "${givennames}" ]]; then
         echo " unchanged."
@@ -1351,10 +1363,10 @@ command_sign_domains() {
       update_ocsp="yes"
       [[ -z "${csr}" ]] || printf "%s" "${csr}" > "${certdir}/cert-${timestamp}.csr"
       if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
-        sign_domain "${certdir}" ${timestamp} ${domain} ${morenames} &
+        sign_domain "${certdir}" "${timestamp}" "${domain}" ${morenames[@]+"${morenames[@]}"} &
         wait $! || true
       else
-        sign_domain "${certdir}" ${timestamp} ${domain} ${morenames}
+        sign_domain "${certdir}" "${timestamp}" "${domain}" ${morenames[@]+"${morenames[@]}"}
       fi
     fi
 
@@ -1377,7 +1389,7 @@ command_sign_domains() {
           ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
         fi
         ln -sf "ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
-        [[ -n "${HOOK}" ]] && altnames="${domain} ${morenames}" "${HOOK}" "deploy_ocsp" "${domain}" "${certdir}/ocsp.der" "${ocsp_timestamp}"
+        [[ -n "${HOOK}" ]] && altnames="${domain} ${morenames[*]-}" "${HOOK}" "deploy_ocsp" "${domain}" "${certdir}/ocsp.der" "${ocsp_timestamp}"
       else
         echo " + OSCP stapling file is still valid (skipping update)"
       fi
@@ -1413,11 +1425,11 @@ command_sign_csr() {
   csr="$(cat "${csrfile}")"
 
   # extract names
-  altnames="$(extract_altnames "${csr}")"
+  read -r -a altnames <<< "$(extract_altnames "${csr}")"
 
   # gen cert
   certfile="$(_mktemp)"
-  sign_csr "${csr}" ${altnames} 3> "${certfile}"
+  sign_csr "${csr}" "${altnames[@]}" 3> "${certfile}"
 
   # print cert
   echo "# CERT #" >&3
@@ -1497,7 +1509,11 @@ command_cleanup() {
   fi
 
   # Allow globbing
-  [[ -n "${ZSH_VERSION:-}" ]] && set +o noglob || set +f
+  if [[ -n "${ZSH_VERSION:-}" ]]; then
+    set +o noglob
+  else
+    set +f
+  fi
 
   # Loop over all certificate directories
   for certdir in "${CERTDIR}/"*; do
@@ -1798,5 +1814,5 @@ OSTYPE="$(uname)"
 
 if [[ ! "${DEHYDRATED_NOOP:-}" = "NOOP" ]]; then
   # Run script
-  main "${@:-}"
+  main "$@"
 fi
