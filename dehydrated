@@ -1879,11 +1879,13 @@ command_cleanup() {
 
     # Loop over file-types (certificates, keys, signing-requests, ...)
     for filetype in cert.csr cert.pem chain.pem fullchain.pem privkey.pem ocsp.der; do
-      # Skip if symlink is broken
-      [[ -r "${certdir}/${filetype}" ]] || continue
-
-      # Look up current file in use
-      current="$(basename "$(readlink "${certdir}/${filetype}")")"
+      # Delete all if symlink is broken
+      if [[ -r "${certdir}/${filetype}" ]]; then
+        # Look up current file in use
+        current="$(basename "$(readlink "${certdir}/${filetype}")")"
+      else
+        current=""
+      fi
 
       # Split filetype into name and extension
       filebase="$(echo "${filetype}" | cut -d. -f1)"
