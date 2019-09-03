@@ -412,7 +412,7 @@ init_system() {
       else
         echo "+ Fetching account ID..."
         ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"onlyReturnExisting": true}' 4>&1 | grep -i ^Location: | awk '{print $2}' | tr -d '\r\n')"
-        ACCOUNT_ID="${ACCOUNT_URL##*/}"
+	ACCOUNT_ID="$(echo ${ACCOUNT_URL} | cut -d/ -f4- |sed 's/.*\/\([^\/]\{10,100\}\).*/\1/')"
         if [[ -z "${ACCOUNT_ID}" ]]; then
           _exiterr "Unknown error on fetching account information"
         fi
