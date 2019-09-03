@@ -7,6 +7,7 @@ To use this feature create a `config` file in the certificates output directory 
 Currently supported options:
 
 - PRIVATE_KEY_RENEW
+- PRIVATE_KEY_ROLLOVER
 - KEY_ALGO
 - KEYSIZE
 - OCSP_MUST_STAPLE
