@@ -790,19 +790,19 @@ sign_csr() {
     echo " + Deploying challenge tokens..."
     if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]]; then
       "${HOOK}" "deploy_challenge" ${deploy_args[@]}
-    elif [[ -n "${HOOK}" ]]; then
-      # Run hook script to deploy the challenge token
-      local idx=0
-      while [ ${idx} -lt ${num_pending_challenges} ]; do
-        "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]}
-        idx=$((idx+1))
-      done
     fi
   fi
 
   # Validate pending challenges
   local idx=0
   while [ ${idx} -lt ${num_pending_challenges} ]; do
+
+    if [[ -n "${HOOK}" ]] && [[ ! "${HOOK_CHAIN}" = "yes" ]]; then  # NOT HOOK_CHAIN (it's more reliable check than '$HOOK_CHAIN = no')
+      # Run hook script to deploy the challenge token
+      echo " + Deploying challenge tokens..."
+      "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]}
+    fi
+
     echo " + Responding to challenge for ${challenge_names[${idx}]} authorization..."
 
     # Ask the acme-server to verify our challenge and wait until it is no longer pending
