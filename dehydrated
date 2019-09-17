@@ -65,6 +65,7 @@ store_configvars() {
   __HOOK="${HOOK}"
   __WELLKNOWN="${WELLKNOWN}"
   __HOOK_CHAIN="${HOOK_CHAIN}"
+  __HOOK_SEQ="${HOOK_SEQ}"
   __OPENSSL_CNF="${OPENSSL_CNF}"
   __RENEW_DAYS="${RENEW_DAYS}"
   __IP_VERSION="${IP_VERSION}"
@@ -79,6 +80,7 @@ reset_configvars() {
   HOOK="${__HOOK}"
   WELLKNOWN="${__WELLKNOWN}"
   HOOK_CHAIN="${__HOOK_CHAIN}"
+  HOOK_SEQ="${__HOOK_SEQ}"
   OPENSSL_CNF="${__OPENSSL_CNF}"
   RENEW_DAYS="${__RENEW_DAYS}"
   IP_VERSION="${__IP_VERSION}"
@@ -135,6 +137,7 @@ load_config() {
   DOMAINS_TXT=
   HOOK=
   HOOK_CHAIN="no"
+  HOOK_SEQ="no"
   RENEW_DAYS="30"
   KEYSIZE="4096"
   WELLKNOWN=
@@ -790,16 +793,21 @@ sign_csr() {
     echo " + Deploying challenge tokens..."
     if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]]; then
       "${HOOK}" "deploy_challenge" ${deploy_args[@]}
+    elif [[ -n "${HOOK}" ]] && [[ "${HOOK_SEQ}" != "yes" ]]; then
+      # Run hook script to deploy the challenge token
+      local idx=0
+      while [ ${idx} -lt ${num_pending_challenges} ]; do
+        "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]}
+        idx=$((idx+1))
+      done
     fi
   fi
 
   # Validate pending challenges
   local idx=0
   while [ ${idx} -lt ${num_pending_challenges} ]; do
-
-    if [[ -n "${HOOK}" ]] && [[ ! "${HOOK_CHAIN}" = "yes" ]]; then  # NOT HOOK_CHAIN (it's more reliable check than '$HOOK_CHAIN = no')
-      # Run hook script to deploy the challenge token
-      echo " + Deploying challenge tokens..."
+    if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ "${HOOK_SEQ}" = "yes" ]]; then
+      echo " + Deploying challenge tokens for ${challenge_names[${idx}]}..."
       "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]}
     fi
 
@@ -824,8 +832,10 @@ sign_csr() {
       reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
     done
 
+    #echo " + Cleaning challenge tokens for ${challenge_names[${idx}]}..."
     [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_tokens[${idx}]}"
     [[ "${CHALLENGETYPE}" = "tls-alpn-01" ]] && rm -f "${ALPNCERTDIR}/${challenge_names[${idx}]}.crt.pem" "${ALPNCERTDIR}/${challenge_names[${idx}]}.key.pem"
+    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ "${HOOK_SEQ}" = "yes" ]] && "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
 
     if [[ "${reqstatus}" = "valid" ]]; then
       echo " + Challenge is valid!"
@@ -850,7 +860,7 @@ sign_csr() {
       # Delete alpn verification certificates
       [[ "${CHALLENGETYPE}" = "tls-alpn-01" ]] && rm -f "${ALPNCERTDIR}/${challenge_names[${idx}]}.crt.pem" "${ALPNCERTDIR}/${challenge_names[${idx}]}.key.pem"
       # Clean challenge token using non-chained hook
-      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
+      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && [[ "${HOOK_SEQ}" != "yes"  ]] && "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
       idx=$((idx+1))
     done
 
@@ -1273,7 +1283,7 @@ command_sign_domains() {
         config_var="$(echo "${cfgline:1}" | cut -d'=' -f1)"
         config_value="$(echo "${cfgline:1}" | cut -d'=' -f2-)"
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
+          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|HOOK_SEQ|OPENSSL_CNF|RENEW_DAYS)
             echo "   + ${config_var} = ${config_value}"
             declare -- "${config_var}=${config_value}"
             ;;
@@ -1566,7 +1576,7 @@ command_help() {
 command_env() {
   echo "# dehydrated configuration"
   load_config
-  typeset -p CA CERTDIR ALPNCERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON ACCOUNT_ID_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
+  typeset -p CA CERTDIR ALPNCERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN HOOK_SEQ RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON ACCOUNT_ID_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
 # Main method (parses script arguments and calls command_* methods)
