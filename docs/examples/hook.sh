@@ -60,7 +60,7 @@ sync_cert() {
     #   The path of the file containing the certificate signing request.
 
     # Simple example: sync the files before symlinking them
-    # sync "${KEYFILE}" "${CERTFILE} "${FULLCHAINFILE}" "${CHAINFILE}" "${REQUESTFILE}"
+    # sync "${KEYFILE}" "${CERTFILE}" "${FULLCHAINFILE}" "${CHAINFILE}" "${REQUESTFILE}"
 }
 
 deploy_cert() {
