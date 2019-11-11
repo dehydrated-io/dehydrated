@@ -1,6 +1,27 @@
 # Change Log
 This file contains a log of major changes in dehydrated
 
+## [0.6.5] - 2019-06-26
+## Fixed
+- Fixed broken APIv1 compatibility from last update
+
+## [0.6.4] - 2019-06-25
+## Changed
+- Fetch account ID from Location header instead of account json
+
+## [0.6.3] - 2019-06-25
+## Changed
+- OCSP refresh interval is now configurable
+- Implemented POST-as-GET
+- Call exit_hook on errors (with error-message as first parameter)
+
+## Added
+- Initial support for tls-alpn-01 validation
+- New hook: sync_cert (for syncing certificate files to disk, see example hook description)
+
+## Fixes
+- Fetch account information after registration to avoid missing account id
+
 ## [0.6.2] - 2018-04-25
 ## Added
 - New deploy_ocsp hook
