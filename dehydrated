@@ -110,7 +110,9 @@ verify_config() {
     [[ "${IP_VERSION}" = "4" || "${IP_VERSION}" = "6" ]] || _exiterr "Unknown IP version ${IP_VERSION}... cannot continue."
   fi
   [[ "${API}" == "auto" || "${API}" == "1" || "${API}" == "2" ]] || _exiterr "Unsupported API version defined in config: ${API}"
-  [[ "${OCSP_DAYS}" =~ ^[0-9]+$ ]] || _exiterr "OCSP_DAYS must be a number"
+  case x$OCSP_DAYS in
+  (x*[!0-9]*|x) _exiterr "OCSP_DAYS must be a number" ;;
+  esac
 }
 
 # Setup default config values, search for and load configuration files
@@ -1101,7 +1103,7 @@ command_version() {
   revision="$(cd "${SCRIPTDIR}"; git rev-parse HEAD 2>/dev/null || echo "unknown")"
   echo "GIT-Revision: ${revision}"
   echo ""
-  if [[ "${OSTYPE}" =~ "BSD" ]]; then
+  if [[ "${OSTYPE}" = *BSD* ]]; then
     echo "OS: $(uname -sr)"
   else
     echo "OS: $(cat /etc/issue | grep -v ^$ | head -n1 | _sed 's/\\(r|n|l) .*//g')"
@@ -1110,7 +1112,7 @@ command_version() {
   [[ -n "${BASH_VERSION:-}" ]] && echo " bash: ${BASH_VERSION}"
   [[ -n "${ZSH_VERSION:-}" ]] && echo " zsh: ${ZSH_VERSION}"
   echo " curl: $(curl --version 2>&1 | head -n1 | cut -d" " -f1-2)"
-  if [[ "${OSTYPE}" =~ "BSD" ]]; then
+  if [[ "${OSTYPE}" = *BSD* ]]; then
     echo " awk, sed, mktemp, grep, diff: BSD base system versions"
   else
     echo " awk: $(awk -W version 2>&1 | head -n1)"
