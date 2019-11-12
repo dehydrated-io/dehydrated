@@ -1,0 +1,10 @@
+private_key.pem
+private_key.json
+domains.txt
+config
+hook.sh
+certs/*
+archive/*
+accounts/*
+.acme-challenges/*
+chains/*
