@@ -17,7 +17,7 @@ umask 077 # paranoid umask, we're creating private keys
 exec 3>&-
 exec 4>&-
 
-VERSION="git-master-after-0.6.2"
+VERSION="0.6.5"
 
 # Find directory in which this script is stored by traversing all symbolic links
 SOURCE="${0}"
@@ -246,6 +246,7 @@ load_config() {
   [[ -f "${ACCOUNTDIR}/${CAHASH}/config" ]] && . "${ACCOUNTDIR}/${CAHASH}/config"
   ACCOUNT_KEY="${ACCOUNTDIR}/${CAHASH}/account_key.pem"
   ACCOUNT_KEY_JSON="${ACCOUNTDIR}/${CAHASH}/registration_info.json"
+  ACCOUNT_ID_JSON="${ACCOUNTDIR}/${CAHASH}/account_id.json"
 
   if [[ -f "${BASEDIR}/private_key.pem" ]] && [[ ! -f "${ACCOUNT_KEY}" ]]; then
     echo "! Moving private_key.pem to ${ACCOUNT_KEY}"
@@ -333,6 +334,7 @@ init_system() {
     echo "Using private key ${PARAM_ACCOUNT_KEY} instead of account key"
     ACCOUNT_KEY="${PARAM_ACCOUNT_KEY}"
     ACCOUNT_KEY_JSON="${PARAM_ACCOUNT_KEY}.json"
+    ACCOUNT_ID_JSON="${PARAM_ACCOUNT_KEY}_id.json"
     [ "${COMMAND:-}" = "register" ] && register_new_key="yes"
   else
     # Check if private account key exists, if it doesn't exist yet generate a new one (rsa key)
@@ -401,10 +403,21 @@ init_system() {
 
   # Read account information or request from CA if missing
   if [[ -e "${ACCOUNT_KEY_JSON}" ]]; then
-    ACCOUNT_ID="$(cat "${ACCOUNT_KEY_JSON}" | get_json_int_value id)"
     if [[ ${API} -eq 1 ]]; then
+      ACCOUNT_ID="$(cat "${ACCOUNT_KEY_JSON}" | get_json_int_value id)"
       ACCOUNT_URL="${CA_REG}/${ACCOUNT_ID}"
     else
+      if [[ -e "${ACCOUNT_ID_JSON}" ]]; then
+        ACCOUNT_ID="$(cat "${ACCOUNT_ID_JSON}" | get_json_string_value id)"
+      else
+        echo "+ Fetching account ID..."
+        ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"onlyReturnExisting": true}' 4>&1 | grep -i ^Location: | awk '{print $2}' | tr -d '\r\n')"
+        ACCOUNT_ID="${ACCOUNT_URL##*/}"
+        if [[ -z "${ACCOUNT_ID}" ]]; then
+          _exiterr "Unknown error on fetching account information"
+        fi
+        echo '{"id": "'"${ACCOUNT_ID}"'"}' > "${ACCOUNT_ID_JSON}"
+      fi
       ACCOUNT_URL="${CA_ACCOUNT}/${ACCOUNT_ID}"
     fi
   else
@@ -517,8 +530,8 @@ http_request() {
   set +e
   if [[ "${1}" = "head" ]]; then
     statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
-    touch "${tempheaders}"
     curlret="${?}"
+    touch "${tempheaders}"
   elif [[ "${1}" = "get" ]]; then
     statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -L -s -w "%{http_code}" -o "${tempcont}" -D "${tempheaders}" "${2}")"
     curlret="${?}"
@@ -1553,7 +1566,7 @@ command_help() {
 command_env() {
   echo "# dehydrated configuration"
   load_config
-  typeset -p CA CERTDIR ALPNCERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
+  typeset -p CA CERTDIR ALPNCERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON ACCOUNT_ID_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
 # Main method (parses script arguments and calls command_* methods)
