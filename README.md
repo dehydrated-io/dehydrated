@@ -90,6 +90,7 @@ Parameters:
  --config (-f) path/to/config     Use specified config file
  --hook (-k) path/to/hook.sh      Use specified script for hooks
  --out (-o) certs/directory       Output certificates into the specified directory
+ --alpn alpn-certs/directory      Output alpn verification certificates into the specified directory
  --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported
  --algo (-a) rsa|prime256v1|secp384r1 Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
 ```
