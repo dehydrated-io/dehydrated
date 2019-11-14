@@ -136,7 +136,7 @@ dofile 0644 0:0 /etc/ssl/default.ca "$chn"
 [[ -n $dhp ]] && dofile 0644 0:0 /etc/ssl/dhparams.pem "$dhp"
 dofile 0644 0:0 /etc/ssl/deflt+ca.pem "$cer$chn$dhp"
 dofile 0640 0:ssl-cert /etc/ssl/private/default.key "$key"
-dofile 0640 0:ssl-cert /etc/ssl/private/deflt+ca.pem "$key$cer$chn" #XXX append $dhp ?
+dofile 0640 0:ssl-cert /etc/ssl/private/deflt+ca.pem "$key$cer$chn$dhp"
 
 if (( rv )); then
 	rm -f "${rename_src[@]}"
