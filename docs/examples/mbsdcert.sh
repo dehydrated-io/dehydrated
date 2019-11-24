@@ -121,7 +121,12 @@ function dofile {
 	rename_dst[nrenames++]=$name
 	chown "$owner" "$fn"
 	chmod "$mode" "$fn"
-	print -nr -- "$content" >"$fn"
+	if ! print -nr -- "$content" >"$fn"; then
+		print -ru2 "E: cannot write to temporary file for $name"
+		rm -f "$fn"
+		rv=2
+		return
+	fi
 }
 
 if [[ -s /etc/ssl/dhparams.pem ]]; then
@@ -142,6 +147,7 @@ if (( rv )); then
 	exit $rv
 fi
 
+sync
 while (( nrenames-- )); do
 	if ! mv "${rename_src[nrenames]}" "${rename_dst[nrenames]}"; then
 		print -ru2 "E: rename ${rename_src[nrenames]@Q}" \
@@ -155,6 +161,7 @@ if ! ln /etc/ssl/private/default.key /etc/ssl/private/imapd.pem; then
 	print -ru2 "E: could not hardlink /etc/ssl/private/imapd.pem"
 	exit 3
 fi
+sync
 
 readonly p=/sbin:/bin:/usr/sbin:/usr/bin
 rc=0
