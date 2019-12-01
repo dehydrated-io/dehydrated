@@ -87,7 +87,7 @@ deploy_cert() {
 
     # Simple example: Copy file to nginx config
     # cp "${KEYFILE}" "${FULLCHAINFILE}" /etc/nginx/ssl/; chown -R nginx: /etc/nginx/ssl
-    # systemctl reload nginx
+    # service nginx reload
 }
 
 deploy_ocsp() {
@@ -108,7 +108,7 @@ deploy_ocsp() {
 
     # Simple example: Copy file to nginx config
     # cp "${OCSPFILE}" /etc/nginx/ssl/; chown -R nginx: /etc/nginx/ssl
-    # systemctl reload nginx
+    # service nginx reload
 }
 
 
