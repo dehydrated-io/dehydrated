@@ -1,7 +1,7 @@
 
 # By default we set staging fake authority server
 CA="https://acme-staging.api.letsencrypt.org/directory"
-#CA="https://acme-v01.api.letsencrypt.org/directory"
+#CA="https://acme-v02.api.letsencrypt.org/directory"
 
 CONTACT_EMAIL=admin@illan.co
 
