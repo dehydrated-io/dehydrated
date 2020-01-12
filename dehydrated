@@ -1099,8 +1099,10 @@ command_version() {
   echo ""
   if [[ "${OSTYPE}" =~ "BSD" ]]; then
     echo "OS: $(uname -sr)"
+  elif [-f "/etc/os-release"]; then
+    echo "OS: $(cat /etc/os-release | grep PRETTY_NAME | _sed -e 's/[="]/ /g' | awk '{$1=""; print}')"
   else
-    echo "OS: $(cat /etc/issue | grep -v ^$ | head -n1 | _sed 's/\\(r|n|l) .*//g')"
+    echo "OS: Undetermined"
   fi
   echo "Used software:"
   [[ -n "${BASH_VERSION:-}" ]] && echo " bash: ${BASH_VERSION}"
