@@ -1379,7 +1379,7 @@ command_sign_domains() {
         ln -sf "ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
         [[ -n "${HOOK}" ]] && altnames="${domain} ${morenames}" "${HOOK}" "deploy_ocsp" "${domain}" "${certdir}/ocsp.der" "${ocsp_timestamp}"
       else
-        echo " + OSCP stapling file is still valid (skipping update)"
+        echo " + OCSP stapling file is still valid (skipping update)"
       fi
     fi
   done
