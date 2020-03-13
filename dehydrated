@@ -1126,7 +1126,7 @@ command_version() {
   echo "Used software:"
   [[ -n "${BASH_VERSION:-}" ]] && echo " bash: ${BASH_VERSION}"
   [[ -n "${ZSH_VERSION:-}" ]] && echo " zsh: ${ZSH_VERSION}"
-  echo " curl: $(curl --version 2>&1 | head -n1 | cut -d" " -f1-2)"
+  echo " curl: ${CURL_VERSION}"
   if [[ "${OSTYPE}" =~ "BSD" ]]; then
     echo " awk, sed, mktemp, grep, diff: BSD base system versions"
   else
