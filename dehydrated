@@ -40,11 +40,14 @@ _mktemp() {
 # Check for script dependencies
 check_dependencies() {
   # just execute some dummy and/or version commands to see if required tools exist and are actually usable
+  [ -x "$(command -v "${OPENSSL}" 2>/dev/null)" ] || _exiterr "This script requires ${OPENSSL}."
+  [ -x "$(command -v grep 2>/dev/null)" ] || _exiterr "This script requires grep."
+  [ -x "$(command -v mktemp 2>/dev/null)" ] || _exiterr "This script requires mktemp."
+  [ -x "$(command -v diff 2>/dev/null)" ] || _exiterr "This script requires diff."
+  [ -x "$(command -v sed 2>/dev/null)" ] || _exiterr "This script requires sed."
+  [ -x "$(command -v awk 2>/dev/null)" ] || _exiterr "This script requires awk."
   "${OPENSSL}" version > /dev/null 2>&1 || _exiterr "This script requires an openssl binary."
   _sed "" < /dev/null > /dev/null 2>&1 || _exiterr "This script requires sed with support for extended (modern) regular expressions."
-  command -v grep > /dev/null 2>&1 || _exiterr "This script requires grep."
-  command -v mktemp > /dev/null 2>&1 || _exiterr "This script requires mktemp."
-  command -v diff > /dev/null 2>&1 || _exiterr "This script requires diff."
 
   # curl returns with an error code in some ancient versions so we have to catch that
   set +e
