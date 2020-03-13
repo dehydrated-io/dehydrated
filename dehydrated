@@ -51,7 +51,7 @@ check_dependencies() {
   local _tmp="$(curl -V 2>/dev/null)"
   retcode="$?"
   set -e
-  CURL_VERSION="$(echo "${_tmp}" | head -n1 | awk '{print $2}')"
+  read _ CURL_VERSION _ <<<"${_tmp}"
   if [[ ! "${retcode}" = "0" ]] && [[ ! "${retcode}" = "2" ]]; then
     _exiterr "This script requires curl."
   fi
