@@ -48,9 +48,10 @@ check_dependencies() {
 
   # curl returns with an error code in some ancient versions so we have to catch that
   set +e
-  CURL_VERSION="$(curl -V 2>&1 | head -n1 | awk '{print $2}')"
+  local _tmp="$(curl -V 2>/dev/null)"
   retcode="$?"
   set -e
+  CURL_VERSION="$(echo "${_tmp}" | head -n1 | awk '{print $2}')"
   if [[ ! "${retcode}" = "0" ]] && [[ ! "${retcode}" = "2" ]]; then
     _exiterr "This script requires curl."
   fi
