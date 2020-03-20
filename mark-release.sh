@@ -141,7 +141,7 @@ if $COMMIT; then
 
     if $PUSH; then
         log "pushing changes to origin ..."
-        git push origin debian
+        git push origin HEAD:debian
         if $TAG; then
             git push origin $VERSION
         fi
