@@ -1,4 +1,4 @@
-dehydrated (20200320.094154) UNRELEASED; urgency=medium
+dehydrated (20200320.101152) UNRELEASED; urgency=medium
 
   [ Sander Roosingh ]
   * Add mark release
@@ -8,7 +8,10 @@ dehydrated (20200320.094154) UNRELEASED; urgency=medium
 
   [ Hypernode team ]
 
- -- Sander Roosingh <sander.roosingh@byte.nl>  Fri, 20 Mar 2020 09:41:55 +0100
+  [ Rick van de Loo ]
+  * use git push origin HEAD:debian
+
+ -- Hypernode team <hypernode@byte.nl>  Fri, 20 Mar 2020 10:11:53 +0000
 
 dehydrated (0.6.5) xenial; urgency=medium
 
