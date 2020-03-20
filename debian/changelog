@@ -1,3 +1,15 @@
+dehydrated (20200320.094154) UNRELEASED; urgency=medium
+
+  [ Sander Roosingh ]
+  * Add mark release
+
+  [ Rick van de Loo ]
+  * push debian branch not head
+
+  [ Hypernode team ]
+
+ -- Sander Roosingh <sander.roosingh@byte.nl>  Fri, 20 Mar 2020 09:41:55 +0100
+
 dehydrated (0.6.5) xenial; urgency=medium
 
   [ Alexander Grooff ]
