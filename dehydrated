@@ -809,7 +809,7 @@ sign_csr() {
     if [[ ${API} -eq 1 ]]; then
       result="$(signed_request "${challenge_uris[${idx}]}" '{"resource": "challenge", "keyAuthorization": "'"${keyauths[${idx}]}"'"}' | clean_json)"
     else
-      result="$(signed_request "${challenge_uris[${idx}]}" '{"keyAuthorization": "'"${keyauths[${idx}]}"'"}' | clean_json)"
+      result="$(signed_request "${challenge_uris[${idx}]}" '{}' | clean_json)"
     fi
 
     reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
