@@ -699,7 +699,8 @@ sign_csr() {
     challenge_identifiers="[${challenge_identifiers%, }]"
 
     echo " + Requesting new certificate order from CA..."
-    result="$(signed_request "${CA_NEW_ORDER}" '{"identifiers": '"${challenge_identifiers}"'}')"
+    order_location="$(signed_request "${CA_NEW_ORDER}" '{"identifiers": '"${challenge_identifiers}"'}' 4>&1 | grep -i ^Location: | awk '{print $2}' | tr -d '\r\n')"
+    result="$(signed_request "${order_location}" "" | clean_json)"
 
     order_authorizations="$(echo ${result} | get_json_array_value authorizations)"
     finalize="$(echo "${result}" | get_json_string_value finalize)"
@@ -867,8 +868,27 @@ sign_csr() {
     crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | "${OPENSSL}" base64 -e)"
     crt="$( printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" )"
   else
-    result="$(signed_request "${finalize}" '{"csr": "'"${csr64}"'"}' | clean_json | get_json_string_value certificate)"
-    crt="$(signed_request "${result}" "")"
+    result="$(signed_request "${finalize}" '{"csr": "'"${csr64}"'"}' | clean_json)"
+    while :
+    do
+      status="$(echo "${result}" | get_json_string_value status)"
+      echo "   > Order is ${status}..."
+      case "${status}"
+      in
+        "processing" | "pending")
+          sleep 2;
+          ;;
+        "valid")
+          break;
+          ;;
+        *)
+          _exiterr "Order in status ${status}"
+          ;;
+      esac
+      result="$(signed_request "${order_location}" "" | clean_json)"
+    done
+    certificate="$(echo "${result}" | get_json_string_value certificate)"
+    crt="$(signed_request "${certificate}" "")"
   fi
 
   # Try to load the certificate to detect corruption
