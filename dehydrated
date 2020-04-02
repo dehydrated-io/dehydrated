@@ -869,13 +869,12 @@ sign_csr() {
     crt="$( printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" )"
   else
     result="$(signed_request "${finalize}" '{"csr": "'"${csr64}"'"}' | clean_json)"
-    while :
-    do
+    while :; do
       status="$(echo "${result}" | get_json_string_value status)"
-      echo "   > Order is ${status}..."
       case "${status}"
       in
         "processing" | "pending")
+          echo " + Order is ${status}..."
           sleep 2;
           ;;
         "valid")
