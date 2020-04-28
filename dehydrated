@@ -47,13 +47,15 @@ check_dependencies() {
   command -v diff > /dev/null 2>&1 || _exiterr "This script requires diff."
 
   # curl returns with an error code in some ancient versions so we have to catch that
+  # storing raw version output temporarily to catch curl error instead of head/awk exit codes
   set +e
-  CURL_VERSION="$(curl -V 2>&1 | head -n1 | awk '{print $2}')"
+  raw_curl_version="$(curl -V 2>&1)"
   retcode="$?"
   set -e
   if [[ ! "${retcode}" = "0" ]] && [[ ! "${retcode}" = "2" ]]; then
     _exiterr "This script requires curl."
   fi
+  CURL_VERSION="$(head -n1 <<< "${raw_curl_version}" | awk '{print $2}')"
 }
 
 store_configvars() {
