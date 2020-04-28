@@ -28,4 +28,4 @@ Or when you do have a DNS API, pass the details accordingly to achieve the same 
 
 You can delete the TXT record when called with operation `clean_challenge`, when $2 is also the domain name.
 
-Here are some examples: [Examples for DNS-01 hooks](https://github.com/lukas2511/dehydrated/wiki/Examples-for-DNS-01-hooks)
+Here are some examples: [Examples for DNS-01 hooks](https://github.com/dehydrated-io/dehydrated/wiki)
