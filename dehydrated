@@ -444,7 +444,7 @@ _sed() {
 # Print error message and exit with error
 _exiterr() {
   echo "ERROR: ${1}" >&2
-  [[ -n "${HOOK:-}" ]] && "${HOOK}" "exit_hook" "${1}" || true
+  [[ "${skip_exit_hook:-no}" = "no" ]] && [[ -n "${HOOK:-}" ]] && "${HOOK}" "exit_hook" "${1}" || true
   exit 1
 }
 
@@ -1369,8 +1369,10 @@ command_sign_domains() {
       update_ocsp="yes"
       [[ -z "${csr}" ]] || printf "%s" "${csr}" > "${certdir}/cert-${timestamp}.csr"
       if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
+        skip_exit_hook=yes
         sign_domain "${certdir}" ${timestamp} ${domain} ${morenames} &
         wait $! || true
+        skip_exit_hook=no
       else
         sign_domain "${certdir}" ${timestamp} ${domain} ${morenames}
       fi
@@ -1589,6 +1591,7 @@ command_env() {
 
 # Main method (parses script arguments and calls command_* methods)
 main() {
+  skip_exit_hook=no
   COMMAND=""
   set_command() {
     [[ -z "${COMMAND}" ]] || _exiterr "Only one command can be executed at a time. See help (-h) for more information."
