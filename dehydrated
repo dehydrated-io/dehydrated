@@ -232,6 +232,10 @@ load_config() {
   fi
 
   # Create new account directory or symlink to account directory from old CA
+  # dev note: keep in mind that because of the use of 'echo' instead of 'printf' or
+  # similar there is a newline encoded in the directory name. not going to fix this
+  # since it's a non-issue and trying to fix existing installations would be too much
+  # trouble
   CAHASH="$(echo "${CA}" | urlbase64)"
   [[ -z "${ACCOUNTDIR}" ]] && ACCOUNTDIR="${BASEDIR}/accounts"
   if [[ ! -e "${ACCOUNTDIR}/${CAHASH}" ]]; then
