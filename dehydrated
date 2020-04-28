@@ -513,7 +513,7 @@ _openssl() {
     echo "Details:" >&2
     echo "${out}" >&2
     echo >&2
-    exit ${res}
+    exit "${res}"
   fi
 }
 
@@ -1371,7 +1371,7 @@ command_sign_domains() {
       if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
         skip_exit_hook=yes
         sign_domain "${certdir}" ${timestamp} ${domain} ${morenames} &
-        wait $! || true
+        wait $! || exit_with_errorcode=1
         skip_exit_hook=no
       else
         sign_domain "${certdir}" ${timestamp} ${domain} ${morenames}
@@ -1413,7 +1413,8 @@ command_sign_domains() {
     echo "+ Running automatic cleanup"
     command_cleanup noinit
   fi
-  exit 0
+
+  exit "${exit_with_errorcode}"
 }
 
 # Usage: --signcsr (-s) path/to/csr.pem
@@ -1557,7 +1558,7 @@ command_cleanup() {
     done
   done
 
-  exit 0
+  exit "${exit_with_errorcode}"
 }
 
 # Usage: --help (-h)
@@ -1591,6 +1592,7 @@ command_env() {
 
 # Main method (parses script arguments and calls command_* methods)
 main() {
+  exit_with_errorcode=0
   skip_exit_hook=no
   COMMAND=""
   set_command() {
@@ -1812,6 +1814,8 @@ main() {
     version) command_version;;
     *) command_help; exit 1;;
   esac
+
+  exit "${exit_with_errorcode}"
 }
 
 # Determine OS type
