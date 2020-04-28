@@ -88,7 +88,7 @@ hookscript_bricker_hook() {
   # Hook scripts should ignore any hooks they don't know.
   # Calling a random hook to make this clear to the hook script authors...
   if [[ -n "${HOOK}" ]]; then
-    "${HOOK}" "this_hookscript_is_broken__dehydrated_is_working_fine__please_ignore_unknown_hooks_in_your_script"
+    "${HOOK}" "this_hookscript_is_broken__dehydrated_is_working_fine__please_ignore_unknown_hooks_in_your_script" || _exiterr "Please check your hook script, it should exit cleanly without doing anything on unknown/new hooks."
   fi
 }
 
@@ -444,7 +444,7 @@ _sed() {
 # Print error message and exit with error
 _exiterr() {
   echo "ERROR: ${1}" >&2
-  [[ "${skip_exit_hook:-no}" = "no" ]] && [[ -n "${HOOK:-}" ]] && "${HOOK}" "exit_hook" "${1}" || true
+  [[ "${skip_exit_hook:-no}" = "no" ]] && [[ -n "${HOOK:-}" ]] && ("${HOOK}" "exit_hook" "${1}" || echo 'exit_hook returned with non-zero exit code!' >&2)
   exit 1
 }
 
@@ -568,7 +568,7 @@ http_request() {
       if [[ -n "${HOOK}" ]]; then
         errtxt="$(cat ${tempcont})"
         errheaders="$(cat ${tempheaders})"
-        "${HOOK}" "request_failure" "${statuscode}" "${errtxt}" "${1}" "${errheaders}"
+        "${HOOK}" "request_failure" "${statuscode}" "${errtxt}" "${1}" "${errheaders}" || _exiterr 'request_failure hook returned with non-zero exit code'
       fi
 
       rm -f "${tempcont}"
@@ -789,12 +789,12 @@ sign_csr() {
   if [[ ${num_pending_challenges} -ne 0 ]]; then
     echo " + Deploying challenge tokens..."
     if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]]; then
-      "${HOOK}" "deploy_challenge" ${deploy_args[@]}
+      "${HOOK}" "deploy_challenge" ${deploy_args[@]} || _exiterr 'deploy_challenge hook returned with non-zero exit code'
     elif [[ -n "${HOOK}" ]]; then
       # Run hook script to deploy the challenge token
       local idx=0
       while [ ${idx} -lt ${num_pending_challenges} ]; do
-        "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]}
+        "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]} || _exiterr 'deploy_challenge hook returned with non-zero exit code'
         idx=$((idx+1))
       done
     fi
@@ -830,7 +830,7 @@ sign_csr() {
     if [[ "${reqstatus}" = "valid" ]]; then
       echo " + Challenge is valid!"
     else
-      [[ -n "${HOOK}" ]] && "${HOOK}" "invalid_challenge" "${altname}" "${result}"
+      [[ -n "${HOOK}" ]] && ("${HOOK}" "invalid_challenge" "${altname}" "${result}" || _exiterr 'invalid_challenge hook returned with non-zero exit code')
       break
     fi
     idx=$((idx+1))
@@ -840,7 +840,7 @@ sign_csr() {
     echo " + Cleaning challenge tokens..."
 
     # Clean challenge tokens using chained hook
-    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && "${HOOK}" "clean_challenge" ${deploy_args[@]}
+    [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && ("${HOOK}" "clean_challenge" ${deploy_args[@]} || _exiterr 'clean_challenge hook returned with non-zero exit code')
 
     # Clean remaining challenge tokens if validation has failed
     local idx=0
@@ -850,7 +850,7 @@ sign_csr() {
       # Delete alpn verification certificates
       [[ "${CHALLENGETYPE}" = "tls-alpn-01" ]] && rm -f "${ALPNCERTDIR}/${challenge_names[${idx}]}.crt.pem" "${ALPNCERTDIR}/${challenge_names[${idx}]}.key.pem"
       # Clean challenge token using non-chained hook
-      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && "${HOOK}" "clean_challenge" ${deploy_args[${idx}]}
+      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && ("${HOOK}" "clean_challenge" ${deploy_args[${idx}]} || _exiterr 'clean_challenge hook returned with non-zero exit code')
       idx=$((idx+1))
     done
 
@@ -1086,7 +1086,7 @@ sign_domain() {
   fi
 
   # Wait for hook script to sync the files before creating the symlinks
-  [[ -n "${HOOK}" ]] && "${HOOK}" "sync_cert" "${certdir}/privkey-${timestamp}.pem" "${certdir}/cert-${timestamp}.pem" "${certdir}/fullchain-${timestamp}.pem" "${certdir}/chain-${timestamp}.pem" "${certdir}/cert-${timestamp}.csr"
+  [[ -n "${HOOK}" ]] && ("${HOOK}" "sync_cert" "${certdir}/privkey-${timestamp}.pem" "${certdir}/cert-${timestamp}.pem" "${certdir}/fullchain-${timestamp}.pem" "${certdir}/chain-${timestamp}.pem" "${certdir}/cert-${timestamp}.csr" || _exiterr 'sync_cert hook returned with non-zero exit code')
 
   # Update symlinks
   [[ "${privkey}" = "privkey.pem" ]] || ln -sf "privkey-${timestamp}.pem" "${certdir}/privkey.pem"
@@ -1097,7 +1097,7 @@ sign_domain() {
   ln -sf "cert-${timestamp}.pem" "${certdir}/cert.pem"
 
   # Wait for hook script to clean the challenge and to deploy cert if used
-  [[ -n "${HOOK}" ]] && "${HOOK}" "deploy_cert" "${domain}" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem" "${timestamp}"
+  [[ -n "${HOOK}" ]] && ("${HOOK}" "deploy_cert" "${domain}" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem" "${timestamp}" || _exiterr 'deploy_cert hook returned with non-zero exit code')
 
   unset challenge_token
   echo " + Done!"
@@ -1201,7 +1201,7 @@ command_sign_domains() {
   hookscript_bricker_hook
 
   # Call startup hook
-  [[ -n "${HOOK}" ]] && "${HOOK}" "startup_hook"
+  [[ -n "${HOOK}" ]] && ("${HOOK}" "startup_hook" || _exiterr 'startup_hook hook returned with non-zero exit code')
 
   if [ ! -d "${CHAINCACHE}" ]; then
     echo " + Creating chain cache directory ${CHAINCACHE}"
@@ -1310,7 +1310,7 @@ command_sign_domains() {
     # Allow for external CSR generation
     local csr=""
     if [[ -n "${HOOK}" ]]; then
-      csr="$("${HOOK}" "generate_csr" "${domain}" "${certdir}" "${domain} ${morenames}")"
+      csr="$("${HOOK}" "generate_csr" "${domain}" "${certdir}" "${domain} ${morenames}")" || _exiterr 'generate_csr hook returned with non-zero exit code'
       if grep -qE "\-----BEGIN (NEW )?CERTIFICATE REQUEST-----" <<< "${csr}"; then
         altnames="$(extract_altnames "${csr}")"
         domain="$(cut -d' ' -f1 <<< "${altnames}")"
@@ -1353,7 +1353,7 @@ command_sign_domains() {
         else
           # Certificate-Names unchanged and cert is still valid
           echo "Skipping renew!"
-          [[ -n "${HOOK}" ]] && "${HOOK}" "unchanged_cert" "${domain}" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem"
+          [[ -n "${HOOK}" ]] && ("${HOOK}" "unchanged_cert" "${domain}" "${certdir}/privkey.pem" "${certdir}/cert.pem" "${certdir}/fullchain.pem" "${certdir}/chain.pem" || _exiterr 'unchanged_cert hook returned with non-zero exit code')
           skip="yes"
         fi
       else
@@ -1397,7 +1397,7 @@ command_sign_domains() {
           ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
         fi
         ln -sf "ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
-        [[ -n "${HOOK}" ]] && altnames="${domain} ${morenames}" "${HOOK}" "deploy_ocsp" "${domain}" "${certdir}/ocsp.der" "${ocsp_timestamp}"
+        [[ -n "${HOOK}" ]] && (altnames="${domain} ${morenames}" "${HOOK}" "deploy_ocsp" "${domain}" "${certdir}/ocsp.der" "${ocsp_timestamp}" || _exiterr 'deploy_ocsp hook returned with non-zero exit code')
       else
         echo " + OCSP stapling file is still valid (skipping update)"
       fi
@@ -1408,7 +1408,7 @@ command_sign_domains() {
   # remove temporary domains.txt file if used
   [[ -n "${PARAM_DOMAIN:-}" ]] && rm -f "${DOMAINS_TXT}"
 
-  [[ -n "${HOOK}" ]] && "${HOOK}" "exit_hook"
+  [[ -n "${HOOK}" ]] && ("${HOOK}" "exit_hook" || echo 'exit_hook returned with non-zero exit code!' >&2)
   if [[ "${AUTO_CLEANUP}" == "yes" ]]; then
     echo "+ Running automatic cleanup"
     command_cleanup noinit
