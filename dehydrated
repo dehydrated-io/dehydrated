@@ -453,7 +453,7 @@ _exiterr() {
 
 # Remove newlines and whitespace from json
 clean_json() {
-  tr -d '\r\n' | _sed -e 's/ +/ /g' -e 's/\{ /{/g' -e 's/ \}/}/g' -e 's/\[ /[/g' -e 's/ \]/]/g'
+  tr -d '\r\n' | _sed -e 's/[ \t]+/ /g' -e 's/\{ /{/g' -e 's/ \}/}/g' -e 's/\[ /[/g' -e 's/ \]/]/g'
 }
 
 # Encode data as url-safe formatted base64
@@ -744,7 +744,7 @@ sign_csr() {
     fi
 
     # Find challenge in authorization
-    challenges="$(echo "${response}" | _sed 's/.*"challenges": \[(\{.*\})\].*/\1/')"
+    challenges="$(echo "${response}" | get_json_array_value challenges)"
     challenge="$(<<<"${challenges}" _sed -e 's/^[^\[]+\[(.+)\]$/\1/' -e 's/\}(, (\{)|(\]))/}\'$'\n''\2/g' | grep \""${CHALLENGETYPE}"\" || true)"
     if [ -z "${challenge}" ]; then
       allowed_validations="$(grep -Eo '"type": "[^"]+"' <<< "${challenges}" | grep -Eo ' "[^"]+"' | _sed -e 's/"//g' -e 's/^ //g')"
@@ -817,7 +817,8 @@ sign_csr() {
 
     reqstatus="$(printf '%s\n' "${result}" | get_json_string_value status)"
 
-    while [[ "${reqstatus}" = "pending" ]]; do
+    # should probably split this to two sections, the "processing" response should honour the RFC8555 Retry-After header value that would have just been received.
+    while [[ "${reqstatus}" = "pending" ]] || [[ "${reqstatus}" = "processing" ]]; do
       sleep 1
       if [[ "${API}" -eq 2 ]]; then
         result="$(signed_request "${challenge_uris[${idx}]}" "")"
