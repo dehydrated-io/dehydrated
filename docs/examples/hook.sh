@@ -177,7 +177,7 @@ generate_csr() {
     # This hook is called before any certificate signing operation takes place.
     # It can be used to generate or fetch a certificate signing request with external
     # tools.
-    # The output should be just the cerificate signing request formatted as PEM.
+    # The output should be just the certificate signing request formatted as PEM.
     #
     # Parameters:
     # - DOMAIN
