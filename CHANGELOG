@@ -9,6 +9,7 @@ This file contains a log of major changes in dehydrated
 - Don't include keyAuthorization in challenge validation (RFC compliance)
 
 ## Changed
+- Use JSON.sh to parse JSON
 - Use account URL instead of account ID (RFC compliance)
 - Dehydrated now has a new home: https://github.com/dehydrated-io/dehydrated
 
