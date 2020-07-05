@@ -212,7 +212,7 @@ jsonsh() {
   parse () {
     read -r token
     parse_value
-    read -r token
+    read -r token || true
     case "$token" in
       '') ;;
       *) throw "EXPECTED EOF GOT $token" ;;
@@ -1030,18 +1030,18 @@ sign_csr() {
   else
     result="$(signed_request "${finalize}" '{"csr": "'"${csr64}"'"}' | jsonsh)"
     while :; do
-      status="$(echo "${result}" | get_json_string_value status)"
-      case "${status}"
+      orderstatus="$(echo "${result}" | get_json_string_value status)"
+      case "${orderstatus}"
       in
         "processing" | "pending")
-          echo " + Order is ${status}..."
+          echo " + Order is ${orderstatus}..."
           sleep 2;
           ;;
         "valid")
           break;
           ;;
         *)
-          _exiterr "Order in status ${status}"
+          _exiterr "Order in status ${orderstatus}"
           ;;
       esac
       result="$(signed_request "${order_location}" "" | jsonsh)"
