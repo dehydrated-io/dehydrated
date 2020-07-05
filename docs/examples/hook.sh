@@ -60,7 +60,7 @@ sync_cert() {
     #   The path of the file containing the certificate signing request.
 
     # Simple example: sync the files before symlinking them
-    # sync "${KEYFILE}" "${CERTFILE} "${FULLCHAINFILE}" "${CHAINFILE}" "${REQUESTFILE}"
+    # sync "${KEYFILE}" "${CERTFILE}" "${FULLCHAINFILE}" "${CHAINFILE}" "${REQUESTFILE}"
 }
 
 deploy_cert() {
@@ -177,7 +177,7 @@ generate_csr() {
     # This hook is called before any certificate signing operation takes place.
     # It can be used to generate or fetch a certificate signing request with external
     # tools.
-    # The output should be just the cerificate signing request formatted as PEM.
+    # The output should be just the certificate signing request formatted as PEM.
     #
     # Parameters:
     # - DOMAIN
