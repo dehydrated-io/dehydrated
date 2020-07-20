@@ -1,5 +1,8 @@
 # dehydrated [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=23P9DSJBTY7C8)
 
+Quick note: dehydrated moved, the license will NOT change, and I will still take care of the project.
+See https://lukas.im/2020/01/30/selling-dehydrated/index.html for more details.
+
 ![](docs/logo.jpg)
 
 Dehydrated is a client for signing certificates with an ACME-server (e.g. Let's Encrypt) implemented as a relatively simple (zsh-compatible) bash-script.
