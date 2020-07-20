@@ -153,6 +153,7 @@ load_config() {
   DEHYDRATED_USER=
   DEHYDRATED_GROUP=
   API="auto"
+  PARAM_KEEP_GOING="yes"
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -1708,11 +1709,16 @@ main() {
         ;;
 
       # PARAM_Usage: --keep-going (-g)
-      # PARAM_Description: Keep going after encountering an error while creating/renewing multiple certificates in cron mode
+      # PARAM_Description: For backward-compatibility only. Enabled by default
       --keep-going|-g)
-        PARAM_KEEP_GOING="yes"
         ;;
-
+        
+      # PARAM_Usage: --abort-on-error
+      # PARAM_Description: Abort after encountering an error while creating/renewing multiple certificates in cron mode. (undo keep-going default)
+      --abort-on-error)
+        PARAM_KEEP_GOING="no"
+        ;;
+        
       # PARAM_Usage: --force (-x)
       # PARAM_Description: Force renew of certificate even if it is longer valid than value in RENEW_DAYS
       --force|-x)
