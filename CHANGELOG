@@ -1,6 +1,17 @@
 # Change Log
 This file contains a log of major changes in dehydrated
 
+## [x.x.x] - xxxx-xx-xx
+## Fixed
+- No more silent failures on broken hook-scripts
+- Better error-handling with KEEP_GOING enabled
+- Check actual order status instead of assuming it's valid
+- Don't include keyAuthorization in challenge validation (RFC compliance)
+
+## Changed
+- Use account URL instead of account ID (RFC compliance)
+- Dehydrated now has a new home: https://github.com/dehydrated-io/dehydrated
+
 ## [0.6.5] - 2019-06-26
 ## Fixed
 - Fixed broken APIv1 compatibility from last update
