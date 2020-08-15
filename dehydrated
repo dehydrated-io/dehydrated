@@ -1279,6 +1279,7 @@ generate_alpn_certificate() {
   SUBJ="/CN=${altname}/"
   [[ "${OSTYPE:0:5}" = "MINGW" ]] && SUBJ="/${SUBJ}"
   _openssl req -x509 -new -sha256 -nodes -newkey rsa:2048 -keyout "${alpncertdir}/${altname}.key.pem" -out "${alpncertdir}/${altname}.crt.pem" -subj "${SUBJ}" -extensions SAN -config "${tmp_openssl_cnf}"
+  chmod g+r "${alpncertdir}/${altname}.key.pem" "${alpncertdir}/${altname}.crt.pem"
   rm -f "${tmp_openssl_cnf}"
 }
 
