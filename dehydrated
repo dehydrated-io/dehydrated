@@ -975,7 +975,7 @@ sign_csr() {
 
     reqstatus="$(echo "${result}" | get_json_string_value status)"
 
-    while [[ "${reqstatus}" = "pending" ]]; do
+    while [[ "${reqstatus}" = "pending" ]] || [[ "${reqstatus}" = "processing" ]]; do
       sleep 1
       if [[ "${API}" -eq 2 ]]; then
         result="$(signed_request "${challenge_uris[${idx}]}" "" | jsonsh)"
