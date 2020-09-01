@@ -400,14 +400,14 @@ load_config() {
     command -v sudo > /dev/null 2>&1 || _exiterr "DEHYDRATED_USER set but sudo not available. Please install sudo."
     command -v getent > /dev/null 2>&1 || _exiterr "DEHYDRATED_USER set but getent not available. Please install getent."
 
-    TARGET_UID="$(getent passwd "${DEHYDRATED_USER}" | cut -d':' -f3)"
+    TARGET_UID="$(getent passwd "${DEHYDRATED_USER}" | cut -d':' -f3)" || _exiterr "DEHYDRATED_USER ${DEHYDRATED_USER} is invalid"
     if [[ -z "${DEHYDRATED_GROUP}" ]]; then
       if [[ "${EUID}" != "${TARGET_UID}" ]]; then
         echo "# INFO: Running $0 as ${DEHYDRATED_USER}"
         exec sudo -u "${DEHYDRATED_USER}" "${0}" ${ORIGARGS}
       fi
     else
-      TARGET_GID="$(getent group "${DEHYDRATED_GROUP}" | cut -d':' -f3)"
+      TARGET_GID="$(getent group "${DEHYDRATED_GROUP}" | cut -d':' -f3)" || _exiterr "DEHYDRATED_GROUP ${DEHYDRATED_GROUP} is invalid"
       if [[ -z "${EGID:-}" ]]; then
         command -v id > /dev/null 2>&1 || _exiterr "DEHYDRATED_GROUP set, don't know current gid and 'id' not available... Please provide 'id' binary."
         EGID="$(id -g)"
