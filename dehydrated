@@ -1773,6 +1773,22 @@ command_revoke() {
   mv -f "${cert}" "${cert}-revoked"
 }
 
+# Usage: --deactivate
+# Description: Deactivate account
+command_deactivate() {
+  init_system
+
+  echo "Deactivating account $ACCOUNT_URL"
+
+  if [[ ${API} -eq 1 ]]; then
+    echo "Deactivation for ACMEv1 is not implemented"
+  else
+    response="$(signed_request "${ACCOUNT_URL}" '{"status": "deactivated"}' | clean_json)"
+  fi
+
+  echo " + Done."
+}
+
 # Usage: --cleanup (-gc)
 # Description: Move unused certificate files to archive directory
 command_cleanup() {
@@ -1923,6 +1939,10 @@ main() {
         set_command revoke
         check_parameters "${1:-}"
         PARAM_REVOKECERT="${1}"
+        ;;
+
+      --deactivate)
+        set_command deactivate
         ;;
 
       --version|-v)
@@ -2087,6 +2107,7 @@ main() {
     account) command_account;;
     sign_csr) command_sign_csr "${PARAM_CSR}";;
     revoke) command_revoke "${PARAM_REVOKECERT}";;
+    deactivate) command_deactivate;;
     cleanup) command_cleanup;;
     version) command_version;;
     *) command_help; exit 1;;
