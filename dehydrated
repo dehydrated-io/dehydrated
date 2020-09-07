@@ -43,27 +43,27 @@ json_path() {
 # Get string value from json dictionary
 get_json_string_value() {
   local filter
-  filter="$(printf 's/.*\[%s\]\s*"\([^"]*\)"/\\1/p' "$(json_path "${1:-}" "${2:-}")")"
+  filter="$(printf 's/.*\[%s\][[:space:]]*"\([^"]*\)"/\\1/p' "$(json_path "${1:-}" "${2:-}")")"
   sed -n "${filter}"
 }
 
 # Get array values from json dictionary
 get_json_array_values() {
-  grep -E '^\['"$(json_path "${1:-}" "${2:-}")"',[0-9]*\]' | sed -e 's/\[[^\]*\]\s*//g' -e 's/^"//' -e 's/"$//'
+  grep -E '^\['"$(json_path "${1:-}" "${2:-}")"',[0-9]*\]' | sed -e 's/\[[^\]*\][[:space:]]*//g' -e 's/^"//' -e 's/"$//'
 }
 
 # Get sub-dictionary from json
 get_json_dict_value() {
   local filter
 	echo "$(json_path "${1:-}" "${2:-}")"
-  filter="$(printf 's/.*\[%s\]\s*\(.*\)/\\1/p' "$(json_path "${1:-}" "${2:-}")")"
+  filter="$(printf 's/.*\[%s\][[:space:]]*\(.*\)/\\1/p' "$(json_path "${1:-}" "${2:-}")")"
   sed -n "${filter}" | jsonsh
 }
 
 # Get integer value from json
 get_json_int_value() {
   local filter
-  filter="$(printf 's/.*\[%s\]\s*\([^"]*\)/\\1/p' "$(json_path "${1:-}" "${2:-}")")"
+  filter="$(printf 's/.*\[%s\][[:space:]]*\([^"]*\)/\\1/p' "$(json_path "${1:-}" "${2:-}")")"
   sed -n "${filter}"
 }
 
@@ -1004,10 +1004,10 @@ sign_csr() {
     fi
 
     # Find challenge in authorization
-    challengeindex="$(echo "${response}" | grep -E '^\["challenges",[0-9]+,"type"\]\s+"'"${CHALLENGETYPE}"'"' | cut -d',' -f2 || true)"
+    challengeindex="$(echo "${response}" | grep -E '^\["challenges",[0-9]+,"type"\][[:space:]]+"'"${CHALLENGETYPE}"'"' | cut -d',' -f2 || true)"
 
     if [ -z "${challengeindex}" ]; then
-      allowed_validations="$(echo "${response}" | grep -E '^\["challenges",[0-9]+,"type"\]' | sed -e 's/\[[^\]*\]\s*//g' -e 's/^"//' -e 's/"$//' | tr '\n' ' ')"
+      allowed_validations="$(echo "${response}" | grep -E '^\["challenges",[0-9]+,"type"\]' | sed -e 's/\[[^\]*\][[:space:]]*//g' -e 's/^"//' -e 's/"$//' | tr '\n' ' ')"
       _exiterr "Validating this certificate is not possible using ${CHALLENGETYPE}. Possible validation methods are: ${allowed_validations}"
     fi
     challenge="$(echo "${response}" | get_json_dict_value -p '"challenges",'"${challengeindex}")"
