@@ -31,8 +31,6 @@ SCRIPTDIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 BASEDIR="${SCRIPTDIR}"
 ORIGARGS="$@"
 
-#!/bin/sh
-
 # Generate json.sh path matching string
 json_path() {
 	if [ ! "${1}" = "-p" ]; then
