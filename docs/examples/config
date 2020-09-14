@@ -21,8 +21,10 @@
 # default: <unset>
 #IP_VERSION=
 
-# Path to certificate authority (default: https://acme-v02.api.letsencrypt.org/directory)
-#CA="https://acme-v02.api.letsencrypt.org/directory"
+# URL to certificate authority or internal preset
+# Presets: letsencrypt, zerossl
+# default: letsencrypt
+#CA="letsencrypt"
 
 # Path to old certificate authority
 # Set this value to your old CA value when upgrading from ACMEv1 to ACMEv2 under a different endpoint.
