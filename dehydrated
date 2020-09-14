@@ -67,6 +67,13 @@ get_json_int_value() {
   sed -n "${filter}"
 }
 
+# Get boolean value from json
+get_json_bool_value() {
+  local filter
+  filter="$(printf 's/.*\[%s\]\s*\([^"]*\)/\\1/p' "$(json_path "${1:-}" "${2:-}")")"
+  sed -n "${filter}"
+}
+
 # JSON.sh JSON-parser
 # Modified from https://github.com/dominictarr/JSON.sh
 # Original Copyright (c) 2011 Dominic Tarr
