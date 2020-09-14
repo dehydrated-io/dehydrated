@@ -2,6 +2,10 @@
 This file contains a log of major changes in dehydrated
 
 ## [x.x.x] - xxxx-xx-xx
+## Added
+- Support for external account bindings
+- Special support for ZeroSSL
+
 ## Fixed
 - No more silent failures on broken hook-scripts
 - Better error-handling with KEEP_GOING enabled
