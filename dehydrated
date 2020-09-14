@@ -312,8 +312,12 @@ load_config() {
     done
   fi
 
+  # Preset
+  CA_ZEROSSL=""
+  CA_LETSENCRYPT="https://acme-v02.api.letsencrypt.org/directory"
+
   # Default values
-  CA="https://acme-v02.api.letsencrypt.org/directory"
+  CA="letsencrypt"
   OLDCA=
   CERTDIR=
   ALPNCERTDIR=
@@ -414,6 +418,13 @@ load_config() {
 
   # Check BASEDIR and set default variables
   [[ -d "${BASEDIR}" ]] || _exiterr "BASEDIR does not exist: ${BASEDIR}"
+
+  # Preset CAs
+  if [ "${CA}" = "letsencrypt" ]; then
+    CA="{$CA_LETSENCRYPT}"
+  elif [ "${CA}" = "zerossl" ]; then
+    CA="${CA_ZEROSSL}"
+  fi
 
   if [[ -z "${OLDCA}" ]] && [[ "${CA}" = "https://acme-v02.api.letsencrypt.org/directory" ]]; then
     OLDCA="https://acme-v01.api.letsencrypt.org/directory"
