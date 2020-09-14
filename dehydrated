@@ -431,7 +431,7 @@ load_config() {
 
   # Preset CAs
   if [ "${CA}" = "letsencrypt" ]; then
-    CA="{$CA_LETSENCRYPT}"
+    CA="${CA_LETSENCRYPT}"
   elif [ "${CA}" = "zerossl" ]; then
     CA="${CA_ZEROSSL}"
   fi
