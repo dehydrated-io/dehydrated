@@ -632,8 +632,8 @@ init_system() {
           eab_url="${CA_NEW_ACCOUNT}"
           eab_protected64="$(printf '{"alg":"HS256","kid":"%s","url":"%s"}' "${EAB_KID}" "${eab_url}" | urlbase64)"
           eab_payload64="$(printf "%s" '{"e": "'"${pubExponent64}"'", "kty": "RSA", "n": "'"${pubMod64}"'"}' | urlbase64)"
-          eab_key="$(printf "%s" "${EAB_HMAC_KEY}" | deurlbase64)"
-          eab_signed64="$(printf '%s' "${eab_protected64}.${eab_payload64}" | "${OPENSSL}" dgst -binary -sha256 -hmac "${eab_key}" | urlbase64)"
+          eab_key="$(printf "%s" "${EAB_HMAC_KEY}" | deurlbase64 | bin2hex)"
+          eab_signed64="$(printf '%s' "${eab_protected64}.${eab_payload64}" | "${OPENSSL}" dgst -binary -sha256 -mac HMAC -macopt "hexkey:${eab_key}" | urlbase64)"
 
           if [[ -n "${CONTACT_EMAIL}" ]]; then
             regjson='{"contact":["mailto:'"${CONTACT_EMAIL}"'"], "termsOfServiceAgreed": true, "externalAccountBinding": {"protected": "'"${eab_protected64}"'", "payload": "'"${eab_payload64}"'", "signature": "'"${eab_signed64}"'"}}'
@@ -742,7 +742,7 @@ hex2bin() {
 
 # Convert binary data to hex string
 bin2hex() {
-  hexdump | _sed 's/^[^ ]*//' | tr -d ' \n\r'
+  hexdump -e '16/1 "%02x"'
 }
 
 # OpenSSL writes to stderr/stdout even when there are no errors. So just
