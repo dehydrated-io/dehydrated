@@ -523,6 +523,7 @@ init_system() {
     CA_NEW_AUTHZ="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-authz)" &&
     CA_NEW_REG="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value new-reg)" &&
     CA_TERMS="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value terms-of-service)" &&
+    CA_REQUIRES_EAB="false" &&
     CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revoke-cert)" ||
     _exiterr "Problem retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."
     # Since reg URI is missing from directory we will assume it is the same as CA_NEW_REG without the new part
@@ -1001,6 +1002,9 @@ sign_csr() {
     if [[ ${API} -eq 2 ]]; then
       challenge_uris[${idx}]="$(echo "${challenge}" | get_json_string_value url)"
     else
+      if [[ "$(echo "${challenge}" | get_json_string_value type)" = "urn:acme:error:unauthorized" ]]; then
+        _exiterr "Challenge unauthorized: $(echo "${challenge}" | get_json_string_value detail)"
+      fi
       challenge_uris[${idx}]="$(echo "${challenge}" | get_json_dict_value validationRecord | get_json_string_value uri)"
     fi
 
