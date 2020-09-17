@@ -320,6 +320,9 @@ load_config() {
   # Preset
   CA_ZEROSSL="https://acme.zerossl.com/v2/DV90"
   CA_LETSENCRYPT="https://acme-v02.api.letsencrypt.org/directory"
+  CA_LETSENCRYPT_TEST="https://acme-staging-v02.api.letsencrypt.org/directory"
+  CA_BUYPASS="https://api.buypass.com/acme/directory"
+  CA_BUYPASS_TEST="https://api.test4.buypass.no/acme/directory"
 
   # Default values
   CA="letsencrypt"
@@ -432,8 +435,14 @@ load_config() {
   # Preset CAs
   if [ "${CA}" = "letsencrypt" ]; then
     CA="${CA_LETSENCRYPT}"
+  elif [ "${CA}" = "letsencrypt-test" ]; then
+    CA="${CA_LETSENCRYPT_TEST}"
   elif [ "${CA}" = "zerossl" ]; then
     CA="${CA_ZEROSSL}"
+  elif [ "${CA}" = "buypass" ]; then
+    CA="${CA_BUYPASS}"
+  elif [ "${CA}" = "buypass-test" ]; then
+    CA="${CA_BUYPASS_TEST}"
   fi
 
   if [[ -z "${OLDCA}" ]] && [[ "${CA}" = "https://acme-v02.api.letsencrypt.org/directory" ]]; then
