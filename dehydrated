@@ -1411,6 +1411,15 @@ command_version() {
   exit 0
 }
 
+# Usage: --display-terms
+# Description: Display current terms of service
+command_terms() {
+  init_system
+  echo "The current terms of service: $CA_TERMS"
+  echo "+ Done!"
+  exit 0
+}
+
 # Usage: --register
 # Description: Register account key
 command_register() {
@@ -1938,6 +1947,10 @@ main() {
         PARAM_ACCEPT_TERMS="yes"
         ;;
 
+      --display-terms)
+        set_command terms
+        ;;
+
       --signcsr|-s)
         shift 1
         set_command sign_csr
@@ -2099,7 +2112,6 @@ main() {
         check_parameters "${1:-}"
         PARAM_KEY_ALGO="${1}"
         ;;
-
       *)
         echo "Unknown parameter detected: ${1}" >&2
         echo >&2
@@ -2120,6 +2132,7 @@ main() {
     revoke) command_revoke "${PARAM_REVOKECERT}";;
     deactivate) command_deactivate;;
     cleanup) command_cleanup;;
+    terms) command_terms;;
     version) command_version;;
     *) command_help; exit 1;;
   esac
