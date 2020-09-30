@@ -70,7 +70,7 @@ get_json_int_value() {
 # Get boolean value from json
 get_json_bool_value() {
   local filter
-  filter="$(printf 's/.*\[%s\]\s*\([^"]*\)/\\1/p' "$(json_path "${1:-}" "${2:-}")")"
+  filter="$(printf 's/.*\[%s\][[:space:]]*\([^"]*\)/\\1/p' "$(json_path "${1:-}" "${2:-}")")"
   sed -n "${filter}"
 }
 
