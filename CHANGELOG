@@ -6,6 +6,7 @@ This file contains a log of major changes in dehydrated
 - Support for external account bindings
 - Special support for ZeroSSL
 - Support presets for some CAs instead of requiring URLs
+- Allow requesting preferred chain (`--preferred-chain`)
 
 ## Fixed
 - No more silent failures on broken hook-scripts

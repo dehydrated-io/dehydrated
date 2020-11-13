@@ -258,6 +258,7 @@ store_configvars() {
   __KEYSIZE="${KEYSIZE}"
   __CHALLENGETYPE="${CHALLENGETYPE}"
   __HOOK="${HOOK}"
+  __PREFERRED_CHAIN="${PREFERRED_CHAIN}"
   __WELLKNOWN="${WELLKNOWN}"
   __HOOK_CHAIN="${HOOK_CHAIN}"
   __OPENSSL_CNF="${OPENSSL_CNF}"
@@ -272,6 +273,7 @@ reset_configvars() {
   KEYSIZE="${__KEYSIZE}"
   CHALLENGETYPE="${__CHALLENGETYPE}"
   HOOK="${__HOOK}"
+  PREFERRED_CHAIN="${__PREFERRED_CHAIN}"
   WELLKNOWN="${__WELLKNOWN}"
   HOOK_CHAIN="${__HOOK_CHAIN}"
   OPENSSL_CNF="${__OPENSSL_CNF}"
@@ -336,6 +338,7 @@ load_config() {
   DOMAINS_D=
   DOMAINS_TXT=
   HOOK=
+  PREFERRED_CHAIN=
   HOOK_CHAIN="no"
   RENEW_DAYS="30"
   KEYSIZE="4096"
@@ -500,6 +503,7 @@ load_config() {
   [[ -n "${PARAM_NO_LOCK:-}" ]] && LOCKFILE=""
 
   [[ -n "${PARAM_HOOK:-}" ]] && HOOK="${PARAM_HOOK}"
+  [[ -n "${PARAM_PREFERRED_CHAIN:-}" ]] && PREFERRED_CHAIN="${PARAM_PREFERRED_CHAIN}"
   [[ -n "${PARAM_CERTDIR:-}" ]] && CERTDIR="${PARAM_CERTDIR}"
   [[ -n "${PARAM_ALPNCERTDIR:-}" ]] && ALPNCERTDIR="${PARAM_ALPNCERTDIR}"
   [[ -n "${PARAM_CHALLENGETYPE:-}" ]] && CHALLENGETYPE="${PARAM_CHALLENGETYPE}"
@@ -924,6 +928,15 @@ extract_altnames() {
   fi
 }
 
+# Get last subject CN in certificate chain
+get_last_cn() {
+  cn="$("${OPENSSL}" verify -CAfile <(echo "${1}") -show_chain <(echo "${1}") | tail -n 1 | _sed -e 's/.* CN ?= ?([^/,]*).*/\1/')"
+  if [ -z "${cn}" ]; then
+    _exiterr "Error while fetching CN from certificate chain"
+  fi
+  printf "${cn}"
+}
+
 # Create certificate for domain(s) and outputs it FD 3
 sign_csr() {
   csr="${1}" # the CSR itself (not a file)
@@ -1153,8 +1166,35 @@ sign_csr() {
       esac
       result="$(signed_request "${order_location}" "" | jsonsh)"
     done
+
+    resheaders="$(_mktemp)"
     certificate="$(echo "${result}" | get_json_string_value certificate)"
-    crt="$(signed_request "${certificate}" "")"
+    crt="$(signed_request "${certificate}" "" 4>"${resheaders}")"
+
+    if [ -n "${PREFERRED_CHAIN:-}" ]; then
+      foundaltchain=0
+      altcn="$(get_last_cn "${crt}")"
+      if [ "${altcn}" = "${PREFERRED_CHAIN}" ]; then
+        foundaltchain=1
+      fi
+      if [ "${foundaltchain}" = "0" ]; then
+        while read altcrturl; do
+          if [ "${foundaltchain}" = "0" ]; then
+            altcrt="$(signed_request "${altcrturl}" "")"
+            altcn="$(get_last_cn "${altcrt}")"
+            if [ "${altcn}" = "${PREFERRED_CHAIN}" ]; then
+              foundaltchain=1
+              crt="${altcrt}"
+            fi
+          fi
+        done <<< "$(grep -Ei '^link:' "${resheaders}" | grep -Ei 'rel="alternate"' | cut -d'<' -f2 | cut -d'>' -f1)"
+      fi
+      if [ "${foundaltchain}" = "0" ]; then
+        _exiterr "Alternative chain with CN = ${PREFERRED_CHAIN} not found"
+      fi
+      echo " + Using preferred chain with CN = ${altcn}"
+    fi
+    rm -f "${resheaders}"
   fi
 
   # Try to load the certificate to detect corruption
@@ -1564,7 +1604,7 @@ command_sign_domains() {
         config_var="$(echo "${cfgline:1}" | cut -d'=' -f1)"
         config_value="$(echo "${cfgline:1}" | cut -d'=' -f2-)"
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
+          KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
             echo "   + ${config_var} = ${config_value}"
             declare -- "${config_var}=${config_value}"
             ;;
@@ -2066,6 +2106,14 @@ main() {
         shift 1
         check_parameters "${1:-}"
         PARAM_HOOK="${1}"
+        ;;
+
+      # PARAM_Usage: --preferred-chain issuer-cn
+      # PARAM_Description: Use alternative certificate chain identified by issuer CN
+      --preferred-chain)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_PREFERRED_CHAIN="${1}"
         ;;
 
       # PARAM_Usage: --out (-o) certs/directory

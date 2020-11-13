@@ -57,6 +57,7 @@ Commands:
  --cron (-c)                      Sign/renew non-existent/changed/expiring certificates.
  --signcsr (-s) path/to/csr.pem   Sign a given CSR, output CRT on stdout (advanced usage)
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
+ --deactivate                     Deactivate account
  --cleanup (-gc)                  Move unused certificate files to archive directory
  --help (-h)                      Show help text
  --env (-e)                       Output configuration variables for use in other scripts
@@ -77,6 +78,7 @@ Parameters:
  --privkey (-p) path/to/key.pem   Use specified private key instead of account key (useful for revocation)
  --config (-f) path/to/config     Use specified config file
  --hook (-k) path/to/hook.sh      Use specified script for hooks
+ --preferred-chain issuer-cn      Use alternative certificate chain identified by issuer CN
  --out (-o) certs/directory       Output certificates into the specified directory
  --alpn alpn-certs/directory      Output alpn verification certificates into the specified directory
  --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported

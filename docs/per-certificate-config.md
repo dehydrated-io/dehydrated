@@ -17,6 +17,7 @@ Currently supported options:
 - WELLKNOWN
 - OPENSSL_CNF
 - RENEW_DAYS
+- PREFERRED_CHAIN
 
 ## DOMAINS_D
 
