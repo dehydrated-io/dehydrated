@@ -52,6 +52,7 @@ Default command: help
 
 Commands:
  --version (-v)                   Print version information
+ --display-terms                  Display current terms of service
  --register                       Register account key
  --account                        Update account contact information
  --cron (-c)                      Sign/renew non-existent/changed/expiring certificates.

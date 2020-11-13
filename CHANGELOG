@@ -7,6 +7,7 @@ This file contains a log of major changes in dehydrated
 - Special support for ZeroSSL
 - Support presets for some CAs instead of requiring URLs
 - Allow requesting preferred chain (`--preferred-chain`)
+- Added method to show CAs current terms of service (`--display-terms`)
 
 ## Fixed
 - No more silent failures on broken hook-scripts
