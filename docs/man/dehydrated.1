@@ -132,9 +132,9 @@ Output certificates into the specified directory
 .BR \-\-challenge ", " \-t " " \fI[http\-01|dns\-01]\fR
 Which challenge should be used? Currently http\-01 and dns\-01 are supported
 .TP
-.BR \-\-algo ", " \-a " " \fI[rsa|prime256v1|secp384r1]\fR
-Which public key algorithm should be used? Supported: rsa, prime256v1 and
-secp384r1
+.BR \-\-algo ", " \-a " " \fI[rsa|prime256v1|secp384r1|secp521r1]\fR
+Which public key algorithm should be used? Supported: rsa, prime256v1,
+secp384r1 and secp521r1
 .SH DIAGNOSTICS
 The program exits 0 if everything was fine, 1 if an error occurred.
 .SH BUGS

@@ -101,7 +101,7 @@
 # Create an extra private key for rollover (default: no)
 #PRIVATE_KEY_ROLLOVER="no"
 
-# Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
+# Which public key algorithm should be used? Supported: rsa, prime256v1, secp384r1 and secp521r1
 #KEY_ALGO=rsa
 
 # E-mail to use during the registration (default: <unset>)

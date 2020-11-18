@@ -83,7 +83,7 @@ Parameters:
  --out (-o) certs/directory       Output certificates into the specified directory
  --alpn alpn-certs/directory      Output alpn verification certificates into the specified directory
  --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported
- --algo (-a) rsa|prime256v1|secp384r1 Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
+ --algo (-a) rsa|prime256v1|secp384r1|secp521r1 Which public key algorithm should be used? Supported: rsa, prime256v1, secp384r1 and secp521r1
 ```
 
 ## Donate

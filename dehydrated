@@ -298,7 +298,7 @@ verify_config() {
   if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" && ! "${COMMAND:-}" = "register" ]]; then
     _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
   fi
-  [[ "${KEY_ALGO}" == "rsa" || "${KEY_ALGO}" == "prime256v1" || "${KEY_ALGO}" == "secp384r1" ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... cannot continue."
+  [[ "${KEY_ALGO}" == "rsa" || "${KEY_ALGO}" == "prime256v1" || "${KEY_ALGO}" == "secp384r1" || "${KEY_ALGO}" == "secp521r1" ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... cannot continue."
   if [[ -n "${IP_VERSION}" ]]; then
     [[ "${IP_VERSION}" = "4" || "${IP_VERSION}" = "6" ]] || _exiterr "Unknown IP version ${IP_VERSION}... cannot continue."
   fi
@@ -1313,7 +1313,7 @@ sign_domain() {
       local tmp_privkey="$(_mktemp)"
       case "${KEY_ALGO}" in
         rsa) _openssl genrsa -out "${tmp_privkey}" "${KEYSIZE}";;
-        prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${tmp_privkey}";;
+        prime256v1|secp384r1|secp521r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${tmp_privkey}";;
       esac
       cat "${tmp_privkey}" > "${certdir}/privkey-${timestamp}.pem"
       rm "${tmp_privkey}"
@@ -1330,7 +1330,7 @@ sign_domain() {
       echo " + Generating private rollover key..."
       case "${KEY_ALGO}" in
         rsa) _openssl genrsa -out "${certdir}/privkey.roll.pem" "${KEYSIZE}";;
-        prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${certdir}/privkey.roll.pem";;
+        prime256v1|secp384r1|secp521r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${certdir}/privkey.roll.pem";;
       esac
     fi
     # delete rolloverkeys if disabled
@@ -2153,8 +2153,8 @@ main() {
         PARAM_CHALLENGETYPE="${1}"
         ;;
 
-      # PARAM_Usage: --algo (-a) rsa|prime256v1|secp384r1
-      # PARAM_Description: Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
+      # PARAM_Usage: --algo (-a) rsa|prime256v1|secp384r1|secp521r1
+      # PARAM_Description: Which public key algorithm should be used? Supported: rsa, prime256v1, secp384r1 and secp521r1
       --algo|-a)
         shift 1
         check_parameters "${1:-}"
