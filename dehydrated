@@ -29,7 +29,7 @@ done
 SCRIPTDIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 BASEDIR="${SCRIPTDIR}"
-ORIGARGS="$@"
+ORIGARGS=("${@}")
 
 # Generate json.sh path matching string
 json_path() {
@@ -410,7 +410,7 @@ load_config() {
     if [[ -z "${DEHYDRATED_GROUP}" ]]; then
       if [[ "${EUID}" != "${TARGET_UID}" ]]; then
         echo "# INFO: Running $0 as ${DEHYDRATED_USER}"
-        has_sudo && exec sudo -u "${DEHYDRATED_USER}" "${0}" ${ORIGARGS}
+        has_sudo && exec sudo -u "${DEHYDRATED_USER}" "${0}" "${ORIGARGS[@]}"
       fi
     else
       TARGET_GID="$(getent group "${DEHYDRATED_GROUP}" | cut -d':' -f3)" || _exiterr "DEHYDRATED_GROUP ${DEHYDRATED_GROUP} is invalid"
@@ -420,7 +420,7 @@ load_config() {
       fi
       if [[ "${EUID}" != "${TARGET_UID}" ]] || [[ "${EGID}" != "${TARGET_GID}" ]]; then
         echo "# INFO: Running $0 as ${DEHYDRATED_USER}/${DEHYDRATED_GROUP}"
-        has_sudo && exec sudo -u "${DEHYDRATED_USER}" -g "${DEHYDRATED_GROUP}" "${0}" ${ORIGARGS}
+        has_sudo && exec sudo -u "${DEHYDRATED_USER}" -g "${DEHYDRATED_GROUP}" "${0}" "${ORIGARGS[@]}"
       fi
     fi
   elif [[ -n "${DEHYDRATED_GROUP}" ]]; then
