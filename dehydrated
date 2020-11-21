@@ -1174,6 +1174,7 @@ sign_csr() {
     if [ -n "${PREFERRED_CHAIN:-}" ]; then
       foundaltchain=0
       altcn="$(get_last_cn "${crt}")"
+      altoptions="${altcn}"
       if [ "${altcn}" = "${PREFERRED_CHAIN}" ]; then
         foundaltchain=1
       fi
@@ -1182,6 +1183,7 @@ sign_csr() {
           if [ "${foundaltchain}" = "0" ]; then
             altcrt="$(signed_request "${altcrturl}" "")"
             altcn="$(get_last_cn "${altcrt}")"
+            altoptions="${altoptions}, ${altcn}"
             if [ "${altcn}" = "${PREFERRED_CHAIN}" ]; then
               foundaltchain=1
               crt="${altcrt}"
@@ -1190,7 +1192,7 @@ sign_csr() {
         done <<< "$(grep -Ei '^link:' "${resheaders}" | grep -Ei 'rel="alternate"' | cut -d'<' -f2 | cut -d'>' -f1)"
       fi
       if [ "${foundaltchain}" = "0" ]; then
-        _exiterr "Alternative chain with CN = ${PREFERRED_CHAIN} not found"
+        _exiterr "Alternative chain with CN = ${PREFERRED_CHAIN} not found, available options: ${altoptions}"
       fi
       echo " + Using preferred chain with CN = ${altcn}"
     fi
