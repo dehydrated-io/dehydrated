@@ -1645,6 +1645,23 @@ command_sign_domains() {
       fi
     fi
 
+    # Force-renew if certificate was signed by a different provider
+    provider="${certdir}/provider"
+    if [[ ! -s "${provider}" ]]; then
+        echo "${CA}" >"${provider}"
+    fi
+    if [[ -f "${provider}" ]]; then
+        printf " + Checking provider of existing cert..."
+        if [[ "${CA}" != "$(cat ${provider})" ]]; then
+          echo " changed!"
+          echo " + Forcing renew."
+          echo "${CA}" >"${provider}"
+          force_renew="yes"
+        else
+          echo " unchanged."
+        fi
+    fi
+
     # Check domain names of existing certificate
     if [[ -e "${cert}" ]]; then
       printf " + Checking domain name(s) of existing cert..."
