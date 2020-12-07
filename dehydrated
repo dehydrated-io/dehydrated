@@ -1617,7 +1617,7 @@ command_sign_domains() {
         case "${config_var}" in
           KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
             echo "   + ${config_var} = ${config_value}"
-            declare -- "${config_var}=${config_value}"
+            source <(echo ${config_var}=${config_value})
             ;;
           _) ;;
           *) echo "   ! Setting ${config_var} on a per-certificate base is not (yet) supported" >&2
