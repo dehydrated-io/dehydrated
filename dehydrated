@@ -928,13 +928,9 @@ extract_altnames() {
   fi
 }
 
-# Get last subject CN in certificate chain
+# Get last issuer CN in certificate chain
 get_last_cn() {
-  cn="$("${OPENSSL}" verify -CAfile <(echo "${1}") -show_chain <(echo "${1}") | tail -n 1 | _sed -e 's/.* CN ?= ?([^/,]*).*/\1/')"
-  if [ -z "${cn}" ]; then
-    _exiterr "Error while fetching CN from certificate chain"
-  fi
-  printf "${cn}"
+  <<<"${1}" _sed 'H;/-----BEGIN CERTIFICATE-----/h;$!d;x' | "${OPENSSL}" x509 -noout -issuer | head -n1 | _sed -e 's/.* CN ?= ?([^/,]*).*/\1/'
 }
 
 # Create certificate for domain(s) and outputs it FD 3
