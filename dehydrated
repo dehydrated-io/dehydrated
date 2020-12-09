@@ -1609,7 +1609,7 @@ command_sign_domains() {
         rm "${aftervars}"
       ); do
         config_var="$(echo "${cfgline:1}" | cut -d'=' -f1)"
-        config_value="$(echo "${cfgline:1}" | cut -d'=' -f2-)"
+        config_value="$(echo "${cfgline:1}" | cut -d'=' -f2- | tr -d "'")"
         case "${config_var}" in
           KEY_ALGO|OCSP_MUST_STAPLE|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
             echo "   + ${config_var} = ${config_value}"
