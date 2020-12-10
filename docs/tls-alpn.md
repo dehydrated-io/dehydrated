@@ -15,18 +15,16 @@ Your config should look something like this:
 
 ```nginx
 stream {
-  server {
-    map $ssl_preread_alpn_protocols $tls_port {
-      ~\bacme-tls/1\b 10443;
-      default 443;
-    }
+  map $ssl_preread_alpn_protocols $tls_port {
+    ~\bacme-tls/1\b 10443;
+    default 443;
+  }
 
-    server {
-      listen 443;
-      listen [::]:443;
-      proxy_pass 10.13.37.42:$tls_port;
-      ssl_preread on;
-    }
+  server {
+    listen 443;
+    listen [::]:443;
+    proxy_pass 10.13.37.42:$tls_port;
+    ssl_preread on;
   }
 }
 ```

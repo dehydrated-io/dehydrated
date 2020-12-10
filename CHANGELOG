@@ -2,11 +2,44 @@
 This file contains a log of major changes in dehydrated
 
 ## [x.x.x] - xxxx-xx-xx
+## Added
+- Support for external account bindings
+- Special support for ZeroSSL
+- Support presets for some CAs instead of requiring URLs
+- Allow requesting preferred chain (`--preferred-chain`)
+- Added method to show CAs current terms of service (`--display-terms`)
+
+## Fixed
+- No more silent failures on broken hook-scripts
+- Better error-handling with KEEP_GOING enabled
+- Check actual order status instead of assuming it's valid
+- Don't include keyAuthorization in challenge validation (RFC compliance)
+
+## Changed
+- Use JSON.sh to parse JSON
+- Use account URL instead of account ID (RFC compliance)
+- Dehydrated now has a new home: https://github.com/dehydrated-io/dehydrated
+
+## [0.6.5] - 2019-06-26
+## Fixed
+- Fixed broken APIv1 compatibility from last update
+
+## [0.6.4] - 2019-06-25
+## Changed
+- Fetch account ID from Location header instead of account json
+
+## [0.6.3] - 2019-06-25
 ## Changed
 - OCSP refresh interval is now configurable
+- Implemented POST-as-GET
+- Call exit_hook on errors (with error-message as first parameter)
 
 ## Added
 - Initial support for tls-alpn-01 validation
+- New hook: sync_cert (for syncing certificate files to disk, see example hook description)
+
+## Fixes
+- Fetch account information after registration to avoid missing account id
 
 ## [0.6.2] - 2018-04-25
 ## Added

@@ -1,5 +1,8 @@
 # dehydrated [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=23P9DSJBTY7C8)
 
+Quick note: dehydrated moved, the license will NOT change, and I will still take care of the project.
+See https://lukas.im/2020/01/30/selling-dehydrated/index.html for more details.
+
 ![](docs/logo.jpg)
 
 Dehydrated is a client for signing certificates with an ACME-server (e.g. Let's Encrypt) implemented as a relatively simple (zsh-compatible) bash-script.
@@ -49,11 +52,13 @@ Default command: help
 
 Commands:
  --version (-v)                   Print version information
+ --display-terms                  Display current terms of service
  --register                       Register account key
  --account                        Update account contact information
  --cron (-c)                      Sign/renew non-existent/changed/expiring certificates.
  --signcsr (-s) path/to/csr.pem   Sign a given CSR, output CRT on stdout (advanced usage)
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
+ --deactivate                     Deactivate account
  --cleanup (-gc)                  Move unused certificate files to archive directory
  --help (-h)                      Show help text
  --env (-e)                       Output configuration variables for use in other scripts
@@ -64,6 +69,7 @@ Parameters:
  --ipv4 (-4)                      Resolve names to IPv4 addresses only
  --ipv6 (-6)                      Resolve names to IPv6 addresses only
  --domain (-d) domain.tld         Use specified domain name(s) instead of domains.txt entry (one certificate!)
+ --ca url/preset                  Use specified CA URL or preset
  --alias certalias                Use specified name for certificate directory (and per-certificate config) instead of the primary domain (only used if --domain is specified)
  --keep-going (-g)                Keep going after encountering an error while creating/renewing multiple certificates in cron mode
  --force (-x)                     Force renew of certificate even if it is longer valid than value in RENEW_DAYS
@@ -73,6 +79,7 @@ Parameters:
  --privkey (-p) path/to/key.pem   Use specified private key instead of account key (useful for revocation)
  --config (-f) path/to/config     Use specified config file
  --hook (-k) path/to/hook.sh      Use specified script for hooks
+ --preferred-chain issuer-cn      Use alternative certificate chain identified by issuer CN
  --out (-o) certs/directory       Output certificates into the specified directory
  --alpn alpn-certs/directory      Output alpn verification certificates into the specified directory
  --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported
