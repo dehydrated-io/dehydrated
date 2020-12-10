@@ -731,7 +731,9 @@ _sed() {
 
 # Print error message and exit with error
 _exiterr() {
-  echo "ERROR: ${1}" >&2
+  if [ -n "${1:-}" ]; then
+    echo "ERROR: ${1}" >&2
+  fi
   [[ "${skip_exit_hook:-no}" = "no" ]] && [[ -n "${HOOK:-}" ]] && ("${HOOK}" "exit_hook" "${1}" || echo 'exit_hook returned with non-zero exit code!' >&2)
   exit 1
 }
@@ -844,7 +846,7 @@ http_request() {
 
       # remove temporary domains.txt file if used
       [[ "${COMMAND:-}" = "sign_domains" && -n "${PARAM_DOMAIN:-}" && -n "${DOMAINS_TXT:-}" ]] && rm "${DOMAINS_TXT}"
-      exit 1
+      _exiterr
     fi
   fi
 
