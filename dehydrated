@@ -1884,6 +1884,10 @@ command_cleanup() {
         # Look up current file in use
         current="$(basename "$(readlink "${certdir}/${filetype}")")"
       else
+        if [[ -h "${certdir}/${filetype}" ]]; then
+          echo "Removing broken symlink: ${certdir}/${filetype}"
+          rm -f "${certdir}/${filetype}"
+        fi
         current=""
       fi
 
