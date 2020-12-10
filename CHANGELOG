@@ -1,13 +1,15 @@
 # Change Log
 This file contains a log of major changes in dehydrated
 
-## [x.x.x] - xxxx-xx-xx
+## [0.7.0] - 2020-12-10
 ## Added
 - Support for external account bindings
 - Special support for ZeroSSL
 - Support presets for some CAs instead of requiring URLs
 - Allow requesting preferred chain (`--preferred-chain`)
 - Added method to show CAs current terms of service (`--display-terms`)
+- Allow setting path to domains.txt using cli arguments (`--domains-txt`)
+- Added new cli command `--cleanupdelete` which deletes old files instead of archiving them
 
 ## Fixed
 - No more silent failures on broken hook-scripts
@@ -20,6 +22,8 @@ This file contains a log of major changes in dehydrated
 - Use JSON.sh to parse JSON
 - Use account URL instead of account ID (RFC compliance)
 - Dehydrated now has a new home: https://github.com/dehydrated-io/dehydrated
+- Added `OCSP_FETCH` and `OCSP_DAYS` to per-certificate configurable options
+- Cleanup now also removes dangling symlinks
 
 ## [0.6.5] - 2019-06-26
 ## Fixed

@@ -60,6 +60,7 @@ Commands:
  --revoke (-r) path/to/cert.pem   Revoke specified certificate
  --deactivate                     Deactivate account
  --cleanup (-gc)                  Move unused certificate files to archive directory
+ --cleanup-delete (-gcd)          Deletes (!) unused certificate files
  --help (-h)                      Show help text
  --env (-e)                       Output configuration variables for use in other scripts
 
@@ -77,6 +78,7 @@ Parameters:
  --lock-suffix example.com        Suffix lockfile name with a string (useful for with -d)
  --ocsp                           Sets option in CSR indicating OCSP stapling to be mandatory
  --privkey (-p) path/to/key.pem   Use specified private key instead of account key (useful for revocation)
+ --domains-txt path/to/domains.txt Use specified domains.txt instead of default/configured one
  --config (-f) path/to/config     Use specified config file
  --hook (-k) path/to/hook.sh      Use specified script for hooks
  --preferred-chain issuer-cn      Use alternative certificate chain identified by issuer CN
