@@ -345,7 +345,7 @@ load_config() {
   WELLKNOWN=
   PRIVATE_KEY_RENEW="yes"
   PRIVATE_KEY_ROLLOVER="no"
-  KEY_ALGO=rsa
+  KEY_ALGO=secp384r1
   OPENSSL=openssl
   OPENSSL_CNF=
   CONTACT_EMAIL=
