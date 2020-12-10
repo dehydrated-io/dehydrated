@@ -16,6 +16,7 @@ This file contains a log of major changes in dehydrated
 - Don't include keyAuthorization in challenge validation (RFC compliance)
 
 ## Changed
+- Using EC secp384r1 as default certificate type
 - Use JSON.sh to parse JSON
 - Use account URL instead of account ID (RFC compliance)
 - Dehydrated now has a new home: https://github.com/dehydrated-io/dehydrated
