@@ -503,6 +503,7 @@ load_config() {
   [[ -n "${PARAM_NO_LOCK:-}" ]] && LOCKFILE=""
 
   [[ -n "${PARAM_HOOK:-}" ]] && HOOK="${PARAM_HOOK}"
+  [[ -n "${PARAM_DOMAINS_TXT:-}" ]] && DOMAINS_TXT="${PARAM_DOMAINS_TXT}"
   [[ -n "${PARAM_PREFERRED_CHAIN:-}" ]] && PREFERRED_CHAIN="${PARAM_PREFERRED_CHAIN}"
   [[ -n "${PARAM_CERTDIR:-}" ]] && CERTDIR="${PARAM_CERTDIR}"
   [[ -n "${PARAM_ALPNCERTDIR:-}" ]] && ALPNCERTDIR="${PARAM_ALPNCERTDIR}"
@@ -2130,6 +2131,14 @@ main() {
         shift 1
         check_parameters "${1:-}"
         PARAM_ACCOUNT_KEY="${1}"
+        ;;
+
+      # PARAM_Usage: --domains-txt path/to/domains.txt
+      # PARAM_Description: Use specified domains.txt instead of default/configured one
+      --domains-txt)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_DOMAINS_TXT="${1}"
         ;;
 
       # PARAM_Usage: --config (-f) path/to/config
