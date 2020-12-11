@@ -926,14 +926,14 @@ extract_altnames() {
     printf "%s" "${altnames}" | tr '\n' ' '
   else
     # No SANs, extract CN
-    altnames="$( <<<"${reqtext}" grep '^[[:space:]]*Subject:' | _sed -e 's/.* CN ?= ?([^ /,]*).*/\1/' )"
+    altnames="$( <<<"${reqtext}" grep '^[[:space:]]*Subject:' | _sed -e 's/.*[ /]CN ?= ?([^ /,]*).*/\1/' )"
     printf "%s" "${altnames}"
   fi
 }
 
 # Get last issuer CN in certificate chain
 get_last_cn() {
-  <<<"${1}" _sed 'H;/-----BEGIN CERTIFICATE-----/h;$!d;x' | "${OPENSSL}" x509 -noout -issuer | head -n1 | _sed -e 's/.* CN ?= ?([^/,]*).*/\1/'
+  <<<"${1}" _sed 'H;/-----BEGIN CERTIFICATE-----/h;$!d;x' | "${OPENSSL}" x509 -noout -issuer | head -n1 | _sed -e 's/.*[ /]CN ?= ?([^/,]*).*/\1/'
 }
 
 # Create certificate for domain(s) and outputs it FD 3
