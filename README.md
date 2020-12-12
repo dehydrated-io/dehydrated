@@ -74,6 +74,7 @@ Parameters:
  --alias certalias                Use specified name for certificate directory (and per-certificate config) instead of the primary domain (only used if --domain is specified)
  --keep-going (-g)                Keep going after encountering an error while creating/renewing multiple certificates in cron mode
  --force (-x)                     Force renew of certificate even if it is longer valid than value in RENEW_DAYS
+ --force-validation               Force revalidation of domain names (used in combination with --force)
  --no-lock (-n)                   Don't use lockfile (potentially dangerous!)
  --lock-suffix example.com        Suffix lockfile name with a string (useful for with -d)
  --ocsp                           Sets option in CSR indicating OCSP stapling to be mandatory
