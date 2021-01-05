@@ -1060,7 +1060,7 @@ sign_csr() {
         keyauth_hook="$(printf '%s' "${keyauth}" | "${OPENSSL}" dgst -sha256 -binary | urlbase64)"
         ;;
       "tls-alpn-01")
-        keyauth_hook="$(printf '%s' "${keyauth}" | "${OPENSSL}" dgst -sha256 -c -hex | awk '{print $2}')"
+        keyauth_hook="$(printf '%s' "${keyauth}" | "${OPENSSL}" dgst -sha256 -c -hex | awk '{print $NF}')"
         generate_alpn_certificate "${identifier}" "${keyauth_hook}"
         ;;
     esac
