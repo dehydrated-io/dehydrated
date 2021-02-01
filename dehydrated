@@ -2197,8 +2197,8 @@ main() {
         PARAM_ALPNCERTDIR="${1}"
         ;;
 
-      # PARAM_Usage: --challenge (-t) http-01|dns-01
-      # PARAM_Description: Which challenge should be used? Currently http-01 and dns-01 are supported
+      # PARAM_Usage: --challenge (-t) http-01|dns-01|tls-alpn-01
+      # PARAM_Description: Which challenge should be used? Currently http-01, dns-01, and tls-alpn-01 are supported
       --challenge|-t)
         shift 1
         check_parameters "${1:-}"
