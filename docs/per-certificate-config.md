@@ -11,6 +11,8 @@ Currently supported options:
 - KEY_ALGO
 - KEYSIZE
 - OCSP_MUST_STAPLE
+- OCSP_FETCH
+- OCSP_DAYS
 - CHALLENGETYPE
 - HOOK
 - HOOK_CHAIN

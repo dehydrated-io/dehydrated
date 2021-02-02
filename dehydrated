@@ -254,7 +254,10 @@ check_dependencies() {
 store_configvars() {
   __KEY_ALGO="${KEY_ALGO}"
   __OCSP_MUST_STAPLE="${OCSP_MUST_STAPLE}"
+  __OCSP_FETCH="${OCSP_FETCH}"
+  __OCSP_DAYS="${OCSP_DAYS}"
   __PRIVATE_KEY_RENEW="${PRIVATE_KEY_RENEW}"
+  __PRIVATE_KEY_ROLLOVER="${PRIVATE_KEY_ROLLOVER}"
   __KEYSIZE="${KEYSIZE}"
   __CHALLENGETYPE="${CHALLENGETYPE}"
   __HOOK="${HOOK}"
@@ -269,7 +272,10 @@ store_configvars() {
 reset_configvars() {
   KEY_ALGO="${__KEY_ALGO}"
   OCSP_MUST_STAPLE="${__OCSP_MUST_STAPLE}"
+  OCSP_FETCH="${__OCSP_FETCH}"
+  OCSP_DAYS="${__OCSP_DAYS}"
   PRIVATE_KEY_RENEW="${__PRIVATE_KEY_RENEW}"
+  PRIVATE_KEY_ROLLOVER="${__PRIVATE_KEY_ROLLOVER}"
   KEYSIZE="${__KEYSIZE}"
   CHALLENGETYPE="${__CHALLENGETYPE}"
   HOOK="${__HOOK}"
@@ -1622,6 +1628,8 @@ command_sign_domains() {
       ); do
         config_var="$(echo "${cfgline:1}" | cut -d'=' -f1)"
         config_value="$(echo "${cfgline:1}" | cut -d'=' -f2- | tr -d "'")"
+	# All settings that are allowed here should also be stored and
+	# restored in store_configvars() and reset_configvars()
         case "${config_var}" in
           KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
             echo "   + ${config_var} = ${config_value}"
