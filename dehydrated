@@ -1532,6 +1532,20 @@ command_account() {
   exit 0
 }
 
+# Parse contents of domains.txt and domains.txt.d
+parse_domains_txt() {
+  # Allow globbing temporarily
+  [[ -n "${ZSH_VERSION:-}" ]] && set +o noglob || set +f
+  local inputs=("${DOMAINS_TXT}" "${DOMAINS_TXT}.d"/*.txt)
+  [[ -n "${ZSH_VERSION:-}" ]] && set -o noglob || set -f
+
+  cat "${inputs[@]}" |
+    tr -d '\r' |
+    awk '{print tolower($0)}' |
+    _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' -e 's/([^ ])>/\1 >/g' -e 's/> />/g' |
+    (grep -vE '^(#|$)' || true)
+}
+
 # Usage: --cron (-c)
 # Description: Sign/renew non-existent/changed/expiring certificates.
 command_sign_domains() {
@@ -1564,7 +1578,7 @@ command_sign_domains() {
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
   ORIGIFS="${IFS}"
   IFS=$'\n'
-  for line in $(<"${DOMAINS_TXT}" tr -d '\r' | awk '{print tolower($0)}' | _sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g' -e 's/[[:space:]]+/ /g' -e 's/([^ ])>/\1 >/g' -e 's/> />/g' | (grep -vE '^(#|$)' || true)); do
+  for line in $(parse_domains_txt); do
     reset_configvars
     IFS="${ORIGIFS}"
     alias="$(grep -Eo '>[^ ]+' <<< "${line}" || true)"
