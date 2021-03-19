@@ -94,3 +94,10 @@ This creates two certificates one for `service.example.com` with an
 **Note:** The first certificate is valid for both `service.example.com` and for
 `*.service.example.com` which can be a useful way to create wildcard
 certificates.
+
+### Drop-in directory
+
+If a directory named `domains.txt.d` exists in the same location as
+`domains.txt`, the contents of `*.txt` files in that directory are appended to
+the list of domains, in alphabetical order of the filenames. This is useful for
+automation, as it doesn't require editing an existing file to add new domains.
