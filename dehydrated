@@ -711,7 +711,7 @@ init_system() {
       # if account URL is not storred, fetch it from the CA
       if [[ -z "${ACCOUNT_URL:-}" ]]; then
         echo "+ Fetching account URL..."
-        ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"onlyReturnExisting": true}' 4>&1 | grep -i ^Location: | awk '{print $2}' | tr -d '\r\n')"
+        ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"onlyReturnExisting": true}' 4>&1 | grep -i ^Location: | cut -d':' -f2- | tr -d ' \t\r\n')"
         if [[ -z "${ACCOUNT_URL}" ]]; then
           _exiterr "Unknown error on fetching account information"
         fi
@@ -723,7 +723,7 @@ init_system() {
     if [[ ${API} -eq 1 ]]; then
       _exiterr "This is not implemented for ACMEv1! Consider switching to ACMEv2 :)"
     else
-      ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"onlyReturnExisting": true}' 4>&1 | grep -i ^Location: | awk '{print $2}' | tr -d '\r\n')"
+      ACCOUNT_URL="$(signed_request "${CA_NEW_ACCOUNT}" '{"onlyReturnExisting": true}' 4>&1 | grep -i ^Location: | cut -d':' -f2- | tr -d ' \t\r\n')"
       ACCOUNT_INFO="$(signed_request "${ACCOUNT_URL}" '{}')"
     fi
     echo "${ACCOUNT_INFO}" > "${ACCOUNT_KEY_JSON}"
@@ -875,9 +875,9 @@ signed_request() {
 
   # Retrieve nonce from acme-server
   if [[ ${API} -eq 1 ]]; then
-    nonce="$(http_request head "${CA}" | grep -i ^Replay-Nonce: | awk -F ':' '{print $2}' | tr -d ' \n\r')"
+    nonce="$(http_request head "${CA}" | grep -i ^Replay-Nonce: | cut -d':' -f2- | tr -d ' \t\n\r')"
   else
-    nonce="$(http_request head "${CA_NEW_NONCE}" | grep -i ^Replay-Nonce: | awk -F ':' '{print $2}' | tr -d ' \n\r')"
+    nonce="$(http_request head "${CA_NEW_NONCE}" | grep -i ^Replay-Nonce: | cut -d':' -f2- | tr -d ' \t\n\r')"
   fi
 
   # Build header with just our public key and algorithm information
@@ -983,7 +983,7 @@ sign_csr() {
     challenge_identifiers="[${challenge_identifiers%, }]"
 
     echo " + Requesting new certificate order from CA..."
-    order_location="$(signed_request "${CA_NEW_ORDER}" '{"identifiers": '"${challenge_identifiers}"'}' 4>&1 | grep -i ^Location: | awk '{print $2}' | tr -d '\r\n')"
+    order_location="$(signed_request "${CA_NEW_ORDER}" '{"identifiers": '"${challenge_identifiers}"'}' 4>&1 | grep -i ^Location: | cut -d':' -f2- | tr -d ' \t\r\n')"
     result="$(signed_request "${order_location}" "" | jsonsh)"
 
     order_authorizations="$(echo "${result}" | get_json_array_values authorizations)"
