@@ -28,7 +28,7 @@ example.net www.example.net > certalias
 # multiple certificate types for the same domain.
 #
 # This allows to set per certificates options. How to do this is
-# explained in [domains.txt documentation](../domains_txt.md).
+# explained in [domains.txt documentation](domains_txt.md).
 #
 *.service.example.org service.example.org  > star_service_example_org_rsa
 *.service.example.org service.example.org  > star_service_example_org_ecdsa
