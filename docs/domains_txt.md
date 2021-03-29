@@ -34,6 +34,30 @@ under your `CERTDIR`.
 example.net www.example.net wiki.example.net > certalias
 ```
 
+This allows to set per certificates options. The options you can change are
+explained in [Per Certificate Config](per-certificate-config.md).
+
+If you want to create different certificate types for the same domain
+you can use:
+
+```text
+*.service.example.org service.example.org  > star_service_example_org_rsa
+*.service.example.org service.example.org  > star_service_example_org_ecdsa
+```
+
+Then add a config file `certs/star_service_example_org_rsa/config` with
+the value
+
+```
+KEY_ALGO="rsa"
+```
+
+or respectively
+
+```
+KEY_ALGO="ecdsa"
+```
+
 ### Wildcards
 
 Support for wildcards was added by the ACME v2 protocol.
