@@ -536,7 +536,9 @@ init_system() {
   if [[ -n "${LOCKFILE}" ]]; then
     LOCKDIR="$(dirname "${LOCKFILE}")"
     [[ -w "${LOCKDIR}" ]] || _exiterr "Directory ${LOCKDIR} for LOCKFILE ${LOCKFILE} is not writable, aborting."
-    ( set -C; date > "${LOCKFILE}" ) 2>/dev/null || _exiterr "Lock file '${LOCKFILE}' present, aborting."
+    exec 100>>"${LOCKFILE}"
+    flock -n 100 || _exiterr "Lock file '${LOCKFILE}' is locked, aborting."
+    date >"${LOCKFILE}"  # for backward compability. Unreliable, since $LOCKFILE can exist after crash/SIGKILL
     remove_lock() { rm -f "${LOCKFILE}"; }
     trap 'remove_lock' EXIT
   fi
