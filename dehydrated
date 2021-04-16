@@ -1760,11 +1760,11 @@ command_sign_domains() {
 # Usage: --signcsr (-s) path/to/csr.pem
 # Description: Sign a given CSR, output CRT on stdout (advanced usage)
 command_sign_csr() {
+  init_system
+
   # redirect stdout to stderr
   # leave stdout over at fd 3 to output the cert
   exec 3>&1 1>&2
-
-  init_system
 
   # load csr
   csrfile="${1}"
