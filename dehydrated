@@ -8,8 +8,12 @@
 set -e
 set -u
 set -o pipefail
+if test -n "${KSH_VERSION:-}"; then
+	set -f
+else
 [[ -n "${ZSH_VERSION:-}" ]] && set -o SH_WORD_SPLIT && set +o FUNCTION_ARGZERO && set -o NULL_GLOB && set -o noglob
 [[ -z "${ZSH_VERSION:-}" ]] && shopt -s nullglob && set -f
+fi
 
 umask 077 # paranoid umask, we're creating private keys
 
@@ -230,7 +234,7 @@ jsonsh() {
 # Create (identifiable) temporary files
 _mktemp() {
   # shellcheck disable=SC2068
-  mktemp ${@:-} "${TMPDIR:-/tmp}/dehydrated-XXXXXX"
+  mktemp "$@" "${TMPDIR:-/tmp}/dehydrated-XXXXXX"
 }
 
 # Check for script dependencies
@@ -309,7 +313,9 @@ verify_config() {
     [[ "${IP_VERSION}" = "4" || "${IP_VERSION}" = "6" ]] || _exiterr "Unknown IP version ${IP_VERSION}... cannot continue."
   fi
   [[ "${API}" == "auto" || "${API}" == "1" || "${API}" == "2" ]] || _exiterr "Unsupported API version defined in config: ${API}"
-  [[ "${OCSP_DAYS}" =~ ^[0-9]+$ ]] || _exiterr "OCSP_DAYS must be a number"
+  case x$OCSP_DAYS in
+  (x*[!0-9]*|x) _exiterr "OCSP_DAYS must be a number" ;;
+  esac
 }
 
 # Setup default config values, search for and load configuration files
@@ -1440,7 +1446,7 @@ command_version() {
   revision="$(cd "${SCRIPTDIR}"; git rev-parse HEAD 2>/dev/null || echo "unknown")"
   echo "GIT-Revision: ${revision}"
   echo ""
-  if [[ "${OSTYPE}" =~ "BSD" ]]; then
+  if [[ "${OSTYPE}" = *BSD* ]]; then
     echo "OS: $(uname -sr)"
   elif [[ -e /etc/os-release ]]; then
     ( . /etc/os-release && echo "OS: $PRETTY_NAME" )
@@ -1453,7 +1459,7 @@ command_version() {
   [[ -n "${BASH_VERSION:-}" ]] && echo " bash: ${BASH_VERSION}"
   [[ -n "${ZSH_VERSION:-}" ]] && echo " zsh: ${ZSH_VERSION}"
   echo " curl: ${CURL_VERSION}"
-  if [[ "${OSTYPE}" =~ "BSD" ]]; then
+  if [[ "${OSTYPE}" = *BSD* ]]; then
     echo " awk, sed, mktemp, grep, diff: BSD base system versions"
   else
     echo " awk: $(awk -W version 2>&1 | head -n1)"
@@ -1822,7 +1828,7 @@ command_revoke() {
     # follow symlink and use real certificate name (so we move the real file and not the symlink at the end)
     local link_target
     link_target="$(readlink -n "${cert}")"
-    if [[ "${link_target}" =~ ^/ ]]; then
+    if [[ "${link_target}" = /* ]]; then
       cert="${link_target}"
     else
       cert="$(dirname "${cert}")/${link_target}"
@@ -1953,14 +1959,14 @@ command_help() {
   printf "Default command: help\n\n"
   echo "Commands:"
   grep -e '^[[:space:]]*# Usage:' -e '^[[:space:]]*# Description:' -e '^command_.*()[[:space:]]*{' "${0}" | while read -r usage; read -r description; read -r command; do
-    if [[ ! "${usage}" =~ Usage ]] || [[ ! "${description}" =~ Description ]] || [[ ! "${command}" =~ ^command_ ]]; then
+    if [[ ! "${usage}" = *Usage* ]] || [[ ! "${description}" = *Description* ]] || [[ ! "${command}" = command_* ]]; then
       _exiterr "Error generating help text."
     fi
     printf " %-32s %s\n" "${usage##"# Usage: "}" "${description##"# Description: "}"
   done
   printf -- "\nParameters:\n"
   grep -E -e '^[[:space:]]*# PARAM_Usage:' -e '^[[:space:]]*# PARAM_Description:' "${0}" | while read -r usage; read -r description; do
-    if [[ ! "${usage}" =~ Usage ]] || [[ ! "${description}" =~ Description ]]; then
+    if [[ ! "${usage}" = *Usage* ]] || [[ ! "${description}" = *Description* ]]; then
       _exiterr "Error generating help text."
     fi
     printf " %-32s %s\n" "${usage##"# PARAM_Usage: "}" "${description##"# PARAM_Description: "}"
@@ -2254,7 +2260,7 @@ OSTYPE="$(uname)"
 
 if [[ ! "${DEHYDRATED_NOOP:-}" = "NOOP" ]]; then
   # Run script
-  main "${@:-}"
+  main "$@"
 fi
 
 # vi: expandtab sw=2 ts=2
