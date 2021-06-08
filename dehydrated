@@ -1923,7 +1923,6 @@ command_cleanup() {
         # Check if current file is in use, if unused move to archive directory
         filename="$(basename "${file}")"
         if [[ ! "${filename}" = "${current}" ]] && [[ -f "${certdir}/${filename}" ]]; then
-          echo "${filename}"
           if [[ "${PARAM_CLEANUPDELETE:-}" = "yes" ]]; then
             echo "Deleting unused file: ${certname}/${filename}"
             rm "${certdir}/${filename}"
