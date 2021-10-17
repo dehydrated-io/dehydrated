@@ -1440,7 +1440,7 @@ command_version() {
   revision="$(cd "${SCRIPTDIR}"; git rev-parse HEAD 2>/dev/null || echo "unknown")"
   echo "GIT-Revision: ${revision}"
   echo ""
-  if [[ "${OSTYPE}" =~ "BSD" ]]; then
+  if [[ "${OSTYPE}" =~ (BSD|Darwin) ]]; then
     echo "OS: $(uname -sr)"
   elif [[ -e /etc/os-release ]]; then
     ( . /etc/os-release && echo "OS: $PRETTY_NAME" )
@@ -1453,7 +1453,7 @@ command_version() {
   [[ -n "${BASH_VERSION:-}" ]] && echo " bash: ${BASH_VERSION}"
   [[ -n "${ZSH_VERSION:-}" ]] && echo " zsh: ${ZSH_VERSION}"
   echo " curl: ${CURL_VERSION}"
-  if [[ "${OSTYPE}" =~ "BSD" ]]; then
+  if [[ "${OSTYPE}" =~ (BSD|Darwin) ]]; then
     echo " awk, sed, mktemp, grep, diff: BSD base system versions"
   else
     echo " awk: $(awk -W version 2>&1 | head -n1)"
