@@ -574,7 +574,7 @@ init_system() {
   fi
 
   # Export some environment variables to be used in hook script
-  export WELLKNOWN BASEDIR CERTDIR ALPNCERTDIR CONFIG COMMAND
+  export WELLKNOWN BASEDIR CERTDIR ALPNCERTDIR CONFIG COMMAND CHALLENGETYPE
 
   # Checking for private key ...
   register_new_key="no"
@@ -1072,7 +1072,7 @@ sign_csr() {
     esac
 
     keyauths[${idx}]="${keyauth}"
-    deploy_args[${idx}]="${identifier} ${challenge_tokens[${idx}]} ${keyauth_hook}"
+    deploy_args[${idx}]="${identifier} ${challenge_tokens[${idx}]} ${keyauth_hook} ${CHALLENGETYPE}"
 
     idx=$((idx+1))
   done
