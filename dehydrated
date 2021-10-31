@@ -1343,7 +1343,7 @@ sign_domain() {
       tmp_privkey="$(_mktemp)"
       case "${KEY_ALGO}" in
         rsa) _openssl genrsa -out "${tmp_privkey}" "${KEYSIZE}";;
-        prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${tmp_privkey}";;
+        prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${tmp_privkey}" -noout;;
       esac
       cat "${tmp_privkey}" > "${certdir}/privkey-${timestamp}.pem"
       rm "${tmp_privkey}"
@@ -1360,7 +1360,7 @@ sign_domain() {
       echo " + Generating private rollover key..."
       case "${KEY_ALGO}" in
         rsa) _openssl genrsa -out "${certdir}/privkey.roll.pem" "${KEYSIZE}";;
-        prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${certdir}/privkey.roll.pem";;
+        prime256v1|secp384r1) _openssl ecparam -genkey -name "${KEY_ALGO}" -out "${certdir}/privkey.roll.pem" -noout;;
       esac
     fi
     # delete rolloverkeys if disabled
