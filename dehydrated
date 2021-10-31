@@ -1198,16 +1198,13 @@ sign_csr() {
     crt="$(signed_request "${certificate}" "" 4>"${resheaders}")"
 
     if [ -n "${PREFERRED_CHAIN:-}" ]; then
-      if ! (grep -Ei '^link:' "${resheaders}" | grep -q -Ei 'rel="alternate"'); then
-        _exiterr "Preferred chain defined but CA doesn't offer chain selection."
-      fi
       foundaltchain=0
       altcn="$(get_last_cn "${crt}")"
       altoptions="${altcn}"
       if [ "${altcn}" = "${PREFERRED_CHAIN}" ]; then
         foundaltchain=1
       fi
-      if [ "${foundaltchain}" = "0" ]; then
+      if [ "${foundaltchain}" = "0" ] && (grep -Ei '^link:' "${resheaders}" | grep -q -Ei 'rel="alternate"'); then
         while read -r altcrturl; do
           if [ "${foundaltchain}" = "0" ]; then
             altcrt="$(signed_request "${altcrturl}" "")"
