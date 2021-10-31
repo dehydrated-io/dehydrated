@@ -351,6 +351,8 @@ load_config() {
   CERTDIR=
   ALPNCERTDIR=
   ACCOUNTDIR=
+  ACCOUNT_KEYSIZE="4096"
+  ACCOUNT_KEY_ALGO=rsa
   CHALLENGETYPE="http-01"
   CONFIG_D=
   CURL_OPTS=
@@ -611,19 +613,50 @@ init_system() {
       generated="true"
       local tmp_account_key
       tmp_account_key="$(_mktemp)"
-      _openssl genrsa -out "${tmp_account_key}" "${KEYSIZE}"
+      case "${ACCOUNT_KEY_ALGO}" in
+        rsa) _openssl genrsa -out "${tmp_account_key}" "${ACCOUNT_KEYSIZE}";;
+        prime256v1|secp384r1) _openssl ecparam -genkey -name "${ACCOUNT_KEY_ALGO}" -out "${tmp_account_key}" -noout;;
+      esac
       cat "${tmp_account_key}" > "${ACCOUNT_KEY}"
       rm "${tmp_account_key}"
       register_new_key="yes"
     fi
   fi
-  "${OPENSSL}" rsa -in "${ACCOUNT_KEY}" -check 2>/dev/null > /dev/null || _exiterr "Account key is not valid, cannot continue."
 
-  # Get public components from private key and calculate thumbprint
-  pubExponent64="$(printf '%x' "$("${OPENSSL}" rsa -in "${ACCOUNT_KEY}" -noout -text | awk '/publicExponent/ {print $2}')" | hex2bin | urlbase64)"
-  pubMod64="$("${OPENSSL}" rsa -in "${ACCOUNT_KEY}" -noout -modulus | cut -d'=' -f2 | hex2bin | urlbase64)"
+  if ("${OPENSSL}" rsa -in "${ACCOUNT_KEY}" -check 2>/dev/null > /dev/null); then
+    # Get public components from private key and calculate thumbprint
+    pubExponent64="$(printf '%x' "$("${OPENSSL}" rsa -in "${ACCOUNT_KEY}" -noout -text | awk '/publicExponent/ {print $2}')" | hex2bin | urlbase64)"
+    pubMod64="$("${OPENSSL}" rsa -in "${ACCOUNT_KEY}" -noout -modulus | cut -d'=' -f2 | hex2bin | urlbase64)"
 
-  thumbprint="$(printf '{"e":"%s","kty":"RSA","n":"%s"}' "${pubExponent64}" "${pubMod64}" | "${OPENSSL}" dgst -sha256 -binary | urlbase64)"
+    account_key_info="$(printf '{"e":"%s","kty":"RSA","n":"%s"}' "${pubExponent64}" "${pubMod64}")"
+    account_key_sigalgo=RS256
+  elif ("${OPENSSL}" ec -in "${ACCOUNT_KEY}" -check 2>/dev/null > /dev/null); then
+    curve="$("${OPENSSL}" ec -in "${ACCOUNT_KEY}" -noout -text 2>/dev/null | grep 'NIST CURVE' | cut -d':' -f2 | tr -d ' ')"
+    pubkey="$("${OPENSSL}" ec -in "${ACCOUNT_KEY}" -noout -text 2>/dev/null | tr -d '\n ' | grep -Eo 'pub:.*ASN1' | _sed -e 's/^pub://' -e 's/ASN1$//' | tr -d ':')"
+
+    if [ "${curve}" = "P-256" ]; then
+      account_key_sigalgo="ES256"
+    elif [ "${curve}" = "P-384" ]; then
+      account_key_sigalgo="ES384"
+    else
+      _exiterr "Unknown account key curve: ${curve}"
+    fi
+
+    ec_x_offset=2
+    ec_x_len=$((${#pubkey}/2 - 1))
+    ec_x="${pubkey:$ec_x_offset:$ec_x_len}"
+    ec_x64="$(printf "%s" "${ec_x}" | hex2bin | urlbase64)"
+
+    ec_y_offset=$((ec_x_offset+ec_x_len))
+    ec_y_len=$((${#pubkey}-ec_y_offset))
+    ec_y="${pubkey:$ec_y_offset:$ec_y_len}"
+    ec_y64="$(printf "%s" "${ec_y}" | hex2bin | urlbase64)"
+
+    account_key_info="$(printf '{"crv":"%s","kty":"EC","x":"%s","y":"%s"}' "${curve}" "${ec_x64}" "${ec_y64}")"
+  else
+    _exiterr "Account key is not valid, cannot continue."
+  fi
+  thumbprint="$(printf '%s' "${account_key_info}" | "${OPENSSL}" dgst -sha256 -binary | urlbase64)"
 
   # If we generated a new private key in the step above we have to register it with the acme-server
   if [[ "${register_new_key}" = "yes" ]]; then
@@ -676,7 +709,7 @@ init_system() {
         if [[ -n "${EAB_KID:-}" ]] && [[ -n "${EAB_HMAC_KEY:-}" ]]; then
           eab_url="${CA_NEW_ACCOUNT}"
           eab_protected64="$(printf '{"alg":"HS256","kid":"%s","url":"%s"}' "${EAB_KID}" "${eab_url}" | urlbase64)"
-          eab_payload64="$(printf "%s" '{"e": "'"${pubExponent64}"'", "kty": "RSA", "n": "'"${pubMod64}"'"}' | urlbase64)"
+          eab_payload64="$(printf "%s" "${account_key_info}" | urlbase64)"
           eab_key="$(printf "%s" "${EAB_HMAC_KEY}" | deurlbase64 | bin2hex)"
           eab_signed64="$(printf '%s' "${eab_protected64}.${eab_payload64}" | "${OPENSSL}" dgst -binary -sha256 -mac HMAC -macopt "hexkey:${eab_key}" | urlbase64)"
 
@@ -894,9 +927,6 @@ signed_request() {
     nonce="$(http_request head "${CA_NEW_NONCE}" | grep -i ^Replay-Nonce: | cut -d':' -f2- | tr -d ' \t\n\r')"
   fi
 
-  # Build header with just our public key and algorithm information
-  header='{"alg": "RS256", "jwk": {"e": "'"${pubExponent64}"'", "kty": "RSA", "n": "'"${pubMod64}"'"}}'
-
   if [[ ${API} -eq 1 ]]; then
     # Build another header which also contains the previously received nonce and encode it as urlbase64
     protected='{"alg": "RS256", "jwk": {"e": "'"${pubExponent64}"'", "kty": "RSA", "n": "'"${pubMod64}"'"}, "nonce": "'"${nonce}"'"}'
@@ -904,17 +934,36 @@ signed_request() {
   else
     # Build another header which also contains the previously received nonce and url and encode it as urlbase64
     if [[ -n "${ACCOUNT_URL:-}" ]]; then
-      protected='{"alg": "RS256", "kid": "'"${ACCOUNT_URL}"'", "url": "'"${1}"'", "nonce": "'"${nonce}"'"}'
+      protected='{"alg": "'"${account_key_sigalgo}"'", "kid": "'"${ACCOUNT_URL}"'", "url": "'"${1}"'", "nonce": "'"${nonce}"'"}'
     else
-      protected='{"alg": "RS256", "jwk": {"e": "'"${pubExponent64}"'", "kty": "RSA", "n": "'"${pubMod64}"'"}, "url": "'"${1}"'", "nonce": "'"${nonce}"'"}'
+      protected='{"alg": "'"${account_key_sigalgo}"'", "jwk": '"${account_key_info}"', "url": "'"${1}"'", "nonce": "'"${nonce}"'"}'
     fi
     protected64="$(printf '%s' "${protected}" | urlbase64)"
   fi
 
   # Sign header with nonce and our payload with our private key and encode signature as urlbase64
-  signed64="$(printf '%s' "${protected64}.${payload64}" | "${OPENSSL}" dgst -sha256 -sign "${ACCOUNT_KEY}" | urlbase64)"
+  if [[ "${account_key_sigalgo}" = "RS256" ]]; then
+    signed64="$(printf '%s' "${protected64}.${payload64}" | "${OPENSSL}" dgst -sha256 -sign "${ACCOUNT_KEY}" | urlbase64)"
+  else
+    dgstparams="$(printf '%s' "${protected64}.${payload64}" | "${OPENSSL}" dgst -sha${account_key_sigalgo:2} -sign "${ACCOUNT_KEY}" | "${OPENSSL}" asn1parse -inform DER)"
+    dgst_parm_1="$(echo "$dgstparams" | head -n 2 | tail -n 1 | cut -d':' -f4)"
+    dgst_parm_2="$(echo "$dgstparams" | head -n 3 | tail -n 1 | cut -d':' -f4)"
+
+    # zero-padding (doesn't seem to be necessary, but other clients are doing this as well...
+    case "${account_key_sigalgo}" in
+      "ES256") siglen=64;;
+      "ES384") siglen=96;;
+    esac
+    while [[ ${#dgst_parm_1} -lt $siglen ]]; do dgst_parm_1="0${dgst_parm_1}"; done
+    while [[ ${#dgst_parm_2} -lt $siglen ]]; do dgst_parm_2="0${dgst_parm_2}"; done
+
+    signed64="$(printf "%s%s" "${dgst_parm_1}" "${dgst_parm_2}" | hex2bin | urlbase64)"
+  fi
 
   if [[ ${API} -eq 1 ]]; then
+    # Build header with just our public key and algorithm information
+    header='{"alg": "RS256", "jwk": {"e": "'"${pubExponent64}"'", "kty": "RSA", "n": "'"${pubMod64}"'"}}'
+
     # Send header + extended header + payload + signature to the acme-server
     data='{"header": '"${header}"', "protected": "'"${protected64}"'", "payload": "'"${payload64}"'", "signature": "'"${signed64}"'"}'
   else
