@@ -613,6 +613,9 @@ init_system() {
       generated="true"
       local tmp_account_key
       tmp_account_key="$(_mktemp)"
+      if [[ ${API} -eq 1 && ! "${ACCOUNT_KEY_ALGO}" = "rsa" ]]; then
+        _exiterr "ACME API version 1 does not support EC account keys"
+      fi
       case "${ACCOUNT_KEY_ALGO}" in
         rsa) _openssl genrsa -out "${tmp_account_key}" "${ACCOUNT_KEYSIZE}";;
         prime256v1|secp384r1|secp521r1) _openssl ecparam -genkey -name "${ACCOUNT_KEY_ALGO}" -out "${tmp_account_key}" -noout;;
