@@ -4,6 +4,12 @@ This file contains a log of major changes in dehydrated
 ## [x.x.x] - xxxx-xx-xx
 ## Changed
 - `--force` no longer forces domain name revalidation by default, a new argument `--force-validation` has been added for that
+- Added support for EC secp521r1 algorithm (works with e.g. zerossl)
+- `EC PARAMETERS` are no longer written to privkey.pem (didn't seem necessary and was causing issues with various software)
+
+## Added
+- Implemented EC for account keys
+- Domain list now also read from domains.txt.d subdirectory (behaviour might change, see docs)
 
 ## [0.7.0] - 2020-12-10
 ## Added
