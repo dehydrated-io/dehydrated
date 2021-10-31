@@ -101,3 +101,7 @@ If a directory named `domains.txt.d` exists in the same location as
 `domains.txt`, the contents of `*.txt` files in that directory are appended to
 the list of domains, in alphabetical order of the filenames. This is useful for
 automation, as it doesn't require editing an existing file to add new domains.
+
+Warning: Behaviour of this might change as the naming between `domains.txt.d`
+and the `DOMAINS_D` config variable (which is used for per-certificate
+configuration) is a bit confusing.
