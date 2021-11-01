@@ -1605,9 +1605,9 @@ command_account() {
 # Parse contents of domains.txt and domains.txt.d
 parse_domains_txt() {
   # Allow globbing temporarily
-  [[ -n "${ZSH_VERSION:-}" ]] && set +o noglob || set +f
+  noglob_set
   local inputs=("${DOMAINS_TXT}" "${DOMAINS_TXT}.d"/*.txt)
-  [[ -n "${ZSH_VERSION:-}" ]] && set -o noglob || set -f
+  noglob_clear
 
   cat "${inputs[@]}" |
     tr -d '\r' |
