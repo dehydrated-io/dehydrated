@@ -1,9 +1,6 @@
 # dehydrated [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=23P9DSJBTY7C8)
 
-Quick note: dehydrated moved, the license will NOT change, and I will still take care of the project.
-See https://lukas.im/2020/01/30/selling-dehydrated/index.html for more details.
-
-![](docs/logo.jpg)
+![](docs/logo.png)
 
 Dehydrated is a client for signing certificates with an ACME-server (e.g. Let's Encrypt) implemented as a relatively simple (zsh-compatible) bash-script.
 This client supports both ACME v1 and the new ACME v2 including support for wildcard certificates!
@@ -17,6 +14,7 @@ Current features:
 - Signing of a custom CSR (either standalone or completely automated using hooks!)
 - Renewal if a certificate is about to expire or defined set of domains changed
 - Certificate revocation
+- and lots more..
 
 Please keep in mind that this software, the ACME-protocol and all supported CA servers out there are relatively young and there might be a few issues. Feel free to report any issues you find with this script or contribute by submitting a pull request,
 but please check for duplicates first (feel free to comment on those to get things rolling).
@@ -85,28 +83,6 @@ Parameters:
  --preferred-chain issuer-cn      Use alternative certificate chain identified by issuer CN
  --out (-o) certs/directory       Output certificates into the specified directory
  --alpn alpn-certs/directory      Output alpn verification certificates into the specified directory
- --challenge (-t) http-01|dns-01  Which challenge should be used? Currently http-01 and dns-01 are supported
+ --challenge (-t) http-01|dns-01|tls-alpn-01 Which challenge should be used? Currently http-01, dns-01, and tls-alpn-01 are supported
  --algo (-a) rsa|prime256v1|secp384r1 Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
 ```
-
-## Donate
-
-I'm a student hacker with a few (unfortunately) quite expensive hobbies (self-hosting, virtualization clusters, routing,
-high-speed networking, embedded hardware, etc.).
-I'm really having fun playing around with hard- and software and I'm steadily learning new things.
-Without those hobbies I probably would never have started working on dehydrated to begin with :)
-
-I'd really appreciate if you could [donate a bit of money](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=23P9DSJBTY7C8)
-so I can buy cool stuff (while still being able to afford food :D).  
-
-If you have hardware laying around that you think I'd enjoy playing with (e.g. decommissioned but still modern-ish servers,
-10G networking hardware, enterprise grade routers or APs, interesting ARM/MIPS boards, etc.) and that you would be willing
-to ship to me please contact me at `donations@dehydrated.io` or on Twitter [@lukas2511](https://twitter.com/lukas2511).
-
-If you want your name to be added to the [donations list](https://dehydrated.io/donations.html) please add a note or send me an
-email `donations@dehydrated.io`. I respect your privacy and won't publish your name without permission.
-
-Other ways of donating:
- - [My Amazon Wishlist](http://www.amazon.de/registry/wishlist/1TUCFJK35IO4Q)
- - Monero: 4Kkf4tF4r9DakxLj37HDXLJgmpVfQoFhT7JLDvXwtUZZMTbsK9spsAPXivWPAFcDUj6jHhY8hJSHX8Cb8ndMhKeQHPSkBZZiK89Fx8NTHk
- - Bitcoin: 12487bHxcrREffTGwUDnoxF1uYxCA7ztKK
