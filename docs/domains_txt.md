@@ -55,7 +55,7 @@ KEY_ALGO="rsa"
 or respectively
 
 ```
-KEY_ALGO="ecdsa"
+KEY_ALGO="secp384r1"
 ```
 
 ### Wildcards
