@@ -279,6 +279,7 @@ store_configvars() {
   __HOOK_CHAIN="${HOOK_CHAIN}"
   __OPENSSL_CNF="${OPENSSL_CNF}"
   __RENEW_DAYS="${RENEW_DAYS}"
+  __BACKOFF="${BACKOFF}"
   __IP_VERSION="${IP_VERSION}"
 }
 
@@ -297,6 +298,7 @@ reset_configvars() {
   HOOK_CHAIN="${__HOOK_CHAIN}"
   OPENSSL_CNF="${__OPENSSL_CNF}"
   RENEW_DAYS="${__RENEW_DAYS}"
+  BACKOFF="${__BACKOFF}"
   IP_VERSION="${__IP_VERSION}"
 }
 
@@ -362,6 +364,7 @@ load_config() {
   PREFERRED_CHAIN=
   HOOK_CHAIN="no"
   RENEW_DAYS="30"
+  BACKOFF="1,10,100,1440"
   KEYSIZE="4096"
   WELLKNOWN=
   PRIVATE_KEY_RENEW="yes"
@@ -1223,6 +1226,7 @@ sign_csr() {
 
     if [[ "${reqstatus}" != "valid" ]]; then
       echo " + Challenge validation has failed :("
+      echo -n 1 >> "${failures}"
       _exiterr "Challenge is invalid! (returned: ${reqstatus}) (result: ${result})"
     fi
   fi
@@ -1291,6 +1295,7 @@ sign_csr() {
 
   echo "${crt}" >&3
 
+  rm -f "${failures}"
   unset challenge_token
   echo " + Done!"
 }
@@ -1679,6 +1684,7 @@ command_sign_domains() {
     local certdir="${CERTDIR}/${alias}"
     cert="${certdir}/cert.pem"
     chain="${certdir}/chain.pem"
+    failures="${certdir}/failures"
 
     force_renew="${PARAM_FORCE:-no}"
 
@@ -1720,7 +1726,7 @@ command_sign_domains() {
 	# All settings that are allowed here should also be stored and
 	# restored in store_configvars() and reset_configvars()
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
+          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|BACKOFF)
             echo "   + ${config_var} = ${config_value}"
             declare -- "${config_var}=${config_value}"
             ;;
@@ -1769,8 +1775,32 @@ command_sign_domains() {
       fi
     fi
 
+    # Check if recently failed
+    if [[ -s "${failures}" ]]; then
+      echo " + Checking recent failures of existing cert..."
+      time_fail="$(stat -c "%Y" "${failures}" )"
+      num_fail="$(stat -c "%s" "${failures}" )"
+      IFS=', ' read -r -a backoff <<< "${BACKOFF}"
+      if [[ "${num_fail}" -ge "${#backoff[@]}" ]]; then
+        num_fail=$((${#backoff[@]}))
+      fi
+      next_try=$((${time_fail} + ${backoff[$((${num_fail} - 1))]} * 60))
+      printf " + Next retry at %s " "$(date -d @${next_try}). "
+      if [[ "${next_try}" -gt "$(date +%s)" ]]; then
+        if [[ "${force_renew}" = "yes" ]]; then
+          echo "Ignoring because renew was forced!"
+        else
+          echo "Not retrying because of recent failure!"
+	  skip="yes"
+        fi
+      fi
+    elif [[ "${PARAM_RETRY_FAILED:-}" = "yes" ]]; then
+       echo "Ignoring because not failed and --retry-failed was set!"
+       skip="yes"
+    fi
+
     # Check expire date of existing certificate
-    if [[ -e "${cert}" ]]; then
+    if [[ ! "${skip}" = "yes" ]] && [[ -e "${cert}" ]]; then
       echo " + Checking expire date of existing cert..."
       valid="$("${OPENSSL}" x509 -enddate -noout -in "${cert}" | cut -d= -f2- )"
 
@@ -2062,7 +2092,7 @@ command_help() {
 command_env() {
   echo "# dehydrated configuration"
   load_config
-  typeset -p CA CERTDIR ALPNCERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON ACCOUNT_ID_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
+  typeset -p CA CERTDIR ALPNCERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS BACKOFF ACCOUNT_KEY ACCOUNT_KEY_JSON ACCOUNT_ID_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
 # Main method (parses script arguments and calls command_* methods)
@@ -2204,6 +2234,12 @@ main() {
       # PARAM_Description: Keep going after encountering an error while creating/renewing multiple certificates in cron mode
       --keep-going|-g)
         PARAM_KEEP_GOING="yes"
+        ;;
+
+      # PARAM_Usage: --retry-failed
+      # PARAM_Description: Only retry failed certs, skip others
+      --retry-failed)
+        PARAM_RETRY_FAILED="yes"
         ;;
 
       # PARAM_Usage: --force (-x)
