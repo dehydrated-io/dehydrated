@@ -911,7 +911,7 @@ http_request() {
 
       # remove temporary domains.txt file if used
       [[ "${COMMAND:-}" = "sign_domains" && -n "${PARAM_DOMAIN:-}" && -n "${DOMAINS_TXT:-}" ]] && rm "${DOMAINS_TXT}"
-      _exiterr
+      _exiterr ""
     fi
   fi
 
