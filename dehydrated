@@ -1838,7 +1838,7 @@ command_sign_domains() {
       fi
     fi
 
-    if [[ "${OCSP_FETCH}" = "yes" ]]; then
+    if [[ "${OCSP_FETCH}" = "yes" && -s ${cert} ]]; then
       local ocsp_url
       ocsp_url="$(get_ocsp_url "${cert}")"
 
