@@ -217,7 +217,7 @@ jsonsh() {
       '[') parse_array  "$jpath" ;;
       # At this point, the only valid single-character tokens are digits.
       ''|[!0-9]) throw "EXPECTED value GOT ${token:-EOF}" ;;
-      *) value="${token/\\\///}"
+      *) value="${token//\\\///}"
          # replace solidus ("\/") in json strings with normalized value: "/"
          ;;
     esac
