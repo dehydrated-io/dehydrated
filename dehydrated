@@ -125,8 +125,7 @@ jsonsh() {
       GREP='grep -Eao'
     fi
 
-    # shellcheck disable=SC2196
-    if echo "test string" | egrep -ao "test" >/dev/null 2>&1
+    if echo "test string" | grep -Eao "test" >/dev/null 2>&1
     then
       ESCAPE='(\\[^u[:cntrl:]]|\\u[0-9a-fA-F]{4})'
       CHAR='[^[:cntrl:]"\\]'
