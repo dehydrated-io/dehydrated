@@ -1467,12 +1467,15 @@ sign_domain() {
     for altname in ${altnames}; do
       if [[ "${altname}" =~ ^ip: ]]; then
         SAN="${SAN}IP:${altname:3}, "
-        SUBJ="/CN=${domain:3}/"
       else
         SAN="${SAN}DNS:${altname}, "
-        SUBJ="/CN=${domain}/"
       fi
     done
+    if [[ "${domain}" =~ ^ip: ]]; then
+      SUBJ="/CN=${domain:3}/"
+    else
+      SUBJ="/CN=${domain}/"
+    fi
     SAN="${SAN%%, }"
     local tmp_openssl_cnf
     tmp_openssl_cnf="$(_mktemp)"
