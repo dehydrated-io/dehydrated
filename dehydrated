@@ -1124,7 +1124,7 @@ sign_csr() {
     challenge="$(echo "${response}" | get_json_dict_value -p '"challenges",'"${challengeindex}")"
 
     # Gather challenge information
-    if [ "${identifier_type:-}" = "ip" ]; then
+    if [ "${identifier_type:-}" = "ip" ] && [ "${CHALLENGETYPE}" = "tls-alpn-01" ] ; then
       challenge_names[${idx}]="$(echo "${identifier}" | ip_to_ptr)"
     else
       challenge_names[${idx}]="${identifier}"
@@ -1161,7 +1161,7 @@ sign_csr() {
     esac
 
     keyauths[${idx}]="${keyauth}"
-    if [ "${identifier_type:-}" = "ip" ]; then
+    if [ "${identifier_type:-}" = "ip" ] && [ "${CHALLENGETYPE}" = "tls-alpn-01" ]; then
       deploy_args[${idx}]="$(echo "${identifier}" | ip_to_ptr) ${challenge_tokens[${idx}]} ${keyauth_hook}"
     else
       deploy_args[${idx}]="${identifier} ${challenge_tokens[${idx}]} ${keyauth_hook}"
