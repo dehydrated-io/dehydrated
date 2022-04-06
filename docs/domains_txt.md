@@ -34,6 +34,30 @@ under your `CERTDIR`.
 example.net www.example.net wiki.example.net > certalias
 ```
 
+This allows to set per certificates options. The options you can change are
+explained in [Per Certificate Config](per-certificate-config.md).
+
+If you want to create different certificate types for the same domain
+you can use:
+
+```text
+*.service.example.org service.example.org  > star_service_example_org_rsa
+*.service.example.org service.example.org  > star_service_example_org_ecdsa
+```
+
+Then add a config file `certs/star_service_example_org_rsa/config` with
+the value
+
+```
+KEY_ALGO="rsa"
+```
+
+or respectively
+
+```
+KEY_ALGO="ecdsa"
+```
+
 ### Wildcards
 
 Support for wildcards was added by the ACME v2 protocol.
@@ -70,3 +94,14 @@ This creates two certificates one for `service.example.com` with an
 **Note:** The first certificate is valid for both `service.example.com` and for
 `*.service.example.com` which can be a useful way to create wildcard
 certificates.
+
+### Drop-in directory
+
+If a directory named `domains.txt.d` exists in the same location as
+`domains.txt`, the contents of `*.txt` files in that directory are appended to
+the list of domains, in alphabetical order of the filenames. This is useful for
+automation, as it doesn't require editing an existing file to add new domains.
+
+Warning: Behaviour of this might change as the naming between `domains.txt.d`
+and the `DOMAINS_D` config variable (which is used for per-certificate
+configuration) is a bit confusing.

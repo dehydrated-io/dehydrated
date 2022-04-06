@@ -10,10 +10,10 @@
 # Default values of this config are in comments        #
 ########################################################
 
-# Which user should dehydrated run as? This will be implictly enforced when running as root
+# Which user should dehydrated run as? This will be implicitly enforced when running as root
 #DEHYDRATED_USER=
 
-# Which group should dehydrated run as? This will be implictly enforced when running as root
+# Which group should dehydrated run as? This will be implicitly enforced when running as root
 #DEHYDRATED_GROUP=
 
 # Resolve names to addresses of IP version only. (curl)
@@ -21,8 +21,10 @@
 # default: <unset>
 #IP_VERSION=
 
-# Path to certificate authority (default: https://acme-v02.api.letsencrypt.org/directory)
-#CA="https://acme-v02.api.letsencrypt.org/directory"
+# URL to certificate authority or internal preset
+# Presets: letsencrypt, letsencrypt-test, zerossl, buypass, buypass-test
+# default: letsencrypt
+#CA="letsencrypt"
 
 # Path to old certificate authority
 # Set this value to your old CA value when upgrading from ACMEv1 to ACMEv2 under a different endpoint.
@@ -100,7 +102,7 @@
 #PRIVATE_KEY_ROLLOVER="no"
 
 # Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
-#KEY_ALGO=rsa
+#KEY_ALGO=secp384r1
 
 # E-mail to use during the registration (default: <unset>)
 #CONTACT_EMAIL=
@@ -125,3 +127,6 @@
 
 # ACME API version (default: auto)
 #API=auto
+
+# Preferred issuer chain (default: <unset> -> uses default chain)
+#PREFERRED_CHAIN=

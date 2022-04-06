@@ -8,10 +8,7 @@ you will quickly hit these limits and find yourself locked out.
 To avoid this, please set the CA property to the Let’s Encrypt staging server URL in your config file:
 
 ```bash
-CA="https://acme-staging.api.letsencrypt.org/directory"
+CA="https://acme-staging-v02.api.letsencrypt.org/directory"
 ```
 
-# ACMEv2 staging
-
-You can use `CA="https://acme-staging-v02.api.letsencrypt.org/directory"` to test dehydrated with
-the ACMEv2 staging endpoint.
+Alternatively you can define the CA using the CLI argument `--ca letsencrypt-test` (`letsencrypt-test` is an integrated preset-CA corresponding to the URL above).

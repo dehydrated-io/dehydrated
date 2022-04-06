@@ -24,6 +24,15 @@ example.net www.example.net > certalias
 # NOTE: It is a certificate for 'service.example.org'
 *.service.example.org service.example.org  > star_service_example_org
 
+# Optionally you can also append the certificate algorithm here to create
+# multiple certificate types for the same domain.
+#
+# This allows to set per certificates options. How to do this is
+# explained in [domains.txt documentation](domains_txt.md).
+#
+*.service.example.org service.example.org  > star_service_example_org_rsa
+*.service.example.org service.example.org  > star_service_example_org_ecdsa
+
 # Create a certificate for 'service.example.net' with an alternative name of
 # '*.service.example.net' (which is a wildcard domain) and store it in the
 # directory ${CERTDIR}/service.example.net
