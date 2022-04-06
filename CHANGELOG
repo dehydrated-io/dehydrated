@@ -10,6 +10,7 @@ This file contains a log of major changes in dehydrated
 ## Added
 - Implemented EC for account keys
 - Domain list now also read from domains.txt.d subdirectory (behaviour might change, see docs)
+- Implemented RFC 8738 (validating/signing certificates for IP addresses instead of domain names) support (this will not work with most public CAs, if any!)
 
 ## [0.7.0] - 2020-12-10
 ## Added
