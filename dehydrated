@@ -2262,7 +2262,7 @@ main() {
         ;;
 
       # PARAM_Usage: --force (-x)
-      # PARAM_Description: Force renew of certificate even if it is longer valid than value in RENEW_DAYS
+      # PARAM_Description: Force certificate renewal even if it is not due to expire within RENEW_DAYS
       --force|-x)
         PARAM_FORCE="yes"
         ;;
