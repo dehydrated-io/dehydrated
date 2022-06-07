@@ -249,7 +249,7 @@ _mktemp() {
 # Check for script dependencies
 check_dependencies() {
   # look for required binaries
-  for binary in grep mktemp diff sed awk curl cut; do
+  for binary in grep mktemp diff sed awk curl cut head tail; do
     bin_path="$(command -v "${binary}" 2>/dev/null)" || _exiterr "This script requires ${binary}."
     [[ -x "${bin_path}" ]] || _exiterr "${binary} found in PATH but it's not executable"
   done
