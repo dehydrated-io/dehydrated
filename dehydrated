@@ -899,6 +899,10 @@ http_request() {
     elif [[ -n "${CA_REVOKE_CERT:-}" ]] && [[ "${2}" = "${CA_REVOKE_CERT:-}" ]] && [[ "${statuscode}" = "409" ]]; then
       grep -q "Certificate already revoked" "${tempcont}" && return
     else
+      if grep -q "urn:ietf:params:acme:error:badNonce" "${tempcont}"; then
+        printf "badnonce %s" "$(grep -Eoi "^replay-nonce:.*$" "${tempheaders}" | sed 's/ //' | cut -d: -f2)"
+        return 0
+      fi
       echo "  + ERROR: An error occurred while sending ${1}-request to ${2} (Status ${statuscode})" >&2
       echo >&2
       echo "Details:" >&2
@@ -936,11 +940,15 @@ signed_request() {
   # Encode payload as urlbase64
   payload64="$(printf '%s' "${2}" | urlbase64)"
 
-  # Retrieve nonce from acme-server
-  if [[ ${API} -eq 1 ]]; then
-    nonce="$(http_request head "${CA}" | grep -i ^Replay-Nonce: | cut -d':' -f2- | tr -d ' \t\n\r')"
+  if [ -n "${3:-}" ]; then
+    nonce="$(printf "%s" "${3}" | tr -d ' \t\n\r')"
   else
-    nonce="$(http_request head "${CA_NEW_NONCE}" | grep -i ^Replay-Nonce: | cut -d':' -f2- | tr -d ' \t\n\r')"
+    # Retrieve nonce from acme-server
+    if [[ ${API} -eq 1 ]]; then
+      nonce="$(http_request head "${CA}" | grep -i ^Replay-Nonce: | cut -d':' -f2- | tr -d ' \t\n\r')"
+    else
+      nonce="$(http_request head "${CA_NEW_NONCE}" | grep -i ^Replay-Nonce: | cut -d':' -f2- | tr -d ' \t\n\r')"
+    fi
   fi
 
   if [[ ${API} -eq 1 ]]; then
@@ -988,7 +996,14 @@ signed_request() {
     data='{"protected": "'"${protected64}"'", "payload": "'"${payload64}"'", "signature": "'"${signed64}"'"}'
   fi
 
-  http_request post "${1}" "${data}"
+  output="$(http_request post "${1}" "${data}")"
+
+  if grep -qE "^badnonce " <<< "${output}"; then
+    echo " ! Request failed (badNonce), retrying request..." >&2
+    signed_request "${1:-}" "${2:-}" "$(printf "%s" "${output}" | cut -d' ' -f2)"
+  else
+    printf "%s" "${output}"
+  fi
 }
 
 # Extracts all subject names from a CSR
