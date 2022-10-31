@@ -86,3 +86,9 @@ Parameters:
  --challenge (-t) http-01|dns-01|tls-alpn-01 Which challenge should be used? Currently http-01, dns-01, and tls-alpn-01 are supported
  --algo (-a) rsa|prime256v1|secp384r1 Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
 ```
+
+## Chat
+
+Dehydrated has an official IRC-channel `#dehydrated` on libera.chat that can be used for general discussion and suggestions.
+
+The channel can also be accessed with Matrix using the official libera.chat bridge at `#dehydrated:libera.chat`.
