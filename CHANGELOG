@@ -1,6 +1,9 @@
 # Change Log
 This file contains a log of major changes in dehydrated
 
+## [x.x.x] - xxxx-xx-xx
+...
+
 ## [0.7.1] - 2022-10-31
 ## Changed
 - `--force` no longer forces domain name revalidation by default, a new argument `--force-validation` has been added for that
