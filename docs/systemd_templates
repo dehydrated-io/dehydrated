@@ -1,0 +1,33 @@
+Dehydrated can be ran automatically using a SystemD unit file and a timer.
+Please customize the following file as needed.
+
+Timer file, usually deployed as /etc/systemd/system/dehydrated.timer
+
+---
+[Unit]
+Description=Run dehydrated certificate refresh
+
+[Timer]
+OnCalendar=Mon 13:00
+
+[Install]
+WantedBy=timers.target
+---
+
+Unit file, usually deployed as /etc/systemd/system/dehydrated.service
+The unit file provides basic sandboxing.
+---
+[Unit]
+Description=Run dehydrated certificate refresh
+
+[Service]
+Type=oneshot
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/dehydrated
+PrivateTmp=yes
+ExecStart=/usr/bin/dehydrated --cron
+
+# You can execute commands after dehydrated to deploy the certificates
+# ExecStartPost=+/bin/systemctl reload nginx.service
+---
