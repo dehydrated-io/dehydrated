@@ -1011,7 +1011,7 @@ signed_request() {
 extract_altnames() {
   csr="${1}" # the CSR itself (not a file)
 
-  if ! <<<"${csr}" "${OPENSSL}" req -verify -noout 2>/dev/null; then
+  if ! <<<"${csr}" "${OPENSSL}" req -verify -noout >/dev/null 2>&1; then
     _exiterr "Certificate signing request isn't valid"
   fi
 
