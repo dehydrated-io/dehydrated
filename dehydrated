@@ -289,6 +289,7 @@ store_configvars() {
   __WELLKNOWN="${WELLKNOWN}"
   __HOOK_CHAIN="${HOOK_CHAIN}"
   __OPENSSL_CNF="${OPENSSL_CNF}"
+  __OPENSSL_PROXY="${OPENSSL_PROXY}"
   __RENEW_DAYS="${RENEW_DAYS}"
   __IP_VERSION="${IP_VERSION}"
 }
@@ -307,6 +308,7 @@ reset_configvars() {
   WELLKNOWN="${__WELLKNOWN}"
   HOOK_CHAIN="${__HOOK_CHAIN}"
   OPENSSL_CNF="${__OPENSSL_CNF}"
+  OPENSSL_PROXY="${__OPENSSL_PROXY}"
   RENEW_DAYS="${__RENEW_DAYS}"
   IP_VERSION="${__IP_VERSION}"
 }
@@ -391,6 +393,18 @@ load_config() {
   DEHYDRATED_USER=
   DEHYDRATED_GROUP=
   API="auto"
+  if [[ -n "$HTTPS_PROXY" ]]; then
+    OPENSSL_PROXY="$HTTPS_PROXY"
+  elif [[ -n "$https_proxy" ]]; then
+    OPENSSL_PROXY="$https_proxy"
+  elif [[ -n "$HTTP_PROXY" ]]; then
+    OPENSSL_PROXY="$HTTP_PROXY"
+  elif [[ -n "$http_proxy" ]]; then
+    OPENSSL_PROXY="$http_proxy"
+  else
+    OPENSSL_PROXY=
+  fi
+  OPENSSL_PROXY="$(echo "$OPENSSL_PROXY" | cut -d ':' -f2- | tr -d '/')"  # update proxy format for usage with openssl
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -1879,7 +1893,11 @@ command_sign_domains() {
         if grep -qE "^(openssl (0|(1\.0))\.)|(libressl (1|2|3)\.)" <<< "$(${OPENSSL} version | awk '{print tolower($0)}')"; then
           ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" -header "HOST" "$(echo "${ocsp_url}" | _sed -e 's/^http(s?):\/\///' -e 's/\/.*$//g')" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
         else
-          ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
+          if [[ -n "$OPENSSL_PROXY" ]]; then
+            ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -host "${OPENSSL_PROXY}" -path "${ocsp_url}" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
+          else
+            ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
+          fi
         fi
         ln -sf "ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
         [[ -n "${HOOK}" ]] && (altnames="${domain} ${morenames}" "${HOOK}" "deploy_ocsp" "${domain}" "${certdir}/ocsp.der" "${ocsp_timestamp}" || _exiterr 'deploy_ocsp hook returned with non-zero exit code')
