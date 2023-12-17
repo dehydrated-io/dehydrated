@@ -1015,7 +1015,7 @@ extract_altnames() {
     _exiterr "Certificate signing request isn't valid"
   fi
 
-  reqtext="$( <<<"${csr}" "${OPENSSL}" req -noout -text )"
+  reqtext="$( <<<"${csr}" "${OPENSSL}" req -noout -text 2>/dev/null)"
   if <<<"${reqtext}" grep -q '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$'; then
     # SANs used, extract these
     altnames="$( <<<"${reqtext}" awk '/X509v3 Subject Alternative Name:/{print;getline;print;}' | tail -n1 )"
@@ -1038,7 +1038,7 @@ extract_altnames() {
 
 # Get last issuer CN in certificate chain
 get_last_cn() {
-  <<<"${1}" _sed 'H;/-----BEGIN CERTIFICATE-----/h;$!d;x' | "${OPENSSL}" x509 -noout -issuer | head -n1 | _sed -e 's/.*[ /]CN ?= ?([^/,]*).*/\1/'
+  <<<"${1}" _sed 'H;/-----BEGIN CERTIFICATE-----/h;$!d;x' | "${OPENSSL}" x509 -noout -issuer 2>/dev/null| head -n1 | _sed -e 's/.*[ /]CN ?= ?([^/,]*).*/\1/'
 }
 
 # Create certificate for domain(s) and outputs it FD 3
@@ -1268,7 +1268,7 @@ sign_csr() {
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
   echo " + Requesting certificate..."
-  csr64="$( <<<"${csr}" "${OPENSSL}" req -config "${OPENSSL_CNF}" -outform DER | urlbase64)"
+  csr64="$( <<<"${csr}" "${OPENSSL}" req -config "${OPENSSL_CNF}" -outform DER 2>/dev/null| urlbase64)"
   if [[ ${API} -eq 1 ]]; then
     crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | "${OPENSSL}" base64 -e)"
     crt="$( printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" )"
