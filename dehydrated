@@ -47,6 +47,15 @@ noglob_clear() {
   fi
 }
 
+format_time() {
+  if [[ -n "${ZSH_VERSION:-}" ]]; then
+    zmodload zsh/datetime
+    TZ=UTC0 strftime "%Y-%m-%dT%H:%M:%SZ" "${1}"
+  else
+    TZ=UTC0 printf "%(%Y-%m-%dT%H:%M:%SZ)T" "${1}"
+  fi
+}
+
 # Generate json.sh path matching string
 json_path() {
 	if [ ! "${1}" = "-p" ]; then
@@ -290,6 +299,7 @@ store_configvars() {
   __HOOK_CHAIN="${HOOK_CHAIN}"
   __OPENSSL_CNF="${OPENSSL_CNF}"
   __RENEW_DAYS="${RENEW_DAYS}"
+  __LIFETIME_SECS="${LIFETIME_SECS}"
   __IP_VERSION="${IP_VERSION}"
 }
 
@@ -308,6 +318,7 @@ reset_configvars() {
   HOOK_CHAIN="${__HOOK_CHAIN}"
   OPENSSL_CNF="${__OPENSSL_CNF}"
   RENEW_DAYS="${__RENEW_DAYS}"
+  LIFETIME_SECS="${__LIFETIME_SECS}"
   IP_VERSION="${__IP_VERSION}"
 }
 
@@ -373,6 +384,7 @@ load_config() {
   PREFERRED_CHAIN=
   HOOK_CHAIN="no"
   RENEW_DAYS="30"
+  LIFETIME_SECS=
   KEYSIZE="4096"
   WELLKNOWN=
   PRIVATE_KEY_RENEW="yes"
@@ -1081,8 +1093,17 @@ sign_csr() {
     done
     challenge_identifiers="[${challenge_identifiers%, }]"
 
+    payload='{"identifiers": '"${challenge_identifiers}"
+    if [[ -n "${LIFETIME_SECS}" ]]; then
+      epoch_notbefore=$(( $(date +%s) - 3600 ))
+      epoch_notafter=$(( epoch_notbefore + LIFETIME_SECS - 1 ))
+      payload+=', "notBefore": "'"$(format_time ${epoch_notbefore})"'"'
+      payload+=', "notAfter": "'"$(format_time ${epoch_notafter})"'"'
+    fi
+    payload+='}'
+
     echo " + Requesting new certificate order from CA..."
-    order_location="$(signed_request "${CA_NEW_ORDER}" '{"identifiers": '"${challenge_identifiers}"'}' 4>&1 | grep -i ^Location: | cut -d':' -f2- | tr -d ' \t\r\n')"
+    order_location="$(signed_request "${CA_NEW_ORDER}" "${payload}" 4>&1 | grep -i ^Location: | cut -d':' -f2- | tr -d ' \t\r\n')"
     result="$(signed_request "${order_location}" "" | jsonsh)"
 
     order_authorizations="$(echo "${result}" | get_json_array_values authorizations)"
@@ -1775,7 +1796,7 @@ command_sign_domains() {
 	# All settings that are allowed here should also be stored and
 	# restored in store_configvars() and reset_configvars()
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
+          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|LIFETIME_SECS)
             echo "   + ${config_var} = ${config_value}"
             declare -- "${config_var}=${config_value}"
             ;;
@@ -2117,7 +2138,7 @@ command_help() {
 command_env() {
   echo "# dehydrated configuration"
   load_config
-  typeset -p CA CERTDIR ALPNCERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS ACCOUNT_KEY ACCOUNT_KEY_JSON ACCOUNT_ID_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
+  typeset -p CA CERTDIR ALPNCERTDIR CHALLENGETYPE DOMAINS_D DOMAINS_TXT HOOK HOOK_CHAIN RENEW_DAYS LIFETIME_SECS ACCOUNT_KEY ACCOUNT_KEY_JSON ACCOUNT_ID_JSON KEYSIZE WELLKNOWN PRIVATE_KEY_RENEW OPENSSL_CNF CONTACT_EMAIL LOCKFILE
 }
 
 # Main method (parses script arguments and calls command_* methods)
