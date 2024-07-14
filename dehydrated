@@ -1011,11 +1011,11 @@ signed_request() {
 extract_altnames() {
   csr="${1}" # the CSR itself (not a file)
 
-  if ! <<<"${csr}" "${OPENSSL}" req -verify -noout >/dev/null 2>&1; then
+  if ! <<<"${csr}" "${OPENSSL}" req -in - -verify -noout >/dev/null; then
     _exiterr "Certificate signing request isn't valid"
   fi
 
-  reqtext="$( <<<"${csr}" "${OPENSSL}" req -noout -text )"
+  reqtext="$( <<<"${csr}" "${OPENSSL}" req -in - -noout -text )"
   if <<<"${reqtext}" grep -q '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$'; then
     # SANs used, extract these
     altnames="$( <<<"${reqtext}" awk '/X509v3 Subject Alternative Name:/{print;getline;print;}' | tail -n1 )"
@@ -1268,7 +1268,7 @@ sign_csr() {
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
   echo " + Requesting certificate..."
-  csr64="$( <<<"${csr}" "${OPENSSL}" req -config "${OPENSSL_CNF}" -outform DER | urlbase64)"
+  csr64="$( <<<"${csr}" "${OPENSSL}" req -in - -config "${OPENSSL_CNF}" -outform DER | urlbase64)"
   if [[ ${API} -eq 1 ]]; then
     crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | "${OPENSSL}" base64 -e)"
     crt="$( printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" )"
