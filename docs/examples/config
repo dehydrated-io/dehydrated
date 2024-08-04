@@ -16,6 +16,9 @@
 # Which group should dehydrated run as? This will be implicitly enforced when running as root
 #DEHYDRATED_GROUP=
 
+# Should dehydrated pass environment variables over sudo?
+#DEHYDRATED_SUDO_ENV="no"
+
 # Resolve names to addresses of IP version only. (curl)
 # supported values: 4, 6
 # default: <unset>

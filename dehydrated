@@ -390,6 +390,7 @@ load_config() {
   AUTO_CLEANUP="no"
   DEHYDRATED_USER=
   DEHYDRATED_GROUP=
+  DEHYDRATED_SUDO_ENV="no"
   API="auto"
 
   if [[ -z "${CONFIG:-}" ]]; then
@@ -442,7 +443,11 @@ load_config() {
     if [[ -z "${DEHYDRATED_GROUP}" ]]; then
       if [[ "${EUID}" != "${TARGET_UID}" ]]; then
         echo "# INFO: Running $0 as ${DEHYDRATED_USER}"
-        has_sudo && exec sudo -u "${DEHYDRATED_USER}" "${0}" "${ORIGARGS[@]}"
+        if [ "${DEHYDRATED_SUDO_ENV}" = "yes" ]; then
+          has_sudo && exec sudo -E -H -u "${DEHYDRATED_USER}" "${0}" "${ORIGARGS[@]}"
+        else
+          has_sudo && exec sudo -u "${DEHYDRATED_USER}" "${0}" "${ORIGARGS[@]}"
+        fi
       fi
     else
       TARGET_GID="$(getent group "${DEHYDRATED_GROUP}" | cut -d':' -f3)" || _exiterr "DEHYDRATED_GROUP ${DEHYDRATED_GROUP} is invalid"
@@ -452,7 +457,11 @@ load_config() {
       fi
       if [[ "${EUID}" != "${TARGET_UID}" ]] || [[ "${EGID}" != "${TARGET_GID}" ]]; then
         echo "# INFO: Running $0 as ${DEHYDRATED_USER}/${DEHYDRATED_GROUP}"
-        has_sudo && exec sudo -u "${DEHYDRATED_USER}" -g "${DEHYDRATED_GROUP}" "${0}" "${ORIGARGS[@]}"
+        if [ "${DEHYDRATED_SUDO_ENV}" = "yes" ]; then
+          has_sudo && exec sudo -E -H -u "${DEHYDRATED_USER}" -g "${DEHYDRATED_GROUP}" "${0}" "${ORIGARGS[@]}"
+        else
+          has_sudo && exec sudo -u "${DEHYDRATED_USER}" -g "${DEHYDRATED_GROUP}" "${0}" "${ORIGARGS[@]}"
+        fi
       fi
     fi
   elif [[ -n "${DEHYDRATED_GROUP}" ]]; then
