@@ -355,6 +355,8 @@ load_config() {
   CA_LETSENCRYPT_TEST="https://acme-staging-v02.api.letsencrypt.org/directory"
   CA_BUYPASS="https://api.buypass.com/acme/directory"
   CA_BUYPASS_TEST="https://api.test4.buypass.no/acme/directory"
+  CA_GOOGLE="https://dv.acme-v02.api.pki.goog/directory"
+  CA_GOOGLE_TEST="https://dv.acme-v02.test-api.pki.goog/directory"
 
   # Default values
   CA="letsencrypt"
@@ -481,6 +483,10 @@ load_config() {
     CA="${CA_BUYPASS}"
   elif [ "${CA}" = "buypass-test" ]; then
     CA="${CA_BUYPASS_TEST}"
+  elif [ "${CA}" = "google" ]; then
+    CA="${CA_GOOGLE}"
+  elif [ "${CA}" = "google-test" ]; then
+    CA="${CA_GOOGLE_TEST}"
   fi
 
   if [[ -z "${OLDCA}" ]] && [[ "${CA}" = "https://acme-v02.api.letsencrypt.org/directory" ]]; then
@@ -700,6 +706,14 @@ init_system() {
             FAILED=true
           fi
         fi
+      fi
+    fi
+
+     # Google special sauce
+    if [[ "${CA}" = "${CA_GOOGLE}" ]]; then
+      if [[ -z "${CONTACT_EMAIL}" ]] || [[ -z "${EAB_KID:-}" ]] || [[ -z "${EAB_HMAC_KEY:-}" ]]; then
+          echo "Google requires contact email, EAB_KID and EAB_HMAC_KEY to be manually configured"
+          FAILED=true
       fi
     fi
 
