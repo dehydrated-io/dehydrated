@@ -1895,7 +1895,7 @@ command_sign_domains() {
 
   [[ -n "${HOOK}" ]] && ("${HOOK}" "exit_hook" || echo 'exit_hook returned with non-zero exit code!' >&2)
   if [[ "${AUTO_CLEANUP}" == "yes" ]]; then
-    echo "+ Running automatic cleanup"
+    echo " + Running automatic cleanup"
     command_cleanup noinit
   fi
 
