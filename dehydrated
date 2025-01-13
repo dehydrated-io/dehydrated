@@ -291,6 +291,7 @@ store_configvars() {
   __OPENSSL_CNF="${OPENSSL_CNF}"
   __RENEW_DAYS="${RENEW_DAYS}"
   __IP_VERSION="${IP_VERSION}"
+  __ACME_PROFILE="${ACME_PROFILE}"
 }
 
 reset_configvars() {
@@ -309,6 +310,7 @@ reset_configvars() {
   OPENSSL_CNF="${__OPENSSL_CNF}"
   RENEW_DAYS="${__RENEW_DAYS}"
   IP_VERSION="${__IP_VERSION}"
+  ACME_PROFILE="${__ACME_PROFILE}"
 }
 
 hookscript_bricker_hook() {
@@ -391,6 +393,7 @@ load_config() {
   DEHYDRATED_USER=
   DEHYDRATED_GROUP=
   API="auto"
+  ACME_PROFILE=""
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -544,6 +547,7 @@ load_config() {
   [[ -n "${PARAM_KEY_ALGO:-}" ]] && KEY_ALGO="${PARAM_KEY_ALGO}"
   [[ -n "${PARAM_OCSP_MUST_STAPLE:-}" ]] && OCSP_MUST_STAPLE="${PARAM_OCSP_MUST_STAPLE}"
   [[ -n "${PARAM_IP_VERSION:-}" ]] && IP_VERSION="${PARAM_IP_VERSION}"
+  [[ -n "${PARAM_ACME_PROFILE:-}" ]] && ACME_PROFILE="${PARAM_ACME_PROFILE}"
 
   if [ "${PARAM_FORCE_VALIDATION:-no}" = "yes" ] && [ "${PARAM_FORCE:-no}" = "no" ]; then
     _exiterr "Argument --force-validation can only be used in combination with --force (-x)"
@@ -587,6 +591,10 @@ init_system() {
     _exiterr "Problem retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."
     # Since reg URI is missing from directory we will assume it is the same as CA_NEW_REG without the new part
     CA_REG=${CA_NEW_REG/new-reg/reg}
+
+    if [[ -n "${ACME_PROFILE}" ]]; then
+      _exiterr "ACME profiles are not supported in ACME v1."
+    fi
   else
     CA_NEW_ORDER="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newOrder)" &&
     CA_NEW_NONCE="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newNonce)" &&
@@ -595,6 +603,35 @@ init_system() {
     CA_REQUIRES_EAB="$(printf "%s" "${CA_DIRECTORY}" | get_json_bool_value -p '"meta","externalAccountRequired"' || echo false)" &&
     CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revokeCert)" ||
     _exiterr "Problem retrieving ACME/CA-URLs, check if your configured CA points to the directory entrypoint."
+
+    # Checking ACME profile
+    if [[ -n "${ACME_PROFILE}" ]]; then
+      # Extract available profiles from CA directory
+      declare -A available_profiles=()
+      while IFS=$'\t' read -r path value; do
+        if [[ "${value}" =~ ^\"([^\"]+)\"$ ]]; then
+          value=${BASH_REMATCH[1]}
+        fi
+        if [[ "${path}" =~ ^\[\"([^\"]+)\"\]$ ]]; then
+          available_profiles[${BASH_REMATCH[1]}]=$value
+        fi
+      done <<< "$(printf "%s" "${CA_DIRECTORY}" | get_json_dict_value -p '"meta","profiles"' 2>/dev/null)"
+      if [[ ${#available_profiles[@]} -eq 0 ]]; then
+          _exiterr "ACME profile not supported by this CA"
+      fi
+
+      # Check if the requested profile is available
+      found_profile="no"
+      for profile in "${available_profiles[@]}"; do
+        if [[ "${profile}" == "${ACME_PROFILE}" ]]; then
+          found_profile="yes"
+          break
+        fi
+      done
+      if [[ "${found_profile}" == "no" ]]; then
+        _exiterr "ACME profile '${ACME_PROFILE}' not found, available profiles:$(for key in "${!available_profiles[@]}"; do printf "\n  %s: %s" "${key}" "${available_profiles[$key]}"; done)"
+      fi
+    fi
   fi
 
   # Export some environment variables to be used in hook script
@@ -1082,7 +1119,12 @@ sign_csr() {
     challenge_identifiers="[${challenge_identifiers%, }]"
 
     echo " + Requesting new certificate order from CA..."
-    order_location="$(signed_request "${CA_NEW_ORDER}" '{"identifiers": '"${challenge_identifiers}"'}' 4>&1 | grep -i ^Location: | cut -d':' -f2- | tr -d ' \t\r\n')"
+    local order_payload='{"identifiers": '"${challenge_identifiers}"
+    if [[ -n "${ACME_PROFILE}" ]]; then
+      order_payload="${order_payload}"',"profile":"'"${ACME_PROFILE}"'"'
+    fi
+    order_payload="${order_payload}"'}'
+    order_location="$(signed_request "${CA_NEW_ORDER}" "${order_payload}" 4>&1 | grep -i ^Location: | cut -d':' -f2- | tr -d ' \t\r\n')"
     result="$(signed_request "${order_location}" "" | jsonsh)"
 
     order_authorizations="$(echo "${result}" | get_json_array_values authorizations)"
@@ -1775,7 +1817,7 @@ command_sign_domains() {
 	# All settings that are allowed here should also be stored and
 	# restored in store_configvars() and reset_configvars()
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS)
+          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|ACME_PROFILE)
             echo "   + ${config_var} = ${config_value}"
             declare -- "${config_var}=${config_value}"
             ;;
@@ -2364,6 +2406,15 @@ main() {
         check_parameters "${1:-}"
         PARAM_KEY_ALGO="${1}"
         ;;
+
+      # PARAM_Usage: --acme-profile profile_name
+      # PARAM_Description: Use specified ACME profile
+      --acme-profile)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_ACME_PROFILE="${1}"
+        ;;
+
       *)
         echo "Unknown parameter detected: ${1}" >&2
         echo >&2
