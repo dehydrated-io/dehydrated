@@ -591,6 +591,7 @@ init_system() {
     CA_NEW_ORDER="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newOrder)" &&
     CA_NEW_NONCE="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newNonce)" &&
     CA_NEW_ACCOUNT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value newAccount)" &&
+    CA_RENEWAL_INFO="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value renewalInfo || true)" &&
     CA_TERMS="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value -p '"meta","termsOfService"')" &&
     CA_REQUIRES_EAB="$(printf "%s" "${CA_DIRECTORY}" | get_json_bool_value -p '"meta","externalAccountRequired"' || echo false)" &&
     CA_REVOKE_CERT="$(printf "%s" "${CA_DIRECTORY}" | get_json_string_value revokeCert)" ||
@@ -797,6 +798,15 @@ _sed() {
     sed -r "${@}"
   else
     sed -E "${@}"
+  fi
+}
+
+# Different date versions act very differently.
+rfc3339date2unix() {
+  if [[ "${OSTYPE}" = "Linux" || "${OSTYPE:0:5}" = "MINGW" ]]; then
+    date -d "$1" "+%s"
+  else
+    date -j -f "%Y-%m-%dT%H:%M:%S%z" "${1/%Z/+0000}" "+%s"
   fi
 }
 
@@ -1811,7 +1821,7 @@ command_sign_domains() {
 
       certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep -E '(DNS|IP( Address*)):' | _sed 's/(DNS|IP( Address)*)://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//')"
       givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ip://g' | _sed 's/ $//' | _sed 's/^ //')"
- 
+
       if [[ "${certnames}" = "${givennames}" ]]; then
         echo " unchanged."
       else
@@ -1821,6 +1831,42 @@ command_sign_domains() {
         echo " + Configured names: ${givennames}"
         echo " + Forcing renew."
         force_renew="yes"
+      fi
+    fi
+
+    if [[ -e "${cert}" && "${force_renew}" = "no" && -n "${CA_RENEWAL_INFO}" ]]; then
+      printf " + Checking renewal info for existing cert..."
+
+      authkeyid="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep -A1 "X509v3 Authority Key Identifier:" | tail -n1 | tr -d '[:space:]:' | hex2bin | urlbase64)"
+      serial="$("${OPENSSL}" x509 -in "${cert}" -noout -serial | cut -d= -f2)"
+      encserial="$("${OPENSSL}" asn1parse -genstr "INT:0x${serial}" -noout -out - | tail -c +3 | urlbase64)"
+
+      ari_response="$(http_request get "${CA_RENEWAL_INFO}/${authkeyid}.${encserial}" | jsonsh)"
+      window_start="$(printf "%s" "${ari_response}" | get_json_string_value -p '"suggestedWindow","start"')"
+      window_end="$(printf "%s" "${ari_response}" | get_json_string_value -p '"suggestedWindow","end"')"
+      expl_url="$(printf "%s" "${ari_response}" | get_json_string_value explanationURL)"
+
+      if [[ -n "${window_start}" && -n "${window_end}" ]]; then
+        window_start_unix="$(rfc3339date2unix "${window_start}")"
+        window_end_unix="$(rfc3339date2unix "${window_end}")"
+
+        # Assume we run once a day, so substract one day as per ari rfc.
+        # Add 1 second to window size to avoid possible div by zero.
+        renewal_datetime_unix="$(( ((RANDOM<<15)|RANDOM) % (${window_end_unix} - ${window_start_unix} + 1) + ${window_start_unix} - 86400 ))"
+
+        if [[ "${renewal_datetime_unix}" -le "$(date "+%s")" ]]; then
+          echo " renewal requested!"
+          force_renew="yes"
+        else
+          echo " no renewal requested."
+        fi
+        echo "  + Renewal window: ${window_start} to ${window_end}"
+      else
+        echo " unknown."
+      fi
+
+      if [[ -n "${expl_url}" ]]; then
+        echo "  + See also: ${expl_url}"
       fi
     fi
 
