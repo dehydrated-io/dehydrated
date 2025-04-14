@@ -2,7 +2,9 @@
 This file contains a log of major changes in dehydrated
 
 ## [x.x.x] - xxxx-xx-xx
-...
+## Added
+- Implemented support for certificate profile selection
+
 ## Changed
 - Renew certificates with 32 days remaining (instead of 30) to avoid issues with monthly cronjobs (`RENEW_DAYS=32`)
 
