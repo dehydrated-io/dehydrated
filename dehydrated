@@ -622,7 +622,7 @@ init_system() {
 
       # Check if the requested profile is available
       found_profile="no"
-      for profile in "${available_profiles[@]}"; do
+      for profile in "${!available_profiles[@]}"; do
         if [[ "${profile}" == "${ACME_PROFILE}" ]]; then
           found_profile="yes"
           break
