@@ -749,7 +749,7 @@ init_system() {
      # Google special sauce
     if [[ "${CA}" = "${CA_GOOGLE}" ]]; then
       if [[ -z "${CONTACT_EMAIL}" ]] || [[ -z "${EAB_KID:-}" ]] || [[ -z "${EAB_HMAC_KEY:-}" ]]; then
-          echo "Google requires contact email, EAB_KID and EAB_HMAC_KEY to be manually configured"
+          echo "Google requires contact email, EAB_KID and EAB_HMAC_KEY to be manually configured (see https://cloud.google.com/certificate-manager/docs/public-ca-tutorial)"
           FAILED=true
       fi
     fi

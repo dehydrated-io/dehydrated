@@ -22,7 +22,7 @@
 #IP_VERSION=
 
 # URL to certificate authority or internal preset
-# Presets: letsencrypt, letsencrypt-test, zerossl, buypass, buypass-test
+# Presets: letsencrypt, letsencrypt-test, zerossl, buypass, buypass-test, google, google-test
 # default: letsencrypt
 #CA="letsencrypt"
 
