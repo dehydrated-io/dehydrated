@@ -1060,13 +1060,13 @@ signed_request() {
 # Extracts all subject names from a CSR
 # Outputs either the CN, or the SANs, one per line
 extract_altnames() {
-  csr="${1}" # the CSR itself (not a file)
+  csrfile="${1}" # path to CSR file
 
-  if ! <<<"${csr}" "${OPENSSL}" req -in - -verify -noout >/dev/null; then
+  if ! "${OPENSSL}" req -in "${csrfile}" -verify -noout >/dev/null; then
     _exiterr "Certificate signing request isn't valid"
   fi
 
-  reqtext="$( <<<"${csr}" "${OPENSSL}" req -in - -noout -text )"
+  reqtext="$("${OPENSSL}" req -in "${csrfile}" -noout -text)"
   if <<<"${reqtext}" grep -q '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$'; then
     # SANs used, extract these
     altnames="$( <<<"${reqtext}" awk '/X509v3 Subject Alternative Name:/{print;getline;print;}' | tail -n1 )"
@@ -1094,7 +1094,7 @@ get_last_cn() {
 
 # Create certificate for domain(s) and outputs it FD 3
 sign_csr() {
-  csr="${1}" # the CSR itself (not a file)
+  csrfile="${1}" # path to CSR file
 
   if { true >&3; } 2>/dev/null; then
     : # fd 3 looks OK
@@ -1324,7 +1324,7 @@ sign_csr() {
 
   # Finally request certificate from the acme-server and store it in cert-${timestamp}.pem and link from cert.pem
   echo " + Requesting certificate..."
-  csr64="$( <<<"${csr}" "${OPENSSL}" req -in - -config "${OPENSSL_CNF}" -outform DER | urlbase64)"
+  csr64="$("${OPENSSL}" req -in "${csrfile}" -config "${OPENSSL_CNF}" -outform DER | urlbase64)"
   if [[ ${API} -eq 1 ]]; then
     crt64="$(signed_request "${CA_NEW_CERT}" '{"resource": "new-cert", "csr": "'"${csr64}"'"}' | "${OPENSSL}" base64 -e)"
     crt="$( printf -- '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' "${crt64}" )"
@@ -1566,7 +1566,7 @@ sign_domain() {
 
   crt_path="${certdir}/cert-${timestamp}.pem"
   # shellcheck disable=SC2086
-  sign_csr "$(< "${certdir}/cert-${timestamp}.csr")" ${altnames} 3>"${crt_path}"
+  sign_csr "${certdir}/cert-${timestamp}.csr" ${altnames} 3>"${crt_path}"
 
   # Create fullchain.pem
   echo " + Creating fullchain.pem..."
@@ -1848,16 +1848,18 @@ command_sign_domains() {
     skip="no"
 
     # Allow for external CSR generation
-    local csr=""
+    local csrfile=""
     if [[ -n "${HOOK}" ]]; then
       csr="$("${HOOK}" "generate_csr" "${domain}" "${certdir}" "${domain} ${morenames}")" || _exiterr 'generate_csr hook returned with non-zero exit code'
       if grep -qE "\-----BEGIN (NEW )?CERTIFICATE REQUEST-----" <<< "${csr}"; then
-        altnames="$(extract_altnames "${csr}")"
+        csrfile="$(_mktemp)"
+        cat > "${csrfile}" <<< "${csr}"
+        altnames="$(extract_altnames "${csrfile}")"
         domain="$(cut -d' ' -f1 <<< "${altnames}")"
         morenames="$(cut -s -d' ' -f2- <<< "${altnames}")"
         echo " + Using CSR from hook script (real names: ${altnames})"
       else
-        csr=""
+        csrfile=""
       fi
     fi
 
@@ -1907,7 +1909,10 @@ command_sign_domains() {
     # Sign certificate for this domain
     if [[ ! "${skip}" = "yes" ]]; then
       update_ocsp="yes"
-      [[ -z "${csr}" ]] || printf "%s" "${csr}" > "${certdir}/cert-${timestamp}.csr"
+      if [[ -n "${csrfile}" ]]; then
+        cat "${csrfile}" > "${certdir}/cert-${timestamp}.csr"
+        rm "${csrfile}"
+      fi
       # shellcheck disable=SC2086
       if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
         skip_exit_hook=yes
@@ -1968,19 +1973,18 @@ command_sign_csr() {
   exec 3>&1 1>&2
 
   # load csr
-  csrfile="${1}"
+  local csrfile="${1}"
   if [ ! -r "${csrfile}" ]; then
     _exiterr "Could not read certificate signing request ${csrfile}"
   fi
-  csr="$(cat "${csrfile}")"
 
   # extract names
-  altnames="$(extract_altnames "${csr}")"
+  altnames="$(extract_altnames "${csrfile}")"
 
   # gen cert
   certfile="$(_mktemp)"
   # shellcheck disable=SC2086
-  sign_csr "${csr}" ${altnames} 3> "${certfile}"
+  sign_csr "${csrfile}" ${altnames} 3> "${certfile}"
 
   # print cert
   echo "# CERT #" >&3
