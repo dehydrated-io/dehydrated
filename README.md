@@ -81,6 +81,7 @@ Parameters:
  --config (-f) path/to/config     Use specified config file
  --hook (-k) path/to/hook.sh      Use specified script for hooks
  --preferred-chain issuer-cn      Use alternative certificate chain identified by issuer CN
+ --acme-profile profile           Use specified ACME profile (e.g. tlsserver, classic)
  --out (-o) certs/directory       Output certificates into the specified directory
  --alpn alpn-certs/directory      Output alpn verification certificates into the specified directory
  --challenge (-t) http-01|dns-01|tls-alpn-01 Which challenge should be used? Currently http-01, dns-01, and tls-alpn-01 are supported
