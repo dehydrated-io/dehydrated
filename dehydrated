@@ -395,6 +395,7 @@ load_config() {
   IP_VERSION=
   CHAINCACHE=
   AUTO_CLEANUP="no"
+  AUTO_CLEANUP_DELETE="no"
   DEHYDRATED_USER=
   DEHYDRATED_GROUP=
   API="auto"
@@ -1966,8 +1967,8 @@ command_sign_domains() {
 
   [[ -n "${HOOK}" ]] && ("${HOOK}" "exit_hook" || echo 'exit_hook returned with non-zero exit code!' >&2)
   if [[ "${AUTO_CLEANUP}" == "yes" ]]; then
-    echo "+ Running automatic cleanup"
-    command_cleanup noinit
+    echo " + Running automatic cleanup"
+    PARAM_CLEANUPDELETE="${AUTO_CLEANUP_DELETE:-no}" command_cleanup noinit | _sed 's/^/ + /g'
   fi
 
   exit "${exit_with_errorcode}"

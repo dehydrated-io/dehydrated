@@ -125,6 +125,9 @@
 # Automatic cleanup (default: no)
 #AUTO_CLEANUP="no"
 
+# Delete files during automatic cleanup instead of moving to archive (default: no)
+#AUTO_CLEANUP_DELETE="no"
+
 # ACME API version (default: auto)
 #API=auto
 
