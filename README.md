@@ -86,6 +86,7 @@ Parameters:
  --challenge (-t) http-01|dns-01|tls-alpn-01 Which challenge should be used? Currently http-01, dns-01, and tls-alpn-01 are supported
  --algo (-a) rsa|prime256v1|secp384r1 Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
  --acme-profile profile_name      Use specified ACME profile
+ --order-timeout seconds          Amount of seconds to wait for processing of order until erroring out
 ```
 
 ## Chat

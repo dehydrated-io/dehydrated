@@ -133,3 +133,6 @@
 
 # Request certificate with specific profile (default: <unset>)
 #ACME_PROFILE=
+
+# Amount of seconds to wait for processing of order until erroring out (default: 0 => no timeout)
+#ORDER_TIMEOUT=0
