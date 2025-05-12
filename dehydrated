@@ -1945,7 +1945,7 @@ command_sign_domains() {
         update_ocsp="yes"
       fi
 
-      if [[ "${update_ocsp}" = "yes" ]]; then
+      if [[ "${update_ocsp}" = "yes" && -n $("${OPENSSL}" x509 -in "${cert}" -noout -ocsp_uri) ]]; then
         echo " + Updating OCSP stapling file"
         ocsp_timestamp="$(date +%s)"
         if grep -qE "^(openssl (0|(1\.0))\.)|(libressl (1|2|3)\.)" <<< "$(${OPENSSL} version | awk '{print tolower($0)}')"; then
