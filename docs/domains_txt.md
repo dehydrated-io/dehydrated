@@ -52,10 +52,10 @@ the value
 KEY_ALGO="rsa"
 ```
 
-or respectively
+or respectively specifying curve name for ECDSA
 
 ```
-KEY_ALGO="ecdsa"
+KEY_ALGO="secp384r1"
 ```
 
 ### Wildcards
