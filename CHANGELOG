@@ -10,6 +10,7 @@ This file contains a log of major changes in dehydrated
 - Implemented support for certificate profile selection
 - Added a configuration parameter to allow for timeouts during order processing (`ORDER_TIMEOUT`, defaults to 0 = no timeout)
 - Allowed for automatic deletion of old files (`AUTO_CLEANUP_DELETE`, disabled by default)
+- Added CA presets for Google Trust Services (prod: google, test: google-test)
 
 ## Changed
 - Renew certificates with 32 days remaining (instead of 30) to avoid issues with monthly cronjobs (`RENEW_DAYS=32`)
