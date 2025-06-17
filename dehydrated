@@ -293,6 +293,7 @@ store_configvars() {
   __IP_VERSION="${IP_VERSION}"
   __ACME_PROFILE="${ACME_PROFILE}"
   __ORDER_TIMEOUT=${ORDER_TIMEOUT}
+  __VALIDATION_TIMEOUT=${VALIDATION_TIMEOUT}
 }
 
 reset_configvars() {
@@ -313,6 +314,7 @@ reset_configvars() {
   IP_VERSION="${__IP_VERSION}"
   ACME_PROFILE="${__ACME_PROFILE}"
   ORDER_TIMEOUT=${__ORDER_TIMEOUT}
+  VALIDATION_TIMEOUT=${__VALIDATION_TIMEOUT}
 }
 
 hookscript_bricker_hook() {
@@ -341,6 +343,7 @@ verify_config() {
   [[ "${API}" == "auto" || "${API}" == "1" || "${API}" == "2" ]] || _exiterr "Unsupported API version defined in config: ${API}"
   [[ "${OCSP_DAYS}" =~ ^[0-9]+$ ]] || _exiterr "OCSP_DAYS must be a number"
   [[ "${ORDER_TIMEOUT}" =~ ^[0-9]+$ ]] || _exiterr "ORDER_TIMEOUT must be a number"
+  [[ "${VALIDATION_TIMEOUT}" =~ ^[0-9]+$ ]] || _exiterr "VALIDATION_TIMEOUT must be a number"
 }
 
 # Setup default config values, search for and load configuration files
@@ -403,6 +406,7 @@ load_config() {
   API="auto"
   ACME_PROFILE=""
   ORDER_TIMEOUT=0
+  VALIDATION_TIMEOUT=0
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -562,6 +566,7 @@ load_config() {
   [[ -n "${PARAM_IP_VERSION:-}" ]] && IP_VERSION="${PARAM_IP_VERSION}"
   [[ -n "${PARAM_ACME_PROFILE:-}" ]] && ACME_PROFILE="${PARAM_ACME_PROFILE}"
   [[ -n "${PARAM_ORDER_TIMEOUT:-}" ]] && ORDER_TIMEOUT="${PARAM_ORDER_TIMEOUT}"
+  [[ -n "${PARAM_VALIDATION_TIMEOUT:-}" ]] && VALIDATION_TIMEOUT="${PARAM_VALIDATION_TIMEOUT}"
 
   if [ "${PARAM_FORCE_VALIDATION:-no}" = "yes" ] && [ "${PARAM_FORCE:-no}" = "no" ]; then
     _exiterr "Argument --force-validation can only be used in combination with --force (-x)"
@@ -1282,8 +1287,14 @@ sign_csr() {
 
     reqstatus="$(echo "${result}" | get_json_string_value status)"
 
+    local waited=0
     while [[ "${reqstatus}" = "pending" ]] || [[ "${reqstatus}" = "processing" ]]; do
+      if [ ${VALIDATION_TIMEOUT} -gt 0 ] && [ ${waited} -gt ${VALIDATION_TIMEOUT} ]; then
+        _exiterr "Timed out waiting for processing of domain validation (still ${reqstatus})"
+      fi
+      echo " + Validation is ${reqstatus}..."
       sleep 1
+      waited=$((waited+1))
       if [[ "${API}" -eq 2 ]]; then
         result="$(signed_request "${challenge_uris[${idx}]}" "" | jsonsh)"
       else
@@ -1844,7 +1855,7 @@ command_sign_domains() {
 	# All settings that are allowed here should also be stored and
 	# restored in store_configvars() and reset_configvars()
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|ACME_PROFILE|ORDER_TIMEOUT)
+          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|ACME_PROFILE|ORDER_TIMEOUT|VALIDATION_TIMEOUT)
             echo "   + ${config_var} = ${config_value}"
             declare -- "${config_var}=${config_value}"
             ;;
@@ -2452,6 +2463,14 @@ main() {
         shift 1
         check_parameters "${1:-}"
         PARAM_ORDER_TIMEOUT=${1}
+        ;;
+
+      # PARAM_Usage: --validation-timeout seconds
+      # PARAM_Description: Amount of seconds to wait for processing of domain validations until erroring out
+      --validation-timeout)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_VALIDATION_TIMEOUT=${1}
         ;;
 
       *)

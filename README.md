@@ -87,6 +87,7 @@ Parameters:
  --algo (-a) rsa|prime256v1|secp384r1 Which public key algorithm should be used? Supported: rsa, prime256v1 and secp384r1
  --acme-profile profile_name      Use specified ACME profile
  --order-timeout seconds          Amount of seconds to wait for processing of order until erroring out
+ --validation-timeout seconds     Amount of seconds to wait for processing of domain validations until erroring out
 ```
 
 ## Chat
