@@ -1567,7 +1567,7 @@ sign_domain() {
       fi
     done
     if [[ "${domain}" =~ ^ip: ]]; then
-      SUBJ="/CN=${domain:3}/"
+      SUBJ="/"
     else
       SUBJ="/CN=${domain}/"
     fi
