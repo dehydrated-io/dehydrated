@@ -140,5 +140,5 @@
 # Amount of seconds to wait for processing of order until erroring out (default: 0 => no timeout)
 #ORDER_TIMEOUT=0
 
-# Skip over errors during certificate orders (default: no)
+# Skip over errors during certificate orders and updating of OCSP stapling information (default: no)
 #KEEP_GOING=no

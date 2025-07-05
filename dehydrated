@@ -1641,6 +1641,36 @@ sign_domain() {
   echo " + Done!"
 }
 
+# Update OCSP stapling file
+update_ocsp_stapling() {
+    local certdir="${1}"
+    local update_ocsp="${2}"
+    local cert="${3}"
+    local chain="${4}"
+
+    local ocsp_url="$(get_ocsp_url "${cert}")"
+
+    if [[ ! -e "${certdir}/ocsp.der" ]]; then
+      update_ocsp="yes"
+    elif ! ("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respin "${certdir}/ocsp.der" -status_age $((OCSP_DAYS*24*3600)) 2>&1 | grep -q "${cert}: good"); then
+      update_ocsp="yes"
+    fi
+
+    if [[ "${update_ocsp}" = "yes" ]]; then
+      echo " + Updating OCSP stapling file"
+      ocsp_timestamp="$(date +%s)"
+      if grep -qE "^(openssl (0|(1\.0))\.)|(libressl (1|2|3)\.)" <<< "$(${OPENSSL} version | awk '{print tolower($0)}')"; then
+        ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" -header "HOST" "$(echo "${ocsp_url}" | _sed -e 's/^http(s?):\/\///' -e 's/\/.*$//g')" 2>&1)" || _exiterr "Fetching of OCSP information failed. Please note that some CAs (e.g. LetsEncrypt) do no longer support OCSP. Error message: ${ocsp_log}"
+      else
+        ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" 2>&1)" || _exiterr "Fetching of OCSP information failed. Please note that some CAs (e.g. LetsEncrypt) do no longer support OCSP. Error message: ${ocsp_log}"
+      fi
+      ln -sf "ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
+      [[ -n "${HOOK}" ]] && (altnames="${domain} ${morenames}" "${HOOK}" "deploy_ocsp" "${domain}" "${certdir}/ocsp.der" "${ocsp_timestamp}" || _exiterr 'deploy_ocsp hook returned with non-zero exit code')
+    else
+      echo " + OCSP stapling file is still valid (skipping update)"
+    fi
+}
+
 # Usage: --version (-v)
 # Description: Print version information
 command_version() {
@@ -1953,27 +1983,13 @@ command_sign_domains() {
     fi
 
     if [[ "${OCSP_FETCH}" = "yes" ]]; then
-      local ocsp_url
-      ocsp_url="$(get_ocsp_url "${cert}")"
-
-      if [[ ! -e "${certdir}/ocsp.der" ]]; then
-        update_ocsp="yes"
-      elif ! ("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respin "${certdir}/ocsp.der" -status_age $((OCSP_DAYS*24*3600)) 2>&1 | grep -q "${cert}: good"); then
-        update_ocsp="yes"
-      fi
-
-      if [[ "${update_ocsp}" = "yes" ]]; then
-        echo " + Updating OCSP stapling file"
-        ocsp_timestamp="$(date +%s)"
-        if grep -qE "^(openssl (0|(1\.0))\.)|(libressl (1|2|3)\.)" <<< "$(${OPENSSL} version | awk '{print tolower($0)}')"; then
-          ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" -header "HOST" "$(echo "${ocsp_url}" | _sed -e 's/^http(s?):\/\///' -e 's/\/.*$//g')" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
-        else
-          ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
-        fi
-        ln -sf "ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
-        [[ -n "${HOOK}" ]] && (altnames="${domain} ${morenames}" "${HOOK}" "deploy_ocsp" "${domain}" "${certdir}/ocsp.der" "${ocsp_timestamp}" || _exiterr 'deploy_ocsp hook returned with non-zero exit code')
+      if [[ "${KEEP_GOING:-}" = "yes" ]]; then
+        skip_exit_hook=yes
+        update_ocsp_stapling "${certdir}" "${update_ocsp}" "${cert}" "${chain}" &
+        wait $! || exit_with_errorcode=1
+        skip_exit_hook=no
       else
-        echo " + OCSP stapling file is still valid (skipping update)"
+        update_ocsp_stapling "${certdir}" "${update_ocsp}" "${cert}" "${chain}"
       fi
     fi
   done
