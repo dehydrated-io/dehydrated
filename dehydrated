@@ -294,6 +294,7 @@ store_configvars() {
   __ACME_PROFILE="${ACME_PROFILE}"
   __ORDER_TIMEOUT=${ORDER_TIMEOUT}
   __VALIDATION_TIMEOUT=${VALIDATION_TIMEOUT}
+  __KEEP_GOING=${KEEP_GOING}
 }
 
 reset_configvars() {
@@ -315,6 +316,7 @@ reset_configvars() {
   ACME_PROFILE="${__ACME_PROFILE}"
   ORDER_TIMEOUT=${__ORDER_TIMEOUT}
   VALIDATION_TIMEOUT=${__VALIDATION_TIMEOUT}
+  KEEP_GOING="${__KEEP_GOING}"
 }
 
 hookscript_bricker_hook() {
@@ -407,6 +409,7 @@ load_config() {
   ACME_PROFILE=""
   ORDER_TIMEOUT=0
   VALIDATION_TIMEOUT=0
+  KEEP_GOING="no"
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -567,6 +570,7 @@ load_config() {
   [[ -n "${PARAM_ACME_PROFILE:-}" ]] && ACME_PROFILE="${PARAM_ACME_PROFILE}"
   [[ -n "${PARAM_ORDER_TIMEOUT:-}" ]] && ORDER_TIMEOUT="${PARAM_ORDER_TIMEOUT}"
   [[ -n "${PARAM_VALIDATION_TIMEOUT:-}" ]] && VALIDATION_TIMEOUT="${PARAM_VALIDATION_TIMEOUT}"
+  [[ -n "${PARAM_KEEP_GOING:-}" ]] && KEEP_GOING="${PARAM_KEEP_GOING}"
 
   if [ "${PARAM_FORCE_VALIDATION:-no}" = "yes" ] && [ "${PARAM_FORCE:-no}" = "no" ]; then
     _exiterr "Argument --force-validation can only be used in combination with --force (-x)"
@@ -1855,7 +1859,7 @@ command_sign_domains() {
 	# All settings that are allowed here should also be stored and
 	# restored in store_configvars() and reset_configvars()
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|ACME_PROFILE|ORDER_TIMEOUT|VALIDATION_TIMEOUT)
+          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|ACME_PROFILE|ORDER_TIMEOUT|VALIDATION_TIMEOUT|KEEP_GOING)
             echo "   + ${config_var} = ${config_value}"
             declare -- "${config_var}=${config_value}"
             ;;
@@ -1938,7 +1942,7 @@ command_sign_domains() {
         rm "${csrfile}"
       fi
       # shellcheck disable=SC2086
-      if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
+      if [[ "${KEEP_GOING:-}" = "yes" ]]; then
         skip_exit_hook=yes
         sign_domain "${certdir}" "${timestamp}" "${domain}" ${morenames} &
         wait $! || exit_with_errorcode=1

@@ -139,3 +139,6 @@
 
 # Amount of seconds to wait for processing of order until erroring out (default: 0 => no timeout)
 #ORDER_TIMEOUT=0
+
+# Skip over errors during certificate orders (default: no)
+#KEEP_GOING=no
