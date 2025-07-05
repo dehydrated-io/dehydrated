@@ -1650,6 +1650,12 @@ update_ocsp_stapling() {
 
     local ocsp_url="$(get_ocsp_url "${cert}")"
 
+    if [[ -z "${ocsp_url}" ]]; then
+      echo " ! ERROR: OCSP stapling requested but no OCSP url found in certificate." >&2
+      echo " ! Keep in mind that some CAs ended support for OCSP: https://letsencrypt.org/2024/12/05/ending-ocsp/" >&2
+      return 1
+    fi
+
     if [[ ! -e "${certdir}/ocsp.der" ]]; then
       update_ocsp="yes"
     elif ! ("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respin "${certdir}/ocsp.der" -status_age $((OCSP_DAYS*24*3600)) 2>&1 | grep -q "${cert}: good"); then

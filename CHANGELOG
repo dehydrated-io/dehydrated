@@ -9,6 +9,7 @@ This file contains a log of major changes in dehydrated
 - Only validate existance of wellknown directory or hook script when actually needed
 - Also allow setting `KEEP_GOING` in config file instead of relying on cli arguments
 - Allow skipping over OCSP stapling errors, indicate that some CAs no longer support OCSP
+- Throw error with information about OCSP deprecation if certificate doesn't indicate OCSP support
 
 ## [0.7.2] - 2025-05-18
 ## Added
