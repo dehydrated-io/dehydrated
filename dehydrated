@@ -1488,10 +1488,11 @@ generate_alpn_certificate() {
   echo " + Generating ALPN certificate and key for ${1}..."
   tmp_openssl_cnf="$(_mktemp)"
   cat "${OPENSSL_CNF}" > "${tmp_openssl_cnf}"
+  printf "\n[SAN]\nsubjectKeyIdentifier = none\n" >> "${tmp_openssl_cnf}"
   if [[ "${identifier_type}" = "ip" ]]; then
-    printf "\n[SAN]\nsubjectAltName=IP:%s\n" "${altname}" >> "${tmp_openssl_cnf}"
+    printf "subjectAltName=IP:%s\n" "${altname}" >> "${tmp_openssl_cnf}"
   else
-    printf "\n[SAN]\nsubjectAltName=DNS:%s\n" "${altname}" >> "${tmp_openssl_cnf}"
+    printf "subjectAltName=DNS:%s\n" "${altname}" >> "${tmp_openssl_cnf}"
   fi
   printf "1.3.6.1.5.5.7.1.31=critical,DER:04:20:%s\n" "${acmevalidation}" >> "${tmp_openssl_cnf}"
   SUBJ="/CN=${altname}/"
