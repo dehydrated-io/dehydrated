@@ -1159,9 +1159,10 @@ validate_pending_challenge() {
 
   if [[ "${reqstatus}" = "valid" ]]; then
     echo " + Challenge is valid!"
+    return 0 # success
   else
     [[ -n "${HOOK}" ]] && ("${HOOK}" "invalid_challenge" "${altname}" "${result}" || _exiterr 'invalid_challenge hook returned with non-zero exit code')
-    break
+    return 1 # failure
   fi
 }
 
@@ -1336,7 +1337,9 @@ sign_csr() {
       local idx=0
       while [ ${idx} -lt ${num_pending_challenges} ]; do
         deploy_challenge_token "${idx}"
-        validate_pending_challenge "${idx}"
+        if ! validate_pending_challenge "${idx}"; then
+          break
+        fi
         idx=$((idx+1))
       done
     else
@@ -1345,7 +1348,6 @@ sign_csr() {
       # Run hook script to deploy the challenge token
       local idx=0
       while [ ${idx} -lt ${num_pending_challenges} ]; do
-        # shellcheck disable=SC2086
         deploy_challenge_token "${idx}"
         idx=$((idx+1))
       done
@@ -1353,7 +1355,9 @@ sign_csr() {
       # Validate pending challenges
       local idx=0
       while [ ${idx} -lt ${num_pending_challenges} ]; do
-        validate_pending_challenge "${idx}"
+        if ! validate_pending_challenge "${idx}"; then
+          break
+        fi
         idx=$((idx+1))
       done
     fi
