@@ -1332,7 +1332,7 @@ sign_csr() {
 
   if [[ ${num_pending_challenges} -ne 0 ]]; then
     if [[ "${SEPARATE_CHALLENGE:-}" = "yes" ]]; then
-      # Run hook scripts for deployment, validation and cleaning per-domain
+      # Run hook scripts for deployment and validation per-domain
       echo " + Processing each challenge individually..."
       local idx=0
       while [ ${idx} -lt ${num_pending_challenges} ]; do
