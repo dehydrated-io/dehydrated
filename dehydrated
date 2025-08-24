@@ -268,10 +268,10 @@ check_dependencies() {
   done
 
   #check for any of the following last found is used
-  for binary in od hexdump xxd; do
+  for binary in od hexdump xxd basenc; do
     bin_path="$(command -v "${binary}" 2>/dev/null)" && [[ -x "${bin_path}" ]] && FOUND_HEXDUMP="${binary}"
   done
-  [[ -z "${FOUND_HEXDUMP}" ]] && _exiterr "unable to find a usable hex program, hexdump, od, or xxd"
+  [[ -z "${FOUND_HEXDUMP}" ]] && _exiterr "unable to find a usable hex program, hexdump, od, xxd, basenc"
 
   # just execute some dummy and/or version commands to see if required tools are actually usable
   "${OPENSSL}" version > /dev/null 2>&1 || _exiterr "This script requires an openssl binary."
@@ -915,8 +915,9 @@ hex2bin() {
 
 # Convert binary data to hex string
 bin2hex() {
+  [[ "${FOUND_HEXDUMP}" == "basenc" ]] && basenc --base16 -w0
   [[ "${FOUND_HEXDUMP}" == "hexdump" ]] && hexdump -v -e '/1 "%02x"'
-  [[ "${FOUND_HEXDUMP}" == "xxd" ]] && xxd -g0 -p -c0
+  [[ "${FOUND_HEXDUMP}" == "xxd" ]] && xxd -g0 -p -c0 | tr -d '\n'
   [[ "${FOUND_HEXDUMP}" == "od" ]] && od -An -tx1 | tr -d ' \n'
 }
 
