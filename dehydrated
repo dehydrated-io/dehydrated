@@ -915,10 +915,11 @@ hex2bin() {
 
 # Convert binary data to hex string
 bin2hex() {
-  [[ "${FOUND_HEXDUMP}" == "basenc" ]] && basenc --base16 -w0
-  [[ "${FOUND_HEXDUMP}" == "hexdump" ]] && hexdump -v -e '/1 "%02x"'
-  [[ "${FOUND_HEXDUMP}" == "xxd" ]] && xxd -g0 -p -c0 | tr -d '\n'
-  [[ "${FOUND_HEXDUMP}" == "od" ]] && od -An -tx1 | tr -d ' \n'
+  [[ "${FOUND_HEXDUMP}" = "basenc" ]] && basenc --base16 -w0
+  [[ "${FOUND_HEXDUMP}" = "hexdump" ]] && hexdump -v -e '/1 "%02x"'
+  [[ "${FOUND_HEXDUMP}" = "xxd" ]] && xxd -g0 -p -c0 | tr -d '\n'
+  [[ "${FOUND_HEXDUMP}" = "od" ]] && od -An -tx1 | tr -d ' \n'
+  echo -n
 }
 
 # OpenSSL writes to stderr/stdout even when there are no errors. So just
