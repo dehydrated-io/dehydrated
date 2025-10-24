@@ -329,7 +329,7 @@ hookscript_bricker_hook() {
 
 # verify configuration values
 verify_config() {
-  [[ "${CHALLENGETYPE}" == "http-01" || "${CHALLENGETYPE}" == "dns-01" || "${CHALLENGETYPE}" == "tls-alpn-01" ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... cannot continue."
+  [[ "${CHALLENGETYPE}" == "http-01" || "${CHALLENGETYPE}" == "dns-01" || "${CHALLENGETYPE}" == "tls-alpn-01" || "${CHALLENGETYPE}" == "none" ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... cannot continue."
   if [[ "${COMMAND:-}" =~ sign_domains|sign_csr ]]; then
     if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
       _exiterr "Challenge type dns-01 needs a hook script for deployment... cannot continue."
@@ -2459,8 +2459,8 @@ main() {
         PARAM_ALPNCERTDIR="${1}"
         ;;
 
-      # PARAM_Usage: --challenge (-t) http-01|dns-01|tls-alpn-01
-      # PARAM_Description: Which challenge should be used? Currently http-01, dns-01, and tls-alpn-01 are supported
+      # PARAM_Usage: --challenge (-t) http-01|dns-01|tls-alpn-01|none
+      # PARAM_Description: Which challenge should be used? Currently http-01, dns-01, and tls-alpn-01 are supported. Use none if ca does not require challenge for CAs which solely rely on EAB authorization.
       --challenge|-t)
         shift 1
         check_parameters "${1:-}"
