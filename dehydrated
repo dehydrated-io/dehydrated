@@ -295,6 +295,7 @@ store_configvars() {
   __ORDER_TIMEOUT=${ORDER_TIMEOUT}
   __VALIDATION_TIMEOUT=${VALIDATION_TIMEOUT}
   __KEEP_GOING=${KEEP_GOING}
+  __SEPARATE_CHALLENGE=${SEPARATE_CHALLENGE}
 }
 
 reset_configvars() {
@@ -317,6 +318,7 @@ reset_configvars() {
   ORDER_TIMEOUT=${__ORDER_TIMEOUT}
   VALIDATION_TIMEOUT=${__VALIDATION_TIMEOUT}
   KEEP_GOING="${__KEEP_GOING}"
+  SEPARATE_CHALLENGE="${__SEPARATE_CHALLENGE}"
 }
 
 hookscript_bricker_hook() {
@@ -410,6 +412,7 @@ load_config() {
   ORDER_TIMEOUT=0
   VALIDATION_TIMEOUT=0
   KEEP_GOING="no"
+  SEPARATE_CHALLENGE=
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -571,6 +574,7 @@ load_config() {
   [[ -n "${PARAM_ORDER_TIMEOUT:-}" ]] && ORDER_TIMEOUT="${PARAM_ORDER_TIMEOUT}"
   [[ -n "${PARAM_VALIDATION_TIMEOUT:-}" ]] && VALIDATION_TIMEOUT="${PARAM_VALIDATION_TIMEOUT}"
   [[ -n "${PARAM_KEEP_GOING:-}" ]] && KEEP_GOING="${PARAM_KEEP_GOING}"
+  [[ -n "${PARAM_SEPARATE_CHALLENGE:-}" ]] && SEPARATE_CHALLENGE="${PARAM_SEPARATE_CHALLENGE}"
 
   if [ "${PARAM_FORCE_VALIDATION:-no}" = "yes" ] && [ "${PARAM_FORCE:-no}" = "no" ]; then
     _exiterr "Argument --force-validation can only be used in combination with --force (-x)"
@@ -1109,6 +1113,72 @@ get_last_cn() {
   <<<"${1}" _sed 'H;/-----BEGIN CERTIFICATE-----/h;$!d;x' | "${OPENSSL}" x509 -noout -issuer | head -n1 | _sed -e 's/.*[ /]CN ?= ?([^/,]*).*/\1/'
 }
 
+deploy_challenge_token() {
+  local idx=$1
+
+  if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]]; then
+    # shellcheck disable=SC2086
+    "${HOOK}" "deploy_challenge" ${deploy_args[@]} || _exiterr 'deploy_challenge hook returned with non-zero exit code'
+  elif [[ -n "${HOOK}" ]]; then
+    # shellcheck disable=SC2086
+    "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]} || _exiterr 'deploy_challenge hook returned with non-zero exit code'
+  fi
+}
+
+validate_pending_challenge() {
+  local idx=$1
+
+  echo " + Responding to challenge for ${challenge_names[${idx}]} authorization..."
+  # Ask the acme-server to verify our challenge and wait until it is no longer pending
+  if [[ ${API} -eq 1 ]]; then
+    result="$(signed_request "${challenge_uris[${idx}]}" '{"resource": "challenge", "keyAuthorization": "'"${keyauths[${idx}]}"'"}' | jsonsh)"
+  else
+    result="$(signed_request "${challenge_uris[${idx}]}" '{}' | jsonsh)"
+  fi
+
+  reqstatus="$(echo "${result}" | get_json_string_value status)"
+
+  local waited=0
+  while [[ "${reqstatus}" = "pending" ]] || [[ "${reqstatus}" = "processing" ]]; do
+    if [ ${VALIDATION_TIMEOUT} -gt 0 ] && [ ${waited} -gt ${VALIDATION_TIMEOUT} ]; then
+      _exiterr "Timed out waiting for processing of domain validation (still ${reqstatus})"
+    fi
+    echo " + Validation is ${reqstatus}..."
+    sleep 1
+    waited=$((waited+1))
+    if [[ "${API}" -eq 2 ]]; then
+      result="$(signed_request "${challenge_uris[${idx}]}" "" | jsonsh)"
+    else
+      result="$(http_request get "${challenge_uris[${idx}]}" | jsonsh)"
+    fi
+    reqstatus="$(echo "${result}" | get_json_string_value status)"
+  done
+
+  [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_tokens[${idx}]}"
+  [[ "${CHALLENGETYPE}" = "tls-alpn-01" ]] && rm -f "${ALPNCERTDIR}/${challenge_names[${idx}]}.crt.pem" "${ALPNCERTDIR}/${challenge_names[${idx}]}.key.pem"
+
+  if [[ "${reqstatus}" = "valid" ]]; then
+    echo " + Challenge is valid!"
+    return 0 # success
+  else
+    [[ -n "${HOOK}" ]] && ("${HOOK}" "invalid_challenge" "${altname}" "${result}" || _exiterr 'invalid_challenge hook returned with non-zero exit code')
+    return 1 # failure
+  fi
+}
+
+clean_challenge_tokens() {
+  local idx=$1
+
+  # Clean remaining challenge tokens if validation has failed
+  # Delete challenge file
+  [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_tokens[${idx}]}"
+  # Delete alpn verification certificates
+  [[ "${CHALLENGETYPE}" = "tls-alpn-01" ]] && rm -f "${ALPNCERTDIR}/${challenge_names[${idx}]}.crt.pem" "${ALPNCERTDIR}/${challenge_names[${idx}]}.key.pem"
+  # Clean challenge token using non-chained hook
+  # shellcheck disable=SC2086
+  [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && ("${HOOK}" "clean_challenge" ${deploy_args[${idx}]} || _exiterr 'clean_challenge hook returned with non-zero exit code')
+}
+
 # Create certificate for domain(s) and outputs it FD 3
 sign_csr() {
   csrfile="${1}" # path to CSR file
@@ -1260,82 +1330,48 @@ sign_csr() {
   local num_pending_challenges=${idx}
   echo " + ${num_pending_challenges} pending challenge(s)"
 
-  # Deploy challenge tokens
   if [[ ${num_pending_challenges} -ne 0 ]]; then
-    echo " + Deploying challenge tokens..."
-    if [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]]; then
-      # shellcheck disable=SC2068
-      "${HOOK}" "deploy_challenge" ${deploy_args[@]} || _exiterr 'deploy_challenge hook returned with non-zero exit code'
-    elif [[ -n "${HOOK}" ]]; then
+    if [[ "${SEPARATE_CHALLENGE:-}" = "yes" ]]; then
+      # Run hook scripts for deployment and validation per-domain
+      echo " + Processing each challenge individually..."
+      local idx=0
+      while [ ${idx} -lt ${num_pending_challenges} ]; do
+        deploy_challenge_token "${idx}"
+        if ! validate_pending_challenge "${idx}"; then
+          break
+        fi
+        idx=$((idx+1))
+      done
+    else
+      # Deploy challenge tokens
+      echo " + Deploying challenge tokens..."
       # Run hook script to deploy the challenge token
       local idx=0
       while [ ${idx} -lt ${num_pending_challenges} ]; do
-        # shellcheck disable=SC2086
-        "${HOOK}" "deploy_challenge" ${deploy_args[${idx}]} || _exiterr 'deploy_challenge hook returned with non-zero exit code'
+        deploy_challenge_token "${idx}"
+        idx=$((idx+1))
+      done
+
+      # Validate pending challenges
+      local idx=0
+      while [ ${idx} -lt ${num_pending_challenges} ]; do
+        if ! validate_pending_challenge "${idx}"; then
+          break
+        fi
         idx=$((idx+1))
       done
     fi
   fi
 
-  # Validate pending challenges
-  local idx=0
-  while [ ${idx} -lt ${num_pending_challenges} ]; do
-    echo " + Responding to challenge for ${challenge_names[${idx}]} authorization..."
-
-    # Ask the acme-server to verify our challenge and wait until it is no longer pending
-    if [[ ${API} -eq 1 ]]; then
-      result="$(signed_request "${challenge_uris[${idx}]}" '{"resource": "challenge", "keyAuthorization": "'"${keyauths[${idx}]}"'"}' | jsonsh)"
-    else
-      result="$(signed_request "${challenge_uris[${idx}]}" '{}' | jsonsh)"
-    fi
-
-    reqstatus="$(echo "${result}" | get_json_string_value status)"
-
-    local waited=0
-    while [[ "${reqstatus}" = "pending" ]] || [[ "${reqstatus}" = "processing" ]]; do
-      if [ ${VALIDATION_TIMEOUT} -gt 0 ] && [ ${waited} -gt ${VALIDATION_TIMEOUT} ]; then
-        _exiterr "Timed out waiting for processing of domain validation (still ${reqstatus})"
-      fi
-      echo " + Validation is ${reqstatus}..."
-      sleep 1
-      waited=$((waited+1))
-      if [[ "${API}" -eq 2 ]]; then
-        result="$(signed_request "${challenge_uris[${idx}]}" "" | jsonsh)"
-      else
-        result="$(http_request get "${challenge_uris[${idx}]}" | jsonsh)"
-      fi
-      reqstatus="$(echo "${result}" | get_json_string_value status)"
-    done
-
-    [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_tokens[${idx}]}"
-    [[ "${CHALLENGETYPE}" = "tls-alpn-01" ]] && rm -f "${ALPNCERTDIR}/${challenge_names[${idx}]}.crt.pem" "${ALPNCERTDIR}/${challenge_names[${idx}]}.key.pem"
-
-    if [[ "${reqstatus}" = "valid" ]]; then
-      echo " + Challenge is valid!"
-    else
-      [[ -n "${HOOK}" ]] && ("${HOOK}" "invalid_challenge" "${altname}" "${result}" || _exiterr 'invalid_challenge hook returned with non-zero exit code')
-      break
-    fi
-    idx=$((idx+1))
-  done
-
   if [[ ${num_pending_challenges} -ne 0 ]]; then
     echo " + Cleaning challenge tokens..."
-
     # Clean challenge tokens using chained hook
     # shellcheck disable=SC2068
     [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" = "yes" ]] && ("${HOOK}" "clean_challenge" ${deploy_args[@]} || _exiterr 'clean_challenge hook returned with non-zero exit code')
 
-    # Clean remaining challenge tokens if validation has failed
     local idx=0
     while [ ${idx} -lt ${num_pending_challenges} ]; do
-      # Delete challenge file
-      [[ "${CHALLENGETYPE}" = "http-01" ]] && rm -f "${WELLKNOWN}/${challenge_tokens[${idx}]}"
-      # Delete alpn verification certificates
-      [[ "${CHALLENGETYPE}" = "tls-alpn-01" ]] && rm -f "${ALPNCERTDIR}/${challenge_names[${idx}]}.crt.pem" "${ALPNCERTDIR}/${challenge_names[${idx}]}.key.pem"
-      # Clean challenge token using non-chained hook
-      # shellcheck disable=SC2086
-      [[ -n "${HOOK}" ]] && [[ "${HOOK_CHAIN}" != "yes" ]] && ("${HOOK}" "clean_challenge" ${deploy_args[${idx}]} || _exiterr 'clean_challenge hook returned with non-zero exit code')
+      clean_challenge_tokens "${idx}"
       idx=$((idx+1))
     done
 
@@ -1895,7 +1931,7 @@ command_sign_domains() {
 	# All settings that are allowed here should also be stored and
 	# restored in store_configvars() and reset_configvars()
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|ACME_PROFILE|ORDER_TIMEOUT|VALIDATION_TIMEOUT|KEEP_GOING)
+          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|ACME_PROFILE|ORDER_TIMEOUT|VALIDATION_TIMEOUT|KEEP_GOING|SEPARATE_CHALLENGE)
             echo "   + ${config_var} = ${config_value}"
             declare -- "${config_var}=${config_value}"
             ;;
@@ -2473,6 +2509,12 @@ main() {
         shift 1
         check_parameters "${1:-}"
         PARAM_KEY_ALGO="${1}"
+        ;;
+
+      # PARAM_Usage: --separate-challenges (-i)
+      # PARAM_Description: Process challenges one-by-one. Use with DNS providers that only allow one TXT record
+      --separate-challenges|-i)
+        PARAM_SEPARATE_CHALLENGE="yes"
         ;;
 
       # PARAM_Usage: --acme-profile profile_name
