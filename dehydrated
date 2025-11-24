@@ -592,7 +592,7 @@ init_system() {
     [[ -w "${LOCKDIR}" ]] || _exiterr "Directory ${LOCKDIR} for LOCKFILE ${LOCKFILE} is not writable, aborting."
     ( set -C; date > "${LOCKFILE}" ) 2>/dev/null || _exiterr "Lock file '${LOCKFILE}' present, aborting."
     remove_lock() { rm -f "${LOCKFILE}"; }
-    trap 'remove_lock' EXIT
+    trap 'remove_lock' EXIT TERM
   fi
 
   # Get CA URLs
