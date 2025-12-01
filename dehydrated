@@ -1946,6 +1946,25 @@ command_sign_domains() {
       fi
     fi
 
+    # Check pubkey of existing certificate aginst pubkey in csr.
+    if [[ -e "${cert}" && -n "${csr}" && "${force_renew}" = "no" ]]; then
+      printf " + Checking public key of existing cert..."
+
+      hash_cert="$(${OPENSSL} x509 -in "${cert}" -pubkey -noout|${OPENSSL} pkey -pubin -outform DER|"${OPENSSL}" dgst -sha256|awk '{ print $2 }')"
+      hash_csr="$(echo "${csr}"|${OPENSSL} req -pubkey -noout 2>/dev/null|${OPENSSL} pkey -pubin -outform DER|"${OPENSSL}" dgst -sha256|awk '{ print $2 }')"
+
+      if [[ "${hash_cert}" = "${hash_csr}" ]]; then
+        echo " unchanged."
+      else
+        echo " changed!"
+        echo " + Key is not matching!"
+        echo " + Key hash for old certificate: ${hash_cert}"
+        echo " + Key hash for csr: ${hash_csr}"
+        echo " + Forcing renew."
+        force_renew="yes"
+      fi
+    fi
+
     # Check expire date of existing certificate
     if [[ -e "${cert}" ]]; then
       echo " + Checking expire date of existing cert..."
