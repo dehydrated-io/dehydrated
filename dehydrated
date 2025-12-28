@@ -847,7 +847,7 @@ init_system() {
         echo '{"url":"'"${ACCOUNT_URL}"'"}' > "${ACCOUNT_ID_JSON}" # store the URL for next time
       fi
     fi
-  else
+  elif [[ "${COMMAND}" != "revoke" ]]; then
     echo "Fetching missing account information from CA..."
     if [[ ${API} -eq 1 ]]; then
       _exiterr "This is not implemented for ACMEv1! Consider switching to ACMEv2 :)"
