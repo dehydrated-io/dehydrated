@@ -252,6 +252,43 @@ ip_to_ptr() {
   fi
 }
 
+# IPv6 conversion helpers
+ipv6_expand() {
+  # expand double colons until 8 segments exist
+  # replace remaining double colon with single colon
+  # pad all segments to 4 characters with leading zeros
+  _sed \
+    -e ':addsegs; /^([^:]*:){0,7}[^:]*$/{ s/::/:0000::/g; t addsegs; }' \
+    -e 's/::/:/' \
+    -e ':padsegs; s/(:|^)([^:]{0,3})(:|$)/\10\2\3/g; t padsegs;'
+}
+
+ipv6_shorten() {
+  # remove leading zeros from all segments
+  # find the longest matching run of zeros and replace with double colons (this could be prettier..)
+  _sed \
+    -e ':unpadsegs;/(^|:)0/{s/(^|:)0([^:])/\1\2/g;t unpadsegs;}' \
+    -e '/(^|:)(0(:|$)){8}/{ s/(^|:)(0(:|$)){8}/::/; t end; }' \
+    -e '/(^|:)(0(:|$)){7}/{ s/(^|:)(0(:|$)){7}/::/; t end; }' \
+    -e '/(^|:)(0(:|$)){6}/{ s/(^|:)(0(:|$)){6}/::/; t end; }' \
+    -e '/(^|:)(0(:|$)){5}/{ s/(^|:)(0(:|$)){5}/::/; t end; }' \
+    -e '/(^|:)(0(:|$)){4}/{ s/(^|:)(0(:|$)){4}/::/; t end; }' \
+    -e '/(^|:)(0(:|$)){3}/{ s/(^|:)(0(:|$)){3}/::/; t end; }' \
+    -e '/(^|:)(0(:|$)){2}/{ s/(^|:)(0(:|$)){2}/::/; t end; }' \
+    -e ':end'
+}
+
+ipv6_normalize() {
+  for domain in $(cat); do
+    if [[ "${domain}" =~ : ]]; then
+      ipv6_expand <<< "${domain}" | ipv6_shorten
+    else
+      printf "%s" "${domain}"
+    fi
+    printf " "
+  done | sed -e 's/ $//'
+}
+
 # Create (identifiable) temporary files
 _mktemp() {
   mktemp "${TMPDIR:-/tmp}/dehydrated-XXXXXX"
@@ -1142,7 +1179,11 @@ sign_csr() {
     local challenge_identifiers=""
     for altname in ${altnames}; do
       if [[ "${altname}" =~ ^ip: ]]; then
-        challenge_identifiers+="$(printf '{"type": "ip", "value": "%s"}, ' "${altname:3}")"
+        ip="${altname:3}"
+        if [[ "${ip}" =~ : ]]; then
+          ip="$(ipv6_normalize <<< "${ip}")"
+        fi
+        challenge_identifiers+="$(printf '{"type": "ip", "value": "%s"}, ' "${ip}")"
       else
         challenge_identifiers+="$(printf '{"type": "dns", "value": "%s"}, ' "${altname}")"
       fi
@@ -1931,9 +1972,9 @@ command_sign_domains() {
     if [[ -e "${cert}" && "${force_renew}" = "no" ]]; then
       printf " + Checking domain name(s) of existing cert..."
 
-      certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep -E '(DNS|IP( Address*)):' | _sed 's/(DNS|IP( Address)*)://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//')"
-      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ip://g' | _sed 's/ $//' | _sed 's/^ //')"
- 
+      certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep -E '(DNS|IP( Address*)):' | _sed 's/(DNS|IP( Address)*)://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | awk '{print tolower($0)}' | ipv6_normalize)"
+      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ip://g' | _sed 's/ $//' | _sed 's/^ //' | ipv6_normalize)"
+
       if [[ "${certnames}" = "${givennames}" ]]; then
         echo " unchanged."
       else
