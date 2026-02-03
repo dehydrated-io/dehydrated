@@ -49,11 +49,11 @@ noglob_clear() {
 
 # Generate json.sh path matching string
 json_path() {
-	if [ ! "${1}" = "-p" ]; then
-		printf '"%s"' "${1}"
-	else
-		printf '%s' "${2}"
-	fi
+  if [ ! "${1}" = "-p" ]; then
+    printf '"%s"' "${1}"
+  else
+    printf '%s' "${2}"
+  fi
 }
 
 # Get string value from json dictionary
@@ -1141,11 +1141,11 @@ sign_csr() {
     # Request new order and store authorization URIs
     local challenge_identifiers=""
     for altname in ${altnames}; do
-    if [[ "${altname}" =~ ^ip: ]]; then
-      challenge_identifiers+="$(printf '{"type": "ip", "value": "%s"}, ' "${altname:3}")"
-    else
-       challenge_identifiers+="$(printf '{"type": "dns", "value": "%s"}, ' "${altname}")"
-    fi
+      if [[ "${altname}" =~ ^ip: ]]; then
+        challenge_identifiers+="$(printf '{"type": "ip", "value": "%s"}, ' "${altname:3}")"
+      else
+        challenge_identifiers+="$(printf '{"type": "dns", "value": "%s"}, ' "${altname}")"
+      fi
     done
     challenge_identifiers="[${challenge_identifiers%, }]"
 
@@ -1892,8 +1892,8 @@ command_sign_domains() {
       ); do
         config_var="$(echo "${cfgline:1}" | cut -d'=' -f1)"
         config_value="$(echo "${cfgline:1}" | cut -d'=' -f2- | tr -d "'")"
-	# All settings that are allowed here should also be stored and
-	# restored in store_configvars() and reset_configvars()
+        # All settings that are allowed here should also be stored and
+        # restored in store_configvars() and reset_configvars()
         case "${config_var}" in
           KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|ACME_PROFILE|ORDER_TIMEOUT|VALIDATION_TIMEOUT|KEEP_GOING)
             echo "   + ${config_var} = ${config_value}"
