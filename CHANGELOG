@@ -2,8 +2,13 @@
 This file contains a log of major changes in dehydrated
 
 ## [x.x.x] - xxxx-xx-xx
+## Fixed
+- Various bugfixes around IP certificate orders
+- Implement workaround for OpenSSL regression which broke the time-based validity check
+
 ## Added
 - Added a configuration parameter to allow for timeouts during domain validation processing (`VALIDATION_TIMEOUT`, defaults to 0 = no timeout)
+- Added documentation for IP certificates
 
 ## Changed
 - Only validate existance of wellknown directory or hook script when actually needed
