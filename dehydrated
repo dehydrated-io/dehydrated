@@ -281,7 +281,7 @@ ipv6_shorten() {
 ipv6_normalize() {
   for domain in $(cat); do
     if [[ "${domain}" =~ : ]]; then
-      ipv6_expand <<< "${domain}" | ipv6_shorten
+      printf "%s" "${domain}" | ipv6_expand | ipv6_shorten
     else
       printf "%s" "${domain}"
     fi
@@ -1837,6 +1837,12 @@ parse_domains_txt() {
     (grep -vE '^(#|$)' || true)
 }
 
+# normalize SAN lists
+# normalize IPv6 adresses, and sort alphabetically
+normalize_san_list() {
+  cat | awk '{print tolower($0)}' | _sed 's/ $//' | _sed 's/^ //' | ipv6_normalize | tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//'
+}
+
 # Usage: --cron (-c)
 # Description: Sign/renew non-existent/changed/expiring certificates.
 command_sign_domains() {
@@ -1972,8 +1978,8 @@ command_sign_domains() {
     if [[ -e "${cert}" && "${force_renew}" = "no" ]]; then
       printf " + Checking domain name(s) of existing cert..."
 
-      certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep -E '(DNS|IP( Address*)):' | _sed 's/(DNS|IP( Address)*)://g' | tr -d ' ' | tr ',' '\n' | sort -u | tr '\n' ' ' | _sed 's/ $//' | awk '{print tolower($0)}' | ipv6_normalize)"
-      givennames="$(echo "${domain}" "${morenames}"| tr ' ' '\n' | sort -u | tr '\n' ' ' | _sed 's/ip://g' | _sed 's/ $//' | _sed 's/^ //' | ipv6_normalize)"
+      certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep -E '(DNS|IP( Address*)):' | _sed 's/(DNS|IP( Address)*)://g' | tr -d ' ' | tr ',' ' ' | normalize_san_list )"
+      givennames="$(echo "${domain}" "${morenames}" | _sed 's/ip://g' | normalize_san_list )"
 
       if [[ "${certnames}" = "${givennames}" ]]; then
         echo " unchanged."
