@@ -1978,7 +1978,7 @@ command_sign_domains() {
     if [[ -e "${cert}" && "${force_renew}" = "no" ]]; then
       printf " + Checking domain name(s) of existing cert..."
 
-      certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep -E '(DNS|IP( Address*)):' | _sed 's/(DNS|IP( Address)*)://g' | tr -d ' ' | tr ',' ' ' | normalize_san_list )"
+      certnames="$("${OPENSSL}" x509 -in "${cert}" -text -noout | grep -E '(DNS|IP( Address)*):' | _sed 's/(DNS|IP( Address)*)://g' | tr -d ' ' | tr ',' ' ' | normalize_san_list )"
       givennames="$(echo "${domain}" "${morenames}" | _sed 's/ip://g' | normalize_san_list )"
 
       if [[ "${certnames}" = "${givennames}" ]]; then
