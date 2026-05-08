@@ -118,7 +118,7 @@ jsonsh() {
     local ESCAPE
     local CHAR
 
-    if echo "test string" | grep -Eao --color=never "test" >/dev/null 2>&1
+    if echo "test string" 2>/dev/null| grep -Eao --color=never "test" >/dev/null 2>&1
     then
       GREP='grep -Eao --color=never'
     else
