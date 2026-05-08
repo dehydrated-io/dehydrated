@@ -214,6 +214,13 @@ exit_hook() {
   #   Contains error message if dehydrated exits with error
 }
 
+# Include local overrides for hook.sh functions
+if [ -d /etc/dehydrated/hook.d ]; then
+  for localhook in $(ls -1 /etc/dehydrated/hook.d/*.sh 2>/dev/null); do
+    . "${localhook}"
+  done
+fi
+
 HANDLER="$1"; shift
 if [[ "${HANDLER}" =~ ^(deploy_challenge|clean_challenge|sync_cert|deploy_cert|deploy_ocsp|unchanged_cert|invalid_challenge|request_failure|generate_csr|startup_hook|exit_hook)$ ]]; then
   "$HANDLER" "$@"
