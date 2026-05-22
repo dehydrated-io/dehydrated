@@ -20,6 +20,9 @@ Currently supported options:
 - OPENSSL_CNF
 - RENEW_DAYS
 - PREFERRED_CHAIN
+- CA
+
+`CA` is used for per-certificate CA selection during `--cron`, and additionally by `--register` and `--account` to process all unique per-certificate CAs.
 
 ## DOMAINS_D
 
