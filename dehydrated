@@ -313,6 +313,7 @@ check_dependencies() {
 }
 
 store_configvars() {
+  __CA="${CA}"
   __KEY_ALGO="${KEY_ALGO}"
   __OCSP_MUST_STAPLE="${OCSP_MUST_STAPLE}"
   __OCSP_FETCH="${OCSP_FETCH}"
@@ -335,6 +336,7 @@ store_configvars() {
 }
 
 reset_configvars() {
+  CA="${__CA}"
   KEY_ALGO="${__KEY_ALGO}"
   OCSP_MUST_STAPLE="${__OCSP_MUST_STAPLE}"
   OCSP_FETCH="${__OCSP_FETCH}"
@@ -894,6 +896,68 @@ init_system() {
     fi
     echo "${ACCOUNT_INFO}" > "${ACCOUNT_KEY_JSON}"
   fi
+}
+
+collect_configured_cas() {
+  local -A configured_cas=()
+  configured_cas["${CA}"]=1
+
+  if [[ -e "${DOMAINS_TXT}" ]]; then
+    local alias certconfig domain_ca
+    while IFS=$'\t' read -r alias _ _ _; do
+      [[ -z "${alias}" ]] && continue
+
+      if [[ -n "${DOMAINS_D}" ]]; then
+        certconfig="${DOMAINS_D}/${alias}"
+      else
+        certconfig="${CERTDIR}/${alias}/config"
+      fi
+
+      if [ -f "${certconfig}" ]; then
+        domain_ca="$({
+          unset CA
+          # shellcheck disable=SC1090
+          . "${certconfig}" > /dev/null 2>&1 || true
+          printf '%s' "${CA:-}"
+        })"
+        if [[ -n "${domain_ca}" ]]; then
+          configured_cas["${domain_ca}"]=1
+        fi
+      fi
+    done < <(iter_parsed_domains_txt)
+  fi
+
+  local configured_ca
+  for configured_ca in "${!configured_cas[@]}"; do
+    printf '%s\n' "${configured_ca}"
+  done
+}
+
+parse_domain_config_line() {
+  local input_line="${1}"
+  local input_alias
+
+  input_alias="$(grep -Eo '>[^ ]+' <<< "${input_line}" || true)"
+  PARSED_LINE="$(_sed -e 's/>[^ ]+[ ]*//g' <<< "${input_line}")"
+  PARSED_ALIASCOUNT="$(grep -Eo '>' <<< "${input_alias}" | awk 'END {print NR}' || true )"
+  [ "${PARSED_ALIASCOUNT}" -gt 1 ] && _exiterr "Only one alias per line is allowed in domains.txt!"
+
+  PARSED_DOMAIN="$(printf '%s\n' "${PARSED_LINE}" | cut -d' ' -f1)"
+  PARSED_MORENAMES="$(printf '%s\n' "${PARSED_LINE}" | cut -s -d' ' -f2-)"
+  [ "${PARSED_ALIASCOUNT}" -lt 1 ] && PARSED_ALIAS="${PARSED_DOMAIN}" || PARSED_ALIAS="${input_alias#>}"
+}
+
+iter_parsed_domains_txt() {
+  local ORIGIFS="${IFS}"
+  local line
+  IFS=$'\n'
+  for line in $(parse_domains_txt); do
+    IFS="${ORIGIFS}"
+    parse_domain_config_line "${line}"
+    printf '%s\t%s\t%s\t%s\n' "${PARSED_ALIAS}" "${PARSED_ALIASCOUNT}" "${PARSED_DOMAIN}" "${PARSED_MORENAMES}"
+    IFS=$'\n'
+  done
+  IFS="${ORIGIFS}"
 }
 
 # Different sed version for different os types...
@@ -1776,16 +1840,65 @@ command_terms() {
 }
 
 # Usage: --register
-# Description: Register account key
+# Description: Register account key (including per-domain CAs)
 command_register() {
-  init_system
-  echo "+ Done!"
+  if [[ "${DEHYDRATED_SINGLE_CA_REGISTER:-no}" = "yes" ]]; then
+    init_system
+    echo "+ Done!"
+    exit 0
+  fi
+
+  load_config
+
+  if [[ -n "${PARAM_CA:-}" ]]; then
+    DEHYDRATED_SINGLE_CA_REGISTER=yes "${0}" "${ORIGARGS[@]}"
+    exit 0
+  fi
+
+  processed=0
+  while read -r register_ca; do
+    [[ -z "${register_ca}" ]] && continue
+    register_cmd=("${0}" --register --ca "${register_ca}")
+    [[ -n "${CONFIG:-}" ]] && register_cmd+=(--config "${CONFIG}")
+    [[ "${PARAM_ACCEPT_TERMS:-no}" = "yes" ]] && register_cmd+=(--accept-terms)
+    [[ -n "${PARAM_ACCOUNT_KEY:-}" ]] && register_cmd+=(--privkey "${PARAM_ACCOUNT_KEY}")
+
+    echo "+ Registering account key for CA: ${register_ca}"
+    DEHYDRATED_SINGLE_CA_REGISTER=yes "${register_cmd[@]}"
+    processed=$((processed+1))
+  done < <(collect_configured_cas)
+
+  echo "+ Done! Processed ${processed} CA(s)."
   exit 0
 }
 
 # Usage: --account
-# Description: Update account contact information
+# Description: Update account contact information (including per-domain CAs)
 command_account() {
+  if [[ "${DEHYDRATED_SINGLE_CA_ACCOUNT:-no}" != "yes" ]]; then
+    load_config
+
+    if [[ -n "${PARAM_CA:-}" ]]; then
+      DEHYDRATED_SINGLE_CA_ACCOUNT=yes "${0}" "${ORIGARGS[@]}"
+      exit 0
+    fi
+
+    processed=0
+    while read -r account_ca; do
+      [[ -z "${account_ca}" ]] && continue
+      account_cmd=("${0}" --account --ca "${account_ca}")
+      [[ -n "${CONFIG:-}" ]] && account_cmd+=(--config "${CONFIG}")
+      [[ -n "${PARAM_ACCOUNT_KEY:-}" ]] && account_cmd+=(--privkey "${PARAM_ACCOUNT_KEY}")
+
+      echo "+ Updating account information for CA: ${account_ca}"
+      DEHYDRATED_SINGLE_CA_ACCOUNT=yes "${account_cmd[@]}"
+      processed=$((processed+1))
+    done < <(collect_configured_cas)
+
+    echo "+ Done! Processed ${processed} CA(s)."
+    exit 0
+  fi
+
   init_system
   FAILED=false
 
@@ -1881,19 +1994,9 @@ command_sign_domains() {
   fi
 
   # Generate certificates for all domains found in domains.txt. Check if existing certificate are about to expire
-  ORIGIFS="${IFS}"
-  IFS=$'\n'
-  for line in $(parse_domains_txt); do
+  while IFS=$'\t' read -r alias aliascount domain morenames; do
+    [[ -z "${alias}" ]] && continue
     reset_configvars
-    IFS="${ORIGIFS}"
-    alias="$(grep -Eo '>[^ ]+' <<< "${line}" || true)"
-    line="$(_sed -e 's/>[^ ]+[ ]*//g' <<< "${line}")"
-    aliascount="$(grep -Eo '>' <<< "${alias}" | awk 'END {print NR}' || true )"
-    [ "${aliascount}" -gt 1 ] && _exiterr "Only one alias per line is allowed in domains.txt!"
-
-    domain="$(printf '%s\n' "${line}" | cut -d' ' -f1)"
-    morenames="$(printf '%s\n' "${line}" | cut -s -d' ' -f2-)"
-    [ "${aliascount}" -lt 1 ] && alias="${domain}" || alias="${alias#>}"
     export alias
 
     if [[ -z "${morenames}" ]];then
@@ -1950,9 +2053,13 @@ command_sign_domains() {
         # All settings that are allowed here should also be stored and
         # restored in store_configvars() and reset_configvars()
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|ACME_PROFILE|ORDER_TIMEOUT|VALIDATION_TIMEOUT|KEEP_GOING)
-            echo "   + ${config_var} = ${config_value}"
-            declare -- "${config_var}=${config_value}"
+          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|ACME_PROFILE|ORDER_TIMEOUT|VALIDATION_TIMEOUT|KEEP_GOING|CA)
+            if [[ "${config_var}" = "CA" ]] && [[ -n "${PARAM_CA:-}" ]]; then
+              echo "   ! Ignoring per-certificate CA because --ca is set"
+            else
+              echo "   + ${config_var} = ${config_value}"
+              declare -- "${config_var}=${config_value}"
+            fi
             ;;
           _) ;;
           *) echo "   ! Setting ${config_var} on a per-certificate base is not (yet) supported" >&2
@@ -1963,6 +2070,22 @@ command_sign_domains() {
     verify_config
     hookscript_bricker_hook
     export WELLKNOWN CHALLENGETYPE KEY_ALGO PRIVATE_KEY_ROLLOVER
+
+    if [[ -z "${PARAM_CA:-}" ]] && [[ "${DEHYDRATED_SINGLE_CERT_CA:-no}" != "yes" ]] && [[ "${CA}" != "${__CA}" ]]; then
+      child_cmd=("${0}" "${ORIGARGS[@]}" --ca "${CA}" --no-lock)
+      if [[ -z "${PARAM_DOMAIN:-}" ]]; then
+        child_cmd+=(--domain "${domain} ${morenames}")
+        [[ "${aliascount}" -ge 1 ]] && child_cmd+=(--alias "${alias}")
+      fi
+
+      echo " + Per-certificate CA override detected, handling ${alias} via ${CA}"
+      if [[ "${KEEP_GOING:-}" = "yes" ]]; then
+        DEHYDRATED_SINGLE_CERT_CA=yes "${child_cmd[@]}" || exit_with_errorcode=1
+      else
+        DEHYDRATED_SINGLE_CERT_CA=yes "${child_cmd[@]}"
+      fi
+      continue
+    fi
 
     skip="no"
 
@@ -2053,7 +2176,7 @@ command_sign_domains() {
         update_ocsp_stapling "${certdir}" "${update_ocsp}" "${cert}" "${chain}"
       fi
     fi
-  done
+  done < <(iter_parsed_domains_txt)
   reset_configvars
 
   # remove temporary domains.txt file if used
