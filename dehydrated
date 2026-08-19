@@ -1121,6 +1121,11 @@ extract_altnames() {
   fi
 
   reqtext="$("${OPENSSL}" req -in "${csrfile}" -noout -text)"
+  if <<<"${reqtext}" grep -q '^[[:space:]]*Subject:.*[ /]CN='; then
+    # CN used, extract this
+    subjectname="$( <<<"${reqtext}" grep '^[[:space:]]*Subject:' | _sed -e 's/.*[ /]CN ?= ?([^ /,]*).*/\1/' )"
+  fi
+
   if <<<"${reqtext}" grep -q '^[[:space:]]*X509v3 Subject Alternative Name:[[:space:]]*$'; then
     # SANs used, extract these
     altnames="$( <<<"${reqtext}" awk '/X509v3 Subject Alternative Name:/{print;getline;print;}' | tail -n1 )"
@@ -1133,12 +1138,9 @@ extract_altnames() {
     fi
     # strip away the DNS/IP: prefix
     altnames="$( <<<"${altnames}" _sed -e 's/^(DNS:|IP( Address)*:|othername:<unsupported>)//' )"
-    printf "%s" "${altnames}" | tr '\n' ' '
-  else
-    # No SANs, extract CN
-    altnames="$( <<<"${reqtext}" grep '^[[:space:]]*Subject:' | _sed -e 's/.*[ /]CN ?= ?([^ /,]*).*/\1/' )"
-    printf "%s" "${altnames}"
   fi
+
+  printf "%s" "${subjectname-} ${altnames-}" | tr '\n' ' ' | _sed -e 's/^[[:space:]]*//;'
 }
 
 # Get last issuer CN in certificate chain
